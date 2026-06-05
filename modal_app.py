@@ -44,7 +44,7 @@ volumes = {
 }
 
 image = (
-    modal.Image.debian_slim(python_version="3.12")
+    modal.Image.from_registry("nvidia/cuda:12.8.1-devel-ubuntu22.04", add_python="3.12")
     .apt_install("git", "curl", "ffmpeg", "build-essential", "libgl1", "libglib2.0-0")
     .run_commands(
         "python -m pip install --upgrade pip wheel 'setuptools<82' "
@@ -88,11 +88,14 @@ def env_check() -> dict[str, Any]:
     """Verify the Modal GPU image can import torch, Nerfstudio, and gsplat."""
 
     _run(["nvidia-smi"])
+    _run(["which", "nvcc"])
+    _run(["nvcc", "--version"])
     script = """
 import json
 import torch
 import nerfstudio
 import gsplat
+from gsplat.cuda import _wrapper as gsplat_wrapper
 
 print(json.dumps({
     "torch": torch.__version__,
@@ -101,9 +104,12 @@ print(json.dumps({
     "device": torch.cuda.get_device_name(0) if torch.cuda.is_available() else None,
     "nerfstudio": "ok",
     "gsplat": "ok",
+    "gsplat_cuda_extension": gsplat_wrapper._C is not None,
 }, indent=2))
 if not torch.cuda.is_available():
     raise SystemExit("CUDA is unavailable")
+if gsplat_wrapper._C is None:
+    raise SystemExit("gsplat CUDA extension is unavailable")
 """
     _run(["python", "-c", script])
     return {"status": "ok", "gpu": DEFAULT_GPU}

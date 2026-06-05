@@ -19,6 +19,8 @@ The app uses three Modal Volumes:
 
 They are created automatically by `modal.Volume.from_name(..., create_if_missing=True)`.
 
+The image is based on `nvidia/cuda:12.8.1-devel-ubuntu22.04` because `gsplat` needs the CUDA toolkit and `nvcc`, not only PyTorch CUDA wheels.
+
 ## First Smoke
 
 Run an environment check:
@@ -26,6 +28,8 @@ Run an environment check:
 ```bash
 modal run modal_app.py --action env
 ```
+
+This checks `nvidia-smi`, `nvcc`, PyTorch CUDA availability, and the `gsplat` CUDA extension before launching training.
 
 Prepare the Nerfstudio `poster` sample:
 
