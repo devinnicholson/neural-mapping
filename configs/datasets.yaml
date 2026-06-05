@@ -1,0 +1,141 @@
+schema_version: 1
+config_type: datasets
+
+defaults:
+  image_width: null
+  image_height: null
+  depth_unit: meter
+  pose_format: nerfstudio_transform_json
+  color_space: srgb
+  masks:
+    use_valid_depth_mask: true
+    use_dynamic_object_mask: false
+  preprocessing:
+    undistort: true
+    downscale_factor: 2
+    max_frames: null
+    frame_stride: 1
+
+datasets:
+  replica:
+    role: primary_synthetic
+    data_root: data/replica
+    nerfstudio_root: data/nerfstudio/replica
+    scene_id_glob: "*"
+    recommended_scene_ids:
+      - office_0
+      - office_1
+      - office_2
+      - office_3
+      - room_0
+      - room_1
+    modalities:
+      rgb: true
+      depth: true
+      camera_poses: true
+      mesh: true
+      semantics: optional
+    trajectory:
+      type: indoor_walkthrough
+      ordered_frames: true
+    evaluation:
+      geometry_reference: mesh
+      depth_reference: rendered_or_sensor_depth
+      primary_phases:
+        - bringup
+        - controlled_synthetic
+        - stress_tests
+
+  scannetpp:
+    role: primary_real_validation
+    data_root: data/scannetpp
+    nerfstudio_root: data/nerfstudio/scannetpp
+    scene_ids: []
+    modalities:
+      rgb: true
+      depth: optional
+      camera_poses: true
+      mesh: true
+      laser_scan: optional
+    streams:
+      dslr: true
+      iphone_rgbd: true
+    preprocessing:
+      downscale_factor: 4
+      max_frames: 800
+      frame_stride: 2
+    evaluation:
+      geometry_reference: laser_scan_or_mesh
+      depth_reference: sensor_depth_when_available
+      primary_phases:
+        - real_validation
+
+  scannet:
+    role: fallback_real_validation
+    data_root: data/scannet
+    nerfstudio_root: data/nerfstudio/scannet
+    scene_ids: []
+    modalities:
+      rgb: true
+      depth: true
+      camera_poses: true
+      mesh: true
+    preprocessing:
+      downscale_factor: 2
+      max_frames: 700
+      frame_stride: 2
+    evaluation:
+      geometry_reference: mesh
+      depth_reference: sensor_depth
+      primary_phases:
+        - real_validation
+        - fallback
+
+  tum_rgbd:
+    role: small_rgbd_slam_check
+    data_root: data/tum_rgbd
+    nerfstudio_root: data/nerfstudio/tum_rgbd
+    sequence_ids: []
+    modalities:
+      rgb: true
+      depth: true
+      camera_poses: true
+      mesh: false
+    preprocessing:
+      downscale_factor: 1
+      max_frames: 500
+      frame_stride: 2
+    evaluation:
+      geometry_reference: none
+      depth_reference: sensor_depth
+      trajectory_metrics:
+        - ate_rmse
+        - rpe
+
+  icl_nuim:
+    role: fallback_synthetic_rgbd
+    data_root: data/icl_nuim
+    nerfstudio_root: data/nerfstudio/icl_nuim
+    sequence_ids: []
+    modalities:
+      rgb: true
+      depth: true
+      camera_poses: true
+      mesh: true
+    preprocessing:
+      downscale_factor: 1
+      max_frames: null
+      frame_stride: 1
+    evaluation:
+      geometry_reference: mesh
+      depth_reference: rendered_or_sensor_depth
+
+scene_template:
+  id: null
+  dataset_name: null
+  raw_path: null
+  nerfstudio_dataparser_path: null
+  frame_count: null
+  camera_model: pinhole
+  has_metric_scale: true
+  notes: null

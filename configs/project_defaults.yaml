@@ -1,0 +1,119 @@
+schema_version: 1
+config_type: project_defaults
+
+project:
+  name: uncertainty_3dgs_neural_mapping
+  task: calibrated_failure_prediction
+  primary_question: uncertainty_predicts_rgb_depth_geometry_failure
+  seed: 20260529
+
+runtime:
+  device: cuda
+  precision: mixed_float16
+  deterministic: false
+  num_workers: 8
+  log_every_steps: 100
+  eval_every_steps: 5000
+  checkpoint_every_steps: 10000
+
+paths:
+  data_root: data
+  output_root: outputs
+  cache_root: .cache
+  run_dir_template: outputs/${experiment.name}/${dataset.name}/${scene.id}/${run.id}
+  nerfstudio_data_root: data/nerfstudio
+
+method_defaults:
+  primary_method: splatfacto
+  comparison_methods:
+    - nerfacto
+    - depth_nerfacto
+  nerfstudio:
+    max_num_iterations: 30000
+    steps_per_eval_image: 500
+    steps_per_save: 10000
+    viewer_quit_on_train_completion: true
+  renderer_outputs:
+    rgb: true
+    depth: true
+    opacity: true
+    accumulation: true
+    normals: false
+
+frame_protocol:
+  train_budgets:
+    - 25
+    - 50
+    - 100
+    - 200
+  split:
+    train_fraction: null
+    calibration_fraction: 0.10
+    validation_fraction: 0.10
+    test_fraction: 0.20
+    holdout_strategy: trajectory_stride
+    test_stride: 8
+  repeats: 3
+  repeat_seed_offset: 1000
+
+calibration:
+  enabled: true
+  split_name: calibration
+  regression_bins: 15
+  classification_bins: 15
+  confidence_levels:
+    - 0.50
+    - 0.68
+    - 0.90
+    - 0.95
+
+metrics:
+  rendering:
+    - psnr
+    - ssim
+    - lpips
+  depth:
+    - l1
+    - rmse
+    - absrel
+  geometry:
+    - chamfer_l1
+    - accuracy
+    - completeness
+    - fscore_5cm
+    - fscore_10cm
+  uncertainty:
+    - spearman
+    - auroc
+    - auprc
+    - risk_coverage_auc
+    - sparsification_auc
+    - ause
+    - expected_calibration_error
+    - negative_log_likelihood
+
+error_targets:
+  rgb:
+    error_map: l1_rgb
+    bad_pixel_threshold: 0.10
+    patch_size: 16
+  depth:
+    error_map: abs_depth
+    bad_pixel_threshold_m: 0.05
+    patch_size: 16
+  geometry:
+    error_map: nearest_surface_distance
+    bad_surface_threshold_m: 0.05
+
+exports:
+  save_rendered_images: true
+  save_depth_maps: true
+  save_uncertainty_maps: true
+  save_error_maps: true
+  save_metric_tables: true
+  save_reliability_diagrams: true
+  save_risk_coverage_curves: true
+  save_sparsification_curves: true
+  table_format:
+    - csv
+    - jsonl

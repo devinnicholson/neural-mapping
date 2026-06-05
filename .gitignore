@@ -1,0 +1,36 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.venv/
+.venvs/
+venv/
+
+# Local environment
+.env
+.env.*
+
+# Heavy datasets and generated artifacts
+data/raw/*
+data/processed/*
+data/splits/*
+outputs/runs/*
+outputs/reports/*
+outputs/slurm/*
+notebooks/.ipynb_checkpoints/
+
+# Keep directory placeholders
+!data/raw/.gitkeep
+!data/processed/.gitkeep
+!data/splits/.gitkeep
+!outputs/runs/.gitkeep
+!outputs/reports/.gitkeep
+!outputs/slurm/.gitkeep
+
+# OS/editor noise
+.DS_Store
+.idea/
+.vscode/

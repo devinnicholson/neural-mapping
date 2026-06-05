@@ -1,0 +1,175 @@
+schema_version: 1
+config_type: stress_tests
+
+stress_defaults:
+  enabled: true
+  apply_to_split:
+    - train
+  keep_test_clean: true
+  repeats_per_level: 1
+  save_corruption_manifest: true
+  metric_group_by:
+    - dataset
+    - scene
+    - train_budget
+    - stress_type
+    - stress_level
+    - uncertainty_method
+
+suites:
+  replica_core_stress:
+    dataset: replica
+    enabled: true
+    include:
+      - sparse_view_budget
+      - extrapolation_region_holdout
+      - pose_noise
+      - depth_corruption
+      - appearance_corruption
+      - dynamic_occlusion
+      - surface_category_slices
+
+  real_validation_stress:
+    dataset: scannetpp
+    enabled: false
+    include:
+      - sparse_view_budget
+      - pose_noise
+      - depth_corruption
+      - appearance_corruption
+      - surface_category_slices
+
+stress_tests:
+  sparse_view_budget:
+    type: frame_budget
+    enabled: true
+    budgets:
+      - 25
+      - 50
+      - 100
+      - 200
+    selection_policy: uniform_temporal
+    expected_failure_modes:
+      - unseen_regions
+      - depth_holes
+      - view_dependent_artifacts
+
+  extrapolation_region_holdout:
+    type: spatial_holdout
+    enabled: true
+    holdout_modes:
+      - left_side
+      - right_side
+      - far_half
+      - room_corner
+    train_visibility_max_fraction: 0.10
+    test_visibility_min_fraction: 0.70
+    expected_failure_modes:
+      - novel_region_extrapolation
+      - geometry_completion_error
+
+  pose_noise:
+    type: camera_pose_perturbation
+    enabled: true
+    apply_to_split:
+      - train
+    levels:
+      mild:
+        translation_std_m: 0.01
+        rotation_std_deg: 1.0
+      medium:
+        translation_std_m: 0.03
+        rotation_std_deg: 3.0
+      severe:
+        translation_std_m: 0.05
+        rotation_std_deg: 5.0
+    distribution: zero_mean_gaussian
+    clamp_to_valid_trajectory: false
+
+  depth_corruption:
+    type: depth_input_corruption
+    enabled: true
+    apply_to_split:
+      - train
+    corruptions:
+      dropout:
+        probabilities:
+          - 0.10
+          - 0.30
+          - 0.50
+      gaussian_noise:
+        std_m:
+          - 0.01
+          - 0.03
+          - 0.05
+      missing_regions:
+        mask_shapes:
+          - rectangles
+          - depth_edges
+        area_fraction:
+          - 0.10
+          - 0.25
+    preserve_invalid_depth_mask: true
+
+  appearance_corruption:
+    type: rgb_input_corruption
+    enabled: true
+    apply_to_split:
+      - train
+    corruptions:
+      blur:
+        kernel_sizes:
+          - 3
+          - 7
+          - 11
+      exposure_shift:
+        ev_offsets:
+          - -1.0
+          - 1.0
+          - 2.0
+      low_light:
+        brightness_factors:
+          - 0.50
+          - 0.25
+      color_temperature:
+        kelvin_offsets:
+          - -1500
+          - 1500
+
+  dynamic_occlusion:
+    type: injected_dynamic_masks
+    enabled: true
+    apply_to_split:
+      - train
+    mask_source: synthetic
+    object_shapes:
+      - person_silhouette
+      - rectangle
+      - ellipse
+    frame_fraction:
+      - 0.10
+      - 0.25
+    image_area_fraction:
+      - 0.05
+      - 0.15
+    expected_failure_modes:
+      - transient_artifacts
+      - floaters
+      - inconsistent_geometry
+
+  surface_category_slices:
+    type: evaluation_slice
+    enabled: true
+    apply_to_split:
+      - test
+    categories:
+      - textureless_walls
+      - depth_edges
+      - reflective_surfaces
+      - glass
+      - clutter
+      - thin_structures
+    source:
+      replica: semantics_or_manual_masks
+      scannetpp: manual_or_geometry_heuristics
+    minimum_pixels_per_slice: 1000

@@ -1,0 +1,163 @@
+schema_version: 1
+config_type: experiments
+
+experiment_defaults:
+  owner: null
+  enabled: true
+  method: splatfacto
+  dataset: replica
+  repeats: 3
+  train_budgets:
+    - 25
+    - 50
+    - 100
+    - 200
+  uncertainty_methods:
+    - uniform
+    - nearest_camera_distance
+    - view_coverage
+    - alpha_transmittance
+    - photometric_residual
+    - depth_disagreement
+  metrics_profile: full
+  stress_suite: null
+  active_selection: false
+
+experiments:
+  replica_bringup_smoke:
+    name: replica_bringup_smoke
+    phase: bringup
+    enabled: true
+    dataset: replica
+    scene_selection:
+      mode: explicit
+      scene_ids:
+        - office_0
+    repeats: 1
+    train_budgets:
+      - 25
+      - 50
+    max_num_iterations: 7000
+    uncertainty_methods:
+      - uniform
+      - view_coverage
+      - alpha_transmittance
+    metrics_profile: quick
+    acceptance:
+      requires_rgb_metrics: true
+      requires_depth_metrics: true
+      requires_uncertainty_maps: true
+      max_failed_runs: 0
+
+  replica_controlled_failure_prediction:
+    name: replica_controlled_failure_prediction
+    phase: controlled_synthetic
+    enabled: true
+    dataset: replica
+    scene_selection:
+      mode: first_n_recommended
+      count: 4
+    repeats: 3
+    train_budgets:
+      - 25
+      - 50
+      - 100
+      - 200
+    max_num_iterations: 30000
+    uncertainty_methods:
+      - uniform
+      - nearest_camera_distance
+      - view_coverage
+      - alpha_transmittance
+      - photometric_residual
+      - depth_disagreement
+      - lightweight_ensemble
+    metrics_profile: full
+    acceptance:
+      primary_metric: depth_auroc
+      compare_against:
+        - uniform
+        - nearest_camera_distance
+        - view_coverage
+      min_spearman_improvement_over_uniform: 0.05
+
+  replica_stress_benchmark:
+    name: replica_stress_benchmark
+    phase: stress_tests
+    enabled: true
+    dataset: replica
+    scene_selection:
+      mode: first_n_recommended
+      count: 4
+    repeats: 2
+    train_budgets:
+      - 25
+      - 50
+      - 100
+      - 200
+    max_num_iterations: 30000
+    stress_suite: replica_core_stress
+    uncertainty_methods:
+      - uniform
+      - nearest_camera_distance
+      - view_coverage
+      - alpha_transmittance
+      - photometric_residual
+      - depth_disagreement
+    metrics_profile: full
+
+  real_world_validation:
+    name: real_world_validation
+    phase: real_validation
+    enabled: false
+    dataset: scannetpp
+    fallback_dataset: scannet
+    scene_selection:
+      mode: explicit
+      scene_ids: []
+      min_scenes: 3
+      max_scenes: 6
+    repeats: 1
+    train_budgets:
+      - 50
+      - 100
+      - 200
+    max_num_iterations: 30000
+    uncertainty_methods:
+      - uniform
+      - nearest_camera_distance
+      - view_coverage
+      - alpha_transmittance
+      - photometric_residual
+      - depth_disagreement
+    metrics_profile: real_validation
+
+  uncertainty_guided_keyframe_selection:
+    name: uncertainty_guided_keyframe_selection
+    phase: active_selection_extension
+    enabled: false
+    dataset: replica
+    scene_selection:
+      mode: first_n_recommended
+      count: 4
+    initial_train_budget: 25
+    final_train_budget: 200
+    acquisition_batch_size: 5
+    retrain_after_each_batch: true
+    candidate_pool:
+      source: future_trajectory_frames
+      exclude_test_frames: true
+    acquisition_functions:
+      - random
+      - uniform_temporal
+      - farthest_camera_distance
+      - coverage_only
+      - expected_uncertainty_reduction
+    scoring_uncertainty_method: depth_disagreement
+    metrics_profile: full
+    acceptance:
+      primary_metric: depth_rmse_at_budget
+      compare_against:
+        - random
+        - uniform_temporal
+        - coverage_only

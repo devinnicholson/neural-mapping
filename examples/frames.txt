@@ -1,0 +1,13 @@
+rgb/frame_000.png
+rgb/frame_001.png
+rgb/frame_002.png
+rgb/frame_003.png
+rgb/frame_004.png
+rgb/frame_005.png
+rgb/frame_006.png
+rgb/frame_007.png
+rgb/frame_008.png
+rgb/frame_009.png
+rgb/frame_010.png
+rgb/frame_011.png
+

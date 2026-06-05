@@ -1,0 +1,182 @@
+schema_version: 1
+config_type: uncertainty_methods
+
+normalization_defaults:
+  per_scene: true
+  method: robust_minmax
+  lower_percentile: 1.0
+  upper_percentile: 99.0
+  invert_confidence_to_uncertainty: true
+
+calibration_defaults:
+  enabled: true
+  split: calibration
+  method: isotonic_regression
+  fallback_method: temperature_scaling
+  save_calibrator: true
+
+methods:
+  uniform:
+    family: baseline
+    enabled: true
+    requires:
+      - camera
+    outputs:
+      - rgb_uncertainty
+      - depth_uncertainty
+    params:
+      constant_value: 1.0
+    calibration:
+      enabled: false
+
+  nearest_camera_distance:
+    family: geometric_baseline
+    enabled: true
+    requires:
+      - camera_poses
+      - rendered_depth
+    outputs:
+      - rgb_uncertainty
+      - depth_uncertainty
+    params:
+      distance_metric: euclidean_camera_center
+      aggregate_training_cameras: min
+      invalid_depth_value: null
+    normalization:
+      method: robust_minmax
+
+  view_coverage:
+    family: coverage
+    enabled: true
+    requires:
+      - camera_poses
+      - rendered_depth
+      - training_frustums
+    outputs:
+      - rgb_uncertainty
+      - depth_uncertainty
+      - geometry_uncertainty
+    params:
+      visibility_test: depth_consistency
+      depth_tolerance_m: 0.05
+      min_observing_views: 1
+      max_count_for_confidence: 10
+      aggregation: per_pixel
+    normalization:
+      method: inverse_count
+
+  alpha_transmittance:
+    family: renderer_signal
+    enabled: true
+    requires:
+      - accumulation
+      - opacity
+      - rendered_depth
+    outputs:
+      - rgb_uncertainty
+      - depth_uncertainty
+      - geometry_uncertainty
+    params:
+      uncertainty_from_low_accumulation: true
+      uncertainty_from_diffuse_termination: true
+      accumulation_low_threshold: 0.35
+      accumulation_high_threshold: 0.95
+      transmittance_tail_weight: 0.50
+    normalization:
+      method: robust_minmax
+
+  photometric_residual:
+    family: residual
+    enabled: true
+    requires:
+      - training_rgb
+      - rendered_training_rgb
+      - camera_poses
+    outputs:
+      - rgb_uncertainty
+    params:
+      residual: l1_rgb
+      projection: nearest_training_view
+      patch_size: 16
+      smooth_sigma_px: 1.5
+      ignore_top_percentile: 0.5
+    calibration:
+      target_error: l1_rgb
+
+  depth_disagreement:
+    family: residual
+    enabled: true
+    requires:
+      - input_depth
+      - rendered_depth
+      - camera_poses
+    outputs:
+      - depth_uncertainty
+      - geometry_uncertainty
+    params:
+      residual: absolute_depth
+      projection: nearby_view_reprojection
+      nearby_view_count: 3
+      depth_tolerance_m: 0.03
+      patch_size: 16
+      ignore_invalid_depth: true
+    calibration:
+      target_error: abs_depth
+
+  lightweight_ensemble:
+    family: ensemble
+    enabled: false
+    requires:
+      - multiple_model_runs
+      - rendered_rgb
+      - rendered_depth
+    outputs:
+      - rgb_uncertainty
+      - depth_uncertainty
+    params:
+      ensemble_size: 3
+      vary_seed: true
+      vary_train_subset: true
+      train_budget_fraction_per_member: 0.80
+      rgb_statistic: variance
+      depth_statistic: variance
+    calibration:
+      target_error: combined_rgb_depth
+
+  per_splat_variance:
+    family: model_internal
+    enabled: false
+    requires:
+      - modified_gaussian_parameters
+      - renderer_feature_output
+    outputs:
+      - rgb_uncertainty
+      - depth_uncertainty
+      - geometry_uncertainty
+    params:
+      variance_parameterization: log_variance
+      initialize_log_variance: -5.0
+      variance_regularizer_weight: 0.001
+      render_aggregation: alpha_weighted_sum
+    calibration:
+      target_error: combined_rgb_depth_geometry
+
+method_sets:
+  quick:
+    - uniform
+    - view_coverage
+    - alpha_transmittance
+  full:
+    - uniform
+    - nearest_camera_distance
+    - view_coverage
+    - alpha_transmittance
+    - photometric_residual
+    - depth_disagreement
+    - lightweight_ensemble
+  baselines_only:
+    - uniform
+    - nearest_camera_distance
+    - view_coverage
+  future_model_internal:
+    - per_splat_variance
