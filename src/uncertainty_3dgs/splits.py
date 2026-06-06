@@ -268,6 +268,38 @@ def write_split_plan(plan: SplitPlan, output_path: str | Path) -> None:
         handle.write("\n")
 
 
+def active_pose_novelty_order(
+    candidates: Sequence[str],
+    seed_frames: Sequence[str],
+    positions: Mapping[str, Sequence[float]],
+    original_order: Mapping[str, int],
+) -> list[str]:
+    """Order candidates by farthest-first novelty from an existing seed set."""
+
+    ordered_candidates = _order_like_input(candidates, original_order)
+    selected = list(seed_frames)
+    remaining = set(ordered_candidates)
+    ordered: list[str] = []
+
+    if not selected:
+        raise ValueError("active pose novelty selection requires at least one seed frame.")
+
+    _require_positions([*selected, *ordered_candidates], positions)
+    while remaining:
+        next_frame = max(
+            remaining,
+            key=lambda frame: (
+                _nearest_selected_pose_distance(frame, selected, positions),
+                -original_order[frame],
+            ),
+        )
+        ordered.append(next_frame)
+        selected.append(next_frame)
+        remaining.remove(next_frame)
+
+    return ordered
+
+
 def _frame_ids_from_json(payload: object) -> list[str]:
     if isinstance(payload, list):
         return [_frame_id_from_item(item) for item in payload]

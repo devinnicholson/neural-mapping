@@ -215,6 +215,76 @@ def prepare_poster_sample(
     }
 
 
+@app.function(image=image, gpu=DEFAULT_GPU, volumes=volumes, timeout=900)
+def prepare_active_split(
+    source_scene_name: str = "poster_available",
+    base_split_scene_name: str = "poster_available",
+    active_scene_name: str = "poster_available_active_pose",
+    base_budget: int = 25,
+    target_budget: int = 50,
+    strategy: str = "pose-novelty",
+) -> dict[str, Any]:
+    """Create and materialize an active-expansion split from a seed split."""
+
+    source_dir = DATA_ROOT / "nerfstudio" / source_scene_name
+    base_split_json = DATA_ROOT / "splits" / f"{base_split_scene_name}.json"
+    active_split_json = DATA_ROOT / "splits" / f"{active_scene_name}.json"
+    materialized_root = DATA_ROOT / "nerfstudio_splits" / active_scene_name
+
+    if not source_dir.exists():
+        raise FileNotFoundError(f"Missing source scene directory: {source_dir}")
+    if not base_split_json.exists():
+        raise FileNotFoundError(f"Missing base split JSON: {base_split_json}")
+
+    _run(
+        [
+            "python",
+            "scripts/generate_active_split.py",
+            "--frames",
+            str(source_dir / "transforms.json"),
+            "--base-split",
+            str(base_split_json),
+            "--base-budget",
+            str(base_budget),
+            "--target-budget",
+            str(target_budget),
+            "--scene",
+            active_scene_name,
+            "--strategy",
+            strategy,
+            "--output",
+            str(active_split_json),
+        ]
+    )
+    _run(
+        [
+            "python",
+            "scripts/materialize_nerfstudio_split.py",
+            "--source-dir",
+            str(source_dir),
+            "--split-json",
+            str(active_split_json),
+            "--output-root",
+            str(materialized_root),
+            "--budgets",
+            str(base_budget),
+            str(target_budget),
+        ]
+    )
+
+    data_volume.commit()
+    return {
+        "status": "ok",
+        "source_scene_name": source_scene_name,
+        "base_split_scene_name": base_split_scene_name,
+        "active_scene_name": active_scene_name,
+        "strategy": strategy,
+        "split_json": str(active_split_json),
+        "materialized_root": str(materialized_root),
+        "summary": _read_json(materialized_root / "materialization_summary.json"),
+    }
+
+
 @app.function(image=image, gpu=DEFAULT_GPU, volumes=volumes, timeout=TRAIN_TIMEOUT_SECONDS)
 def train_splatfacto(
     ns_data_dir: str,
@@ -327,10 +397,15 @@ def collect_metric_rows() -> list[dict[str, Any]]:
 def main(
     action: str = "smoke",
     budget: int = 25,
+    base_budget: int = 25,
+    target_budget: int = 50,
     iterations: int = 3000,
     scene_name: str = "poster_modal_smoke",
     data_scene_name: str = "poster_available",
+    source_data_scene_name: str = "poster_available",
+    base_split_scene_name: str = "poster_available",
     selection_method: str = "random",
+    active_strategy: str = "pose-novelty",
     render_outputs: bool = True,
 ) -> None:
     """Run Modal workflow stages from the local CLI."""
@@ -342,6 +417,17 @@ def main(
             prepare_poster_sample.remote(
                 scene_name=data_scene_name,
                 selection_method=selection_method,
+            )
+        )
+    elif action == "prepare-active":
+        print(
+            prepare_active_split.remote(
+                source_scene_name=source_data_scene_name,
+                base_split_scene_name=base_split_scene_name,
+                active_scene_name=data_scene_name,
+                base_budget=base_budget,
+                target_budget=target_budget,
+                strategy=active_strategy,
             )
         )
     elif action == "train":
@@ -378,4 +464,7 @@ def main(
         )
         print(eval_latest_run.remote(scene_name=scene_name, budget=budget, render_outputs=render_outputs))
     else:
-        raise ValueError(f"Unknown action {action!r}. Use env, prepare, train, eval, metrics, or smoke.")
+        raise ValueError(
+            f"Unknown action {action!r}. "
+            "Use env, prepare, prepare-active, train, eval, metrics, or smoke."
+        )

@@ -59,6 +59,24 @@ frames with farthest-first coverage over input-frame order.
 Use `--selection-method farthest-pose` with a Nerfstudio `transforms.json` to
 select training frames by farthest-first coverage over camera-center positions.
 
+Generate an active-expansion split from a locked seed split:
+
+```bash
+python scripts/generate_active_split.py \
+  --frames data/nerfstudio/poster_available/transforms.json \
+  --base-split data/splits/poster_available.json \
+  --base-budget 25 \
+  --target-budget 50 \
+  --scene poster_available_active_pose \
+  --strategy pose-novelty \
+  --output data/splits/poster_available_active_pose.json
+```
+
+`--strategy pose-novelty` keeps the seed train/val/test split fixed and adds
+frames that are farthest from the current seed set in camera-center space.
+`--strategy score-desc --scores scores.json` can be used later for real
+model-error or uncertainty scores.
+
 Compute uncertainty/error alignment metrics:
 
 ```bash

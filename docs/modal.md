@@ -151,6 +151,38 @@ modal run modal_app.py \
 modal run modal_app.py --action metrics
 ```
 
+## Active Expansion Baseline
+
+After random and coverage baselines, create a 50-frame active split by keeping
+the random 25-frame seed set fixed and adding frames that are novel relative to
+that seed set. This is a first active proxy; later runs can replace
+`pose-novelty` with model-error or uncertainty scores.
+
+```bash
+modal run modal_app.py \
+  --action prepare-active \
+  --source-data-scene-name poster_available \
+  --base-split-scene-name poster_available \
+  --data-scene-name poster_available_active_pose \
+  --base-budget 25 \
+  --target-budget 50 \
+  --active-strategy pose-novelty
+
+modal run modal_app.py \
+  --action train \
+  --data-scene-name poster_available_active_pose \
+  --budget 50 \
+  --iterations 10000 \
+  --scene-name poster_modal_active_pose_b50_10k
+
+modal run modal_app.py \
+  --action eval \
+  --budget 50 \
+  --scene-name poster_modal_active_pose_b50_10k
+
+modal run modal_app.py --action metrics
+```
+
 ## GPU Choice
 
 The default GPU is `L4`, matching the cluster smoke environment. Override it at image/function definition time by setting:
