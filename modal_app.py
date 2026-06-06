@@ -45,6 +45,7 @@ volumes = {
 
 image = (
     modal.Image.from_registry("nvidia/cuda:12.8.1-devel-ubuntu22.04", add_python="3.12")
+    .env({"TORCH_CUDA_ARCH_LIST": "8.9", "MAX_JOBS": "4"})
     .apt_install("git", "curl", "ffmpeg", "build-essential", "clang", "libgl1", "libglib2.0-0")
     .run_commands(
         "python -m pip install --upgrade pip wheel 'setuptools<82' "
@@ -58,6 +59,10 @@ image = (
         "python -m pip install nerfstudio==1.1.5 gsplat==1.4.0 "
         "'huggingface_hub[hf_xet]' 'numpy<2.0.0,>=1.26.0' 'setuptools<82'"
     )
+    .run_commands(
+        "python -c 'from gsplat.cuda._backend import _C; "
+        'print("gsplat CUDA extension ready", type(_C).__name__)\''
+    )
     .add_local_dir("scripts", remote_path=str(REMOTE_PROJECT / "scripts"), copy=True)
     .add_local_dir("src", remote_path=str(REMOTE_PROJECT / "src"), copy=True)
     .add_local_file("pyproject.toml", remote_path=str(REMOTE_PROJECT / "pyproject.toml"), copy=True)
@@ -69,6 +74,8 @@ app = modal.App(APP_NAME)
 def _run(command: list[str], *, env: dict[str, str] | None = None) -> None:
     merged_env = os.environ.copy()
     merged_env["PYTHONPATH"] = str(REMOTE_PROJECT / "src")
+    merged_env.setdefault("TORCH_CUDA_ARCH_LIST", "8.9")
+    merged_env.setdefault("MAX_JOBS", "4")
     if env:
         merged_env.update(env)
     print("+", " ".join(command), flush=True)
@@ -95,7 +102,7 @@ import json
 import torch
 import nerfstudio
 import gsplat
-from gsplat.cuda import _wrapper as gsplat_wrapper
+from gsplat.cuda._backend import _C as gsplat_backend
 
 print(json.dumps({
     "torch": torch.__version__,
@@ -104,12 +111,11 @@ print(json.dumps({
     "device": torch.cuda.get_device_name(0) if torch.cuda.is_available() else None,
     "nerfstudio": "ok",
     "gsplat": "ok",
-    "gsplat_cuda_extension": gsplat_wrapper._C is not None,
+    "gsplat_path": getattr(gsplat, "__file__", None),
+    "gsplat_backend": type(gsplat_backend).__name__,
 }, indent=2))
 if not torch.cuda.is_available():
     raise SystemExit("CUDA is unavailable")
-if gsplat_wrapper._C is None:
-    raise SystemExit("gsplat CUDA extension is unavailable")
 """
     _run(["python", "-c", script])
     return {"status": "ok", "gpu": DEFAULT_GPU}
