@@ -22,6 +22,7 @@ data/splits/*
 outputs/runs/*
 outputs/reports/*
 outputs/slurm/*
+outputs/modal_metrics*.jsonl
 notebooks/.ipynb_checkpoints/
 
 # Keep directory placeholders
