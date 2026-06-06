@@ -77,6 +77,26 @@ frames that are farthest from the current seed set in camera-center space.
 `--strategy score-desc --scores scores.json` can be used later for real
 model-error or uncertainty scores.
 
+Prepare a candidate-eval dataset for model-error scoring:
+
+```bash
+python scripts/materialize_candidate_eval.py \
+  --source-dir data/nerfstudio/poster_available \
+  --base-split data/splits/poster_available.json \
+  --base-budget 25 \
+  --output-dir data/candidate_eval/poster_available_active_error
+```
+
+Score those candidates with a trained Nerfstudio checkpoint:
+
+```bash
+python scripts/score_candidate_frames.py \
+  --load-config outputs/runs/poster_modal_b25_10k/splatfacto/budget_025/train/unnamed/splatfacto/.../config.yml \
+  --candidate-data data/candidate_eval/poster_available_active_error \
+  --score-metric lpips \
+  --output data/scores/poster_available_active_error.json
+```
+
 Compute uncertainty/error alignment metrics:
 
 ```bash
@@ -109,6 +129,10 @@ python scripts/materialize_nerfstudio_split.py \
   --output-root data/nerfstudio_splits/poster_available \
   --budgets 25 50
 ```
+
+This writes explicit `train_filenames`, `val_filenames`, and `test_filenames`
+fields so Nerfstudio uses the intended split instead of falling back to its
+dataparser fraction split.
 
 ## Heavy Stack Boundary
 

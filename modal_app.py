@@ -223,6 +223,8 @@ def prepare_active_split(
     base_budget: int = 25,
     target_budget: int = 50,
     strategy: str = "pose-novelty",
+    scores_path: str | None = None,
+    score_key: str = "score",
 ) -> dict[str, Any]:
     """Create and materialize an active-expansion split from a seed split."""
 
@@ -235,27 +237,30 @@ def prepare_active_split(
         raise FileNotFoundError(f"Missing source scene directory: {source_dir}")
     if not base_split_json.exists():
         raise FileNotFoundError(f"Missing base split JSON: {base_split_json}")
+    if strategy == "score-desc" and scores_path is None:
+        scores_path = str(DATA_ROOT / "scores" / f"{active_scene_name}.json")
 
-    _run(
-        [
-            "python",
-            "scripts/generate_active_split.py",
-            "--frames",
-            str(source_dir / "transforms.json"),
-            "--base-split",
-            str(base_split_json),
-            "--base-budget",
-            str(base_budget),
-            "--target-budget",
-            str(target_budget),
-            "--scene",
-            active_scene_name,
-            "--strategy",
-            strategy,
-            "--output",
-            str(active_split_json),
-        ]
-    )
+    command = [
+        "python",
+        "scripts/generate_active_split.py",
+        "--frames",
+        str(source_dir / "transforms.json"),
+        "--base-split",
+        str(base_split_json),
+        "--base-budget",
+        str(base_budget),
+        "--target-budget",
+        str(target_budget),
+        "--scene",
+        active_scene_name,
+        "--strategy",
+        strategy,
+        "--output",
+        str(active_split_json),
+    ]
+    if scores_path is not None:
+        command.extend(["--scores", scores_path, "--score-key", score_key])
+    _run(command)
     _run(
         [
             "python",
@@ -279,9 +284,83 @@ def prepare_active_split(
         "base_split_scene_name": base_split_scene_name,
         "active_scene_name": active_scene_name,
         "strategy": strategy,
+        "scores_path": scores_path,
         "split_json": str(active_split_json),
         "materialized_root": str(materialized_root),
         "summary": _read_json(materialized_root / "materialization_summary.json"),
+    }
+
+
+@app.function(image=image, gpu=DEFAULT_GPU, volumes=volumes, timeout=EVAL_TIMEOUT_SECONDS)
+def score_candidate_frames(
+    source_scene_name: str = "poster_available",
+    base_split_scene_name: str = "poster_available",
+    score_scene_name: str = "poster_available_active_error",
+    seed_scene_name: str = "poster_modal_b25_10k",
+    base_budget: int = 25,
+    score_metric: str = "lpips",
+) -> dict[str, Any]:
+    """Score active-selection candidate frames using a seed checkpoint."""
+
+    source_dir = DATA_ROOT / "nerfstudio" / source_scene_name
+    base_split_json = DATA_ROOT / "splits" / f"{base_split_scene_name}.json"
+    candidate_dir = DATA_ROOT / "candidate_eval" / score_scene_name
+    scores_path = DATA_ROOT / "scores" / f"{score_scene_name}.json"
+    seed_run_root = OUTPUT_ROOT / "runs" / seed_scene_name / "splatfacto" / _budget_dir_name(base_budget)
+
+    if not source_dir.exists():
+        raise FileNotFoundError(f"Missing source scene directory: {source_dir}")
+    if not base_split_json.exists():
+        raise FileNotFoundError(f"Missing base split JSON: {base_split_json}")
+    configs = sorted((seed_run_root / "train").glob("**/config.yml"))
+    if not configs:
+        raise FileNotFoundError(f"No seed config.yml found under {seed_run_root / 'train'}")
+    load_config = configs[-1]
+
+    _run(
+        [
+            "python",
+            "scripts/materialize_candidate_eval.py",
+            "--source-dir",
+            str(source_dir),
+            "--base-split",
+            str(base_split_json),
+            "--base-budget",
+            str(base_budget),
+            "--output-dir",
+            str(candidate_dir),
+        ]
+    )
+    _run(
+        [
+            "python",
+            "scripts/score_candidate_frames.py",
+            "--load-config",
+            str(load_config),
+            "--candidate-data",
+            str(candidate_dir),
+            "--score-metric",
+            score_metric,
+            "--output",
+            str(scores_path),
+        ],
+        env={"TORCH_FORCE_NO_WEIGHTS_ONLY_LOAD": "1"},
+    )
+
+    data_volume.commit()
+    scores = _read_json(scores_path)
+    top_scores = scores.get("scores", [])[:10]
+    return {
+        "status": "ok",
+        "source_scene_name": source_scene_name,
+        "base_split_scene_name": base_split_scene_name,
+        "score_scene_name": score_scene_name,
+        "seed_scene_name": seed_scene_name,
+        "base_budget": base_budget,
+        "score_metric": score_metric,
+        "candidate_dir": str(candidate_dir),
+        "scores_path": str(scores_path),
+        "top_scores": top_scores,
     }
 
 
@@ -406,6 +485,8 @@ def main(
     base_split_scene_name: str = "poster_available",
     selection_method: str = "random",
     active_strategy: str = "pose-novelty",
+    score_path: str = "",
+    score_metric: str = "lpips",
     render_outputs: bool = True,
 ) -> None:
     """Run Modal workflow stages from the local CLI."""
@@ -428,6 +509,18 @@ def main(
                 base_budget=base_budget,
                 target_budget=target_budget,
                 strategy=active_strategy,
+                scores_path=score_path or None,
+            )
+        )
+    elif action == "score-candidates":
+        print(
+            score_candidate_frames.remote(
+                source_scene_name=source_data_scene_name,
+                base_split_scene_name=base_split_scene_name,
+                score_scene_name=data_scene_name,
+                seed_scene_name=scene_name,
+                base_budget=budget,
+                score_metric=score_metric,
             )
         )
     elif action == "train":
@@ -466,5 +559,5 @@ def main(
     else:
         raise ValueError(
             f"Unknown action {action!r}. "
-            "Use env, prepare, prepare-active, train, eval, metrics, or smoke."
+            "Use env, prepare, score-candidates, prepare-active, train, eval, metrics, or smoke."
         )

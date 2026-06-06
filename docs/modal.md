@@ -183,6 +183,47 @@ modal run modal_app.py \
 modal run modal_app.py --action metrics
 ```
 
+## Model-Error Active Baseline
+
+The first real active baseline scores candidate frames with the trained
+25-frame seed model. It keeps the random 25-frame train/val/test split fixed,
+uses the seed checkpoint to compute candidate LPIPS/PSNR/SSIM, then adds the
+25 highest-error candidates to make a 50-frame split.
+
+```bash
+modal run modal_app.py \
+  --action score-candidates \
+  --source-data-scene-name poster_available \
+  --base-split-scene-name poster_available \
+  --data-scene-name poster_available_active_error \
+  --scene-name poster_modal_b25_10k \
+  --budget 25 \
+  --score-metric lpips
+
+modal run modal_app.py \
+  --action prepare-active \
+  --source-data-scene-name poster_available \
+  --base-split-scene-name poster_available \
+  --data-scene-name poster_available_active_error \
+  --base-budget 25 \
+  --target-budget 50 \
+  --active-strategy score-desc
+
+modal run modal_app.py \
+  --action train \
+  --data-scene-name poster_available_active_error \
+  --budget 50 \
+  --iterations 10000 \
+  --scene-name poster_modal_active_error_b50_10k
+
+modal run modal_app.py \
+  --action eval \
+  --budget 50 \
+  --scene-name poster_modal_active_error_b50_10k
+
+modal run modal_app.py --action metrics
+```
+
 ## GPU Choice
 
 The default GPU is `L4`, matching the cluster smoke environment. Override it at image/function definition time by setting:

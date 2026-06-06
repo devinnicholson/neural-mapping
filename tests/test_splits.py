@@ -339,7 +339,15 @@ class SplitGenerationTests(unittest.TestCase):
             )
             scores = root / "scores.json"
             scores.write_text(
-                json.dumps({"frame_004.png": 0.1, "frame_005.png": 0.9}),
+                json.dumps(
+                    {
+                        "metadata": {"score_metric": "lpips"},
+                        "scores": [
+                            {"file_path": "frame_004.png", "score": 0.1},
+                            {"file_path": "frame_005.png", "score": 0.9},
+                        ],
+                    }
+                ),
                 encoding="utf-8",
             )
             output = root / "active.json"
@@ -369,6 +377,163 @@ class SplitGenerationTests(unittest.TestCase):
             payload = json.loads(output.read_text(encoding="utf-8"))
             self.assertIn("frame_005.png", payload["splits"]["3"]["train"])
             self.assertNotIn("frame_004.png", payload["splits"]["3"]["train"])
+
+    def test_materialize_nerfstudio_split_cli_writes_explicit_split_filenames(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source = root / "source"
+            (source / "images").mkdir(parents=True)
+            for index in range(6):
+                (source / "images" / f"frame_{index:03d}.png").write_text("", encoding="utf-8")
+            (source / "transforms.json").write_text(
+                json.dumps(
+                    {
+                        "frames": [
+                            {"file_path": f"./images/frame_{index:03d}.png"}
+                            for index in range(6)
+                        ]
+                    }
+                ),
+                encoding="utf-8",
+            )
+            split = root / "split.json"
+            split.write_text(
+                json.dumps(
+                    {
+                        "splits": {
+                            "2": {
+                                "train": [
+                                    "./images/frame_000.png",
+                                    "./images/frame_001.png",
+                                ],
+                                "val": ["./images/frame_002.png"],
+                                "test": ["./images/frame_003.png"],
+                            }
+                        }
+                    }
+                ),
+                encoding="utf-8",
+            )
+            output_root = root / "materialized"
+
+            subprocess.run(
+                [
+                    sys.executable,
+                    str(ROOT / "scripts" / "materialize_nerfstudio_split.py"),
+                    "--source-dir",
+                    str(source),
+                    "--split-json",
+                    str(split),
+                    "--output-root",
+                    str(output_root),
+                    "--budgets",
+                    "2",
+                ],
+                check=True,
+            )
+
+            output = output_root / "budget_002"
+            transforms = json.loads((output / "transforms.json").read_text(encoding="utf-8"))
+            self.assertEqual(
+                [frame["file_path"] for frame in transforms["frames"]],
+                [
+                    "./images/frame_000.png",
+                    "./images/frame_001.png",
+                    "./images/frame_002.png",
+                    "./images/frame_003.png",
+                ],
+            )
+            self.assertEqual(
+                transforms["train_filenames"],
+                [
+                    "./images/frame_000.png",
+                    "./images/frame_001.png",
+                    "./images/frame_002.png",
+                ],
+            )
+            self.assertEqual(transforms["val_filenames"], ["./images/frame_002.png"])
+            self.assertEqual(transforms["test_filenames"], ["./images/frame_003.png"])
+
+    def test_materialize_candidate_eval_cli_uses_remaining_frames_as_eval(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source = root / "source"
+            (source / "images").mkdir(parents=True)
+            for index in range(6):
+                (source / "images" / f"frame_{index:03d}.png").write_text("", encoding="utf-8")
+            (source / "transforms.json").write_text(
+                json.dumps(
+                    {
+                        "frames": [
+                            {"file_path": f"./images/frame_{index:03d}.png"}
+                            for index in range(6)
+                        ]
+                    }
+                ),
+                encoding="utf-8",
+            )
+            base_split = root / "base.json"
+            base_split.write_text(
+                json.dumps(
+                    {
+                        "splits": {
+                            "2": {
+                                "train": [
+                                    "./images/frame_000.png",
+                                    "./images/frame_001.png",
+                                ],
+                                "val": ["./images/frame_002.png"],
+                                "test": ["./images/frame_003.png"],
+                            }
+                        }
+                    }
+                ),
+                encoding="utf-8",
+            )
+            output = root / "candidate_eval"
+
+            subprocess.run(
+                [
+                    sys.executable,
+                    str(ROOT / "scripts" / "materialize_candidate_eval.py"),
+                    "--source-dir",
+                    str(source),
+                    "--base-split",
+                    str(base_split),
+                    "--base-budget",
+                    "2",
+                    "--output-dir",
+                    str(output),
+                ],
+                check=True,
+            )
+
+            transforms = json.loads((output / "transforms.json").read_text(encoding="utf-8"))
+            manifest = json.loads((output / "candidate_manifest.json").read_text(encoding="utf-8"))
+            self.assertEqual(
+                [frame["file_path"] for frame in transforms["frames"]],
+                [
+                    "./images/frame_000.png",
+                    "./images/frame_001.png",
+                    "./images/frame_002.png",
+                    "./images/frame_004.png",
+                    "./images/frame_005.png",
+                ],
+            )
+            self.assertEqual(
+                transforms["test_filenames"],
+                ["./images/frame_004.png", "./images/frame_005.png"],
+            )
+            self.assertEqual(
+                transforms["train_filenames"],
+                [
+                    "./images/frame_000.png",
+                    "./images/frame_001.png",
+                    "./images/frame_002.png",
+                ],
+            )
+            self.assertEqual(transforms["val_filenames"], ["./images/frame_002.png"])
+            self.assertEqual(manifest["candidates"], transforms["test_filenames"])
 
 
 if __name__ == "__main__":

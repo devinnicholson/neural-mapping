@@ -83,7 +83,8 @@ def main() -> int:
         subset_dir.mkdir(parents=True, exist_ok=True)
         _link_or_copy_assets(source, subset_dir, symlink=args.symlink_assets)
 
-        train_frames = _frames_for_paths(frame_by_path, included_train, source)
+        transform_paths = _unique_preserving_order([*included_train, *test_paths])
+        transform_frames = _frames_for_paths(frame_by_path, transform_paths, source)
         eval_frames = _frames_for_paths(frame_by_path, test_paths, source)
         source_metadata = payload.get("metadata")
         metadata = dict(source_metadata) if isinstance(source_metadata, dict) else {}
@@ -95,13 +96,16 @@ def main() -> int:
                 "train_count": len(train_paths),
                 "val_count": len(val_paths),
                 "test_count": len(test_paths),
-                "frames_in_transforms": len(train_frames),
+                "frames_in_transforms": len(transform_frames),
                 "include_val_in_train": args.include_val_in_train,
             }
         )
 
         subset_payload = dict(payload)
-        subset_payload["frames"] = train_frames
+        subset_payload["frames"] = transform_frames
+        subset_payload["train_filenames"] = included_train
+        subset_payload["val_filenames"] = val_paths
+        subset_payload["test_filenames"] = test_paths
         subset_payload["eval_filenames"] = test_paths
         subset_payload["metadata"] = metadata
 
@@ -113,7 +117,7 @@ def main() -> int:
                 "train": train_paths,
                 "val": val_paths,
                 "test": test_paths,
-                "transforms_frames": [frame["file_path"] for frame in train_frames],
+                "transforms_frames": [frame["file_path"] for frame in transform_frames],
                 "eval_frames": [frame["file_path"] for frame in eval_frames],
             },
         )
@@ -124,7 +128,7 @@ def main() -> int:
                 "train_count": len(train_paths),
                 "val_count": len(val_paths),
                 "test_count": len(test_paths),
-                "transforms_frame_count": len(train_frames),
+                "transforms_frame_count": len(transform_frames),
             }
         )
 
@@ -183,6 +187,17 @@ def _frames_for_paths(
 
 def _normalize_frame_path(path: str) -> str:
     return path[2:] if path.startswith("./") else path
+
+
+def _unique_preserving_order(paths: Iterable[str]) -> list[str]:
+    seen: set[str] = set()
+    output: list[str] = []
+    for path in paths:
+        if path in seen:
+            continue
+        seen.add(path)
+        output.append(path)
+    return output
 
 
 def _link_or_copy_assets(source: Path, output: Path, *, symlink: bool) -> None:
