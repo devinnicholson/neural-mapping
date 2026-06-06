@@ -45,7 +45,7 @@ volumes = {
 
 image = (
     modal.Image.from_registry("nvidia/cuda:12.8.1-devel-ubuntu22.04", add_python="3.12")
-    .apt_install("git", "curl", "ffmpeg", "build-essential", "libgl1", "libglib2.0-0")
+    .apt_install("git", "curl", "ffmpeg", "build-essential", "clang", "libgl1", "libglib2.0-0")
     .run_commands(
         "python -m pip install --upgrade pip wheel 'setuptools<82' "
         "'numpy<2.0.0,>=1.26.0' ninja"
