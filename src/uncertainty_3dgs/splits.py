@@ -42,6 +42,7 @@ class SplitPlan:
 
     scene: str | None
     seed: int
+    selection_method: str
     total_frames: int
     val_count: int
     test_count: int
@@ -52,6 +53,7 @@ class SplitPlan:
         return {
             "scene": self.scene,
             "seed": self.seed,
+            "selection_method": self.selection_method,
             "total_frames": self.total_frames,
             "val_count": self.val_count,
             "test_count": self.test_count,
@@ -112,12 +114,19 @@ def generate_split_plan(
     val_count: int | None = None,
     test_count: int | None = None,
     shuffle: bool = True,
+    selection_method: str = "random",
 ) -> SplitPlan:
     """Generate deterministic train/validation/test splits for train budgets.
 
     Validation and test frames are fixed across every budget. Training frames
     are prefix-nested, so the ``25``-frame split is a subset of the ``50``-frame
     split when both budgets are requested.
+
+    Selection methods:
+    - ``random`` preserves the seeded random prefix behavior.
+    - ``farthest-index`` keeps the same holdouts but orders training candidates
+      by farthest-first coverage over input-frame index. This is a lightweight
+      trajectory coverage baseline for ordered frame manifests.
     """
 
     frames = [str(frame) for frame in frame_ids]
@@ -130,6 +139,12 @@ def generate_split_plan(
     counts = tuple(sorted({int(count) for count in train_counts}))
     if any(count <= 0 for count in counts):
         raise ValueError("Train counts must be positive integers.")
+
+    if selection_method not in {"random", "farthest-index"}:
+        raise ValueError(
+            "selection_method must be one of: random, farthest-index. "
+            f"Got {selection_method!r}."
+        )
 
     total = len(frames)
     resolved_val_count = _resolve_holdout_count(
@@ -168,11 +183,16 @@ def generate_split_plan(
         )
 
     original_order = {frame: index for index, frame in enumerate(frames)}
+    if selection_method == "farthest-index":
+        train_order = _farthest_index_order(train_pool, original_order)
+    else:
+        train_order = train_pool
+
     splits: dict[str, Mapping[str, list[str]]] = {}
     ordered_val = _order_like_input(val, original_order)
     ordered_test = _order_like_input(test, original_order)
     for count in counts:
-        train = train_pool[:count]
+        train = train_order[:count]
         splits[str(count)] = {
             "train": _order_like_input(train, original_order),
             "val": ordered_val,
@@ -182,6 +202,7 @@ def generate_split_plan(
     return SplitPlan(
         scene=scene,
         seed=seed,
+        selection_method=selection_method,
         total_frames=total,
         val_count=resolved_val_count,
         test_count=resolved_test_count,
@@ -302,3 +323,39 @@ def _order_like_input(
     original_order: Mapping[str, int],
 ) -> list[str]:
     return sorted(frames, key=lambda frame: original_order[frame])
+
+
+def _farthest_index_order(
+    frames: Sequence[str],
+    original_order: Mapping[str, int],
+) -> list[str]:
+    """Order frames by farthest-first coverage over original input indices."""
+
+    candidates = _order_like_input(frames, original_order)
+    if len(candidates) <= 2:
+        return list(candidates)
+
+    selected = [candidates[0], candidates[-1]]
+    remaining = set(candidates[1:-1])
+
+    while remaining:
+        next_frame = max(
+            remaining,
+            key=lambda frame: (
+                _nearest_selected_distance(frame, selected, original_order),
+                -original_order[frame],
+            ),
+        )
+        selected.append(next_frame)
+        remaining.remove(next_frame)
+
+    return selected
+
+
+def _nearest_selected_distance(
+    frame: str,
+    selected: Sequence[str],
+    original_order: Mapping[str, int],
+) -> int:
+    frame_index = original_order[frame]
+    return min(abs(frame_index - original_order[item]) for item in selected)

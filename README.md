@@ -49,8 +49,13 @@ python scripts/generate_splits.py \
   --test-count 2 \
   --scene example \
   --seed 7 \
+  --selection-method random \
   --output data/splits/example_split.json
 ```
+
+Use `--selection-method farthest-index` for a lightweight trajectory coverage
+baseline that keeps the same validation/test holdouts and selects training
+frames with farthest-first coverage over input-frame order.
 
 Compute uncertainty/error alignment metrics:
 

@@ -129,6 +129,7 @@ def prepare_poster_sample(
     val_count: int = 10,
     test_count: int = 10,
     seed: int = 20260529,
+    selection_method: str = "random",
 ) -> dict[str, Any]:
     """Download, filter, split, and materialize the Nerfstudio poster sample."""
 
@@ -181,6 +182,8 @@ def prepare_poster_sample(
             scene_name,
             "--seed",
             str(seed),
+            "--selection-method",
+            selection_method,
             "--output",
             str(split_json),
         ]
@@ -205,6 +208,7 @@ def prepare_poster_sample(
     return {
         "status": "ok",
         "scene_name": scene_name,
+        "selection_method": selection_method,
         "split_json": str(split_json),
         "materialized_root": str(materialized_root),
         "summary": _read_json(materialized_root / "materialization_summary.json"),
@@ -325,6 +329,8 @@ def main(
     budget: int = 25,
     iterations: int = 3000,
     scene_name: str = "poster_modal_smoke",
+    data_scene_name: str = "poster_available",
+    selection_method: str = "random",
     render_outputs: bool = True,
 ) -> None:
     """Run Modal workflow stages from the local CLI."""
@@ -332,9 +338,14 @@ def main(
     if action == "env":
         print(env_check.remote())
     elif action == "prepare":
-        print(prepare_poster_sample.remote())
+        print(
+            prepare_poster_sample.remote(
+                scene_name=data_scene_name,
+                selection_method=selection_method,
+            )
+        )
     elif action == "train":
-        ns_data_dir = str(DATA_ROOT / "nerfstudio_splits" / "poster_available" / _budget_dir_name(budget))
+        ns_data_dir = str(DATA_ROOT / "nerfstudio_splits" / data_scene_name / _budget_dir_name(budget))
         print(
             train_splatfacto.remote(
                 ns_data_dir=ns_data_dir,
@@ -350,8 +361,13 @@ def main(
             print(json.dumps(row, indent=2))
     elif action == "smoke":
         print(env_check.remote())
-        print(prepare_poster_sample.remote())
-        ns_data_dir = str(DATA_ROOT / "nerfstudio_splits" / "poster_available" / _budget_dir_name(budget))
+        print(
+            prepare_poster_sample.remote(
+                scene_name=data_scene_name,
+                selection_method=selection_method,
+            )
+        )
+        ns_data_dir = str(DATA_ROOT / "nerfstudio_splits" / data_scene_name / _budget_dir_name(budget))
         print(
             train_splatfacto.remote(
                 ns_data_dir=ns_data_dir,

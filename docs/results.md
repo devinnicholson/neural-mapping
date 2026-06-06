@@ -34,4 +34,4 @@ Interpretation:
 
 - This is a smoke baseline, not a final claim.
 - The 50-frame run did not improve over the 25-frame run on this single small split.
-- The next comparison should add repeated seeds or move directly to an active/coverage selection baseline under the same train/eval policy.
+- The next comparison should run `farthest-index` coverage selection under the same train/eval policy.

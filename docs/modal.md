@@ -70,6 +70,49 @@ Print compact metrics:
 modal run modal_app.py --action metrics
 ```
 
+## Coverage Baseline
+
+After the random 25/50-frame baselines pass, run a deterministic coverage
+baseline. It keeps the same holdout policy but selects training frames with
+farthest-first coverage over input-frame order:
+
+```bash
+modal run modal_app.py \
+  --action prepare \
+  --data-scene-name poster_available_farthest_index \
+  --selection-method farthest-index
+
+modal run modal_app.py \
+  --action train \
+  --data-scene-name poster_available_farthest_index \
+  --budget 25 \
+  --iterations 10000 \
+  --scene-name poster_modal_farthest_b25_10k
+
+modal run modal_app.py \
+  --action eval \
+  --budget 25 \
+  --scene-name poster_modal_farthest_b25_10k
+
+modal run modal_app.py \
+  --action train \
+  --data-scene-name poster_available_farthest_index \
+  --budget 50 \
+  --iterations 10000 \
+  --scene-name poster_modal_farthest_b50_10k
+
+modal run modal_app.py \
+  --action eval \
+  --budget 50 \
+  --scene-name poster_modal_farthest_b50_10k
+
+modal run modal_app.py --action metrics
+```
+
+This is still a baseline, not the uncertainty method. Its purpose is to test
+whether simple coverage already beats random frame selection on the same
+pipeline.
+
 ## GPU Choice
 
 The default GPU is `L4`, matching the cluster smoke environment. Override it at image/function definition time by setting:

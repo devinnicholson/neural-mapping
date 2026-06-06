@@ -45,6 +45,58 @@ class SplitGenerationTests(unittest.TestCase):
 
         self.assertEqual(first.to_dict(), second.to_dict())
 
+    def test_farthest_index_selection_is_nested_and_uses_trajectory_coverage(self) -> None:
+        frames = [f"frame_{index:03d}.png" for index in range(10)]
+
+        plan = generate_split_plan(
+            frames,
+            [2, 4],
+            val_count=0,
+            test_count=0,
+            shuffle=False,
+            selection_method="farthest-index",
+        )
+
+        split_2 = plan.splits["2"]
+        split_4 = plan.splits["4"]
+        self.assertEqual(plan.selection_method, "farthest-index")
+        self.assertEqual(split_2["train"], ["frame_000.png", "frame_009.png"])
+        self.assertEqual(
+            split_4["train"],
+            ["frame_000.png", "frame_002.png", "frame_004.png", "frame_009.png"],
+        )
+        self.assertTrue(set(split_2["train"]).issubset(split_4["train"]))
+
+    def test_farthest_index_selection_keeps_random_holdouts_fixed(self) -> None:
+        frames = [f"frame_{index:03d}.png" for index in range(30)]
+
+        random_plan = generate_split_plan(
+            frames,
+            [8],
+            seed=13,
+            val_count=3,
+            test_count=5,
+        )
+        coverage_plan = generate_split_plan(
+            frames,
+            [8],
+            seed=13,
+            val_count=3,
+            test_count=5,
+            selection_method="farthest-index",
+        )
+
+        self.assertEqual(random_plan.splits["8"]["val"], coverage_plan.splits["8"]["val"])
+        self.assertEqual(random_plan.splits["8"]["test"], coverage_plan.splits["8"]["test"])
+        self.assertNotEqual(
+            random_plan.splits["8"]["train"],
+            coverage_plan.splits["8"]["train"],
+        )
+
+    def test_unknown_selection_method_is_rejected(self) -> None:
+        with self.assertRaisesRegex(ValueError, "selection_method"):
+            generate_split_plan(["a.png", "b.png"], [1], selection_method="bad")
+
     def test_duplicate_frame_ids_are_rejected(self) -> None:
         with self.assertRaisesRegex(ValueError, "unique"):
             generate_split_plan(["a.png", "b.png", "a.png"], [1], val_count=0, test_count=1)

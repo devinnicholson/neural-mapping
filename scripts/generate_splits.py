@@ -51,6 +51,12 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Use input ordering instead of seeded randomization.",
     )
+    parser.add_argument(
+        "--selection-method",
+        choices=("random", "farthest-index"),
+        default="random",
+        help="Training frame selection policy after validation/test holdouts are fixed.",
+    )
     return parser.parse_args()
 
 
@@ -67,13 +73,15 @@ def main() -> int:
         val_count=args.val_count,
         test_count=args.test_count,
         shuffle=not args.no_shuffle,
+        selection_method=args.selection_method,
     )
     write_split_plan(plan, args.output)
     print(
         "wrote "
         f"{args.output} with {plan.total_frames} frames, "
         f"budgets={list(plan.train_counts)}, "
-        f"val={plan.val_count}, test={plan.test_count}"
+        f"val={plan.val_count}, test={plan.test_count}, "
+        f"selection={plan.selection_method}"
     )
     return 0
 
