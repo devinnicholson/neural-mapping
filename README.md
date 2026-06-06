@@ -56,6 +56,8 @@ python scripts/generate_splits.py \
 Use `--selection-method farthest-index` for a lightweight trajectory coverage
 baseline that keeps the same validation/test holdouts and selects training
 frames with farthest-first coverage over input-frame order.
+Use `--selection-method farthest-pose` with a Nerfstudio `transforms.json` to
+select training frames by farthest-first coverage over camera-center positions.
 
 Compute uncertainty/error alignment metrics:
 

@@ -12,7 +12,12 @@ SRC_ROOT = PROJECT_ROOT / "src"
 if str(SRC_ROOT) not in sys.path:
     sys.path.insert(0, str(SRC_ROOT))
 
-from uncertainty_3dgs.splits import generate_split_plan, load_frame_ids, write_split_plan
+from uncertainty_3dgs.splits import (
+    generate_split_plan,
+    load_frame_ids,
+    load_frame_positions,
+    write_split_plan,
+)
 
 
 def parse_args() -> argparse.Namespace:
@@ -53,7 +58,7 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--selection-method",
-        choices=("random", "farthest-index"),
+        choices=("random", "farthest-index", "farthest-pose"),
         default="random",
         help="Training frame selection policy after validation/test holdouts are fixed.",
     )
@@ -63,6 +68,15 @@ def parse_args() -> argparse.Namespace:
 def main() -> int:
     args = parse_args()
     frame_ids = load_frame_ids(args.frames)
+    frame_positions = None
+    if args.selection_method == "farthest-pose":
+        frame_positions = load_frame_positions(args.frames)
+        if not frame_positions:
+            raise SystemExit(
+                "--selection-method farthest-pose requires a JSON manifest with "
+                "per-frame transform_matrix camera poses."
+            )
+
     plan = generate_split_plan(
         frame_ids,
         args.budgets,
@@ -74,6 +88,7 @@ def main() -> int:
         test_count=args.test_count,
         shuffle=not args.no_shuffle,
         selection_method=args.selection_method,
+        frame_positions=frame_positions,
     )
     write_split_plan(plan, args.output)
     print(

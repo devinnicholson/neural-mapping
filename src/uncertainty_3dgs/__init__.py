@@ -14,6 +14,7 @@ from .splits import (
     SplitPlan,
     generate_split_plan,
     load_frame_ids,
+    load_frame_positions,
     write_split_plan,
 )
 
@@ -24,6 +25,7 @@ __all__ = [
     "gaussian_nll",
     "generate_split_plan",
     "load_frame_ids",
+    "load_frame_positions",
     "reliability_diagram",
     "risk_coverage_curve",
     "roc_auc_score",

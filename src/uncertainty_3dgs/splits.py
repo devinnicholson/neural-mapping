@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import csv
 import json
+import math
 import random
 from dataclasses import dataclass
 from pathlib import Path
@@ -103,6 +104,43 @@ def load_frame_ids(
     return _frame_ids_from_text(path)
 
 
+def load_frame_positions(source: str | Path) -> dict[str, tuple[float, float, float]]:
+    """Load camera centers from a Nerfstudio-style JSON manifest.
+
+    This intentionally supports only JSON manifests with per-frame
+    ``transform_matrix`` values. It returns an empty mapping for manifests that
+    contain frame ids but no camera poses.
+    """
+
+    path = Path(source)
+    if not path.exists():
+        raise FileNotFoundError(f"Frame source does not exist: {path}")
+    if path.suffix.lower() != ".json":
+        return {}
+
+    with path.open("r", encoding="utf-8") as handle:
+        payload = json.load(handle)
+    if not isinstance(payload, dict):
+        return {}
+
+    frames = payload.get("frames")
+    if not isinstance(frames, list):
+        return {}
+
+    positions: dict[str, tuple[float, float, float]] = {}
+    for item in frames:
+        if not isinstance(item, dict):
+            continue
+        try:
+            frame_id = _frame_id_from_item(item)
+        except ValueError:
+            continue
+        position = _position_from_transform_matrix(item.get("transform_matrix"))
+        if position is not None:
+            positions[frame_id] = position
+    return positions
+
+
 def generate_split_plan(
     frame_ids: Iterable[str],
     train_counts: Sequence[int],
@@ -115,6 +153,7 @@ def generate_split_plan(
     test_count: int | None = None,
     shuffle: bool = True,
     selection_method: str = "random",
+    frame_positions: Mapping[str, Sequence[float]] | None = None,
 ) -> SplitPlan:
     """Generate deterministic train/validation/test splits for train budgets.
 
@@ -127,6 +166,8 @@ def generate_split_plan(
     - ``farthest-index`` keeps the same holdouts but orders training candidates
       by farthest-first coverage over input-frame index. This is a lightweight
       trajectory coverage baseline for ordered frame manifests.
+    - ``farthest-pose`` keeps the same holdouts but orders training candidates
+      by farthest-first coverage over camera-center positions.
     """
 
     frames = [str(frame) for frame in frame_ids]
@@ -140,9 +181,9 @@ def generate_split_plan(
     if any(count <= 0 for count in counts):
         raise ValueError("Train counts must be positive integers.")
 
-    if selection_method not in {"random", "farthest-index"}:
+    if selection_method not in {"random", "farthest-index", "farthest-pose"}:
         raise ValueError(
-            "selection_method must be one of: random, farthest-index. "
+            "selection_method must be one of: random, farthest-index, farthest-pose. "
             f"Got {selection_method!r}."
         )
 
@@ -185,6 +226,12 @@ def generate_split_plan(
     original_order = {frame: index for index, frame in enumerate(frames)}
     if selection_method == "farthest-index":
         train_order = _farthest_index_order(train_pool, original_order)
+    elif selection_method == "farthest-pose":
+        train_order = _farthest_pose_order(
+            train_pool,
+            _require_positions(train_pool, frame_positions),
+            original_order,
+        )
     else:
         train_order = train_pool
 
@@ -359,3 +406,86 @@ def _nearest_selected_distance(
 ) -> int:
     frame_index = original_order[frame]
     return min(abs(frame_index - original_order[item]) for item in selected)
+
+
+def _farthest_pose_order(
+    frames: Sequence[str],
+    positions: Mapping[str, Sequence[float]],
+    original_order: Mapping[str, int],
+) -> list[str]:
+    """Order frames by farthest-first coverage over camera-center positions."""
+
+    candidates = _order_like_input(frames, original_order)
+    if len(candidates) <= 1:
+        return list(candidates)
+
+    first, second = max(
+        (
+            (left, right)
+            for left_index, left in enumerate(candidates)
+            for right in candidates[left_index + 1 :]
+        ),
+        key=lambda pair: (
+            _euclidean_distance(positions[pair[0]], positions[pair[1]]),
+            -min(original_order[pair[0]], original_order[pair[1]]),
+            -max(original_order[pair[0]], original_order[pair[1]]),
+        ),
+    )
+    selected = _order_like_input([first, second], original_order)
+    remaining = set(candidates) - set(selected)
+
+    while remaining:
+        next_frame = max(
+            remaining,
+            key=lambda frame: (
+                _nearest_selected_pose_distance(frame, selected, positions),
+                -original_order[frame],
+            ),
+        )
+        selected.append(next_frame)
+        remaining.remove(next_frame)
+
+    return selected
+
+
+def _nearest_selected_pose_distance(
+    frame: str,
+    selected: Sequence[str],
+    positions: Mapping[str, Sequence[float]],
+) -> float:
+    return min(_euclidean_distance(positions[frame], positions[item]) for item in selected)
+
+
+def _euclidean_distance(left: Sequence[float], right: Sequence[float]) -> float:
+    if len(left) != 3 or len(right) != 3:
+        raise ValueError("Frame positions must be 3D coordinates.")
+    return math.sqrt(sum((float(a) - float(b)) ** 2 for a, b in zip(left, right)))
+
+
+def _require_positions(
+    frames: Sequence[str],
+    frame_positions: Mapping[str, Sequence[float]] | None,
+) -> Mapping[str, Sequence[float]]:
+    if frame_positions is None:
+        raise ValueError("farthest-pose selection requires frame_positions.")
+
+    missing = [frame for frame in frames if frame not in frame_positions]
+    if missing:
+        sample = ", ".join(missing[:5])
+        raise ValueError(f"Missing camera positions for frames: {sample}")
+    return frame_positions
+
+
+def _position_from_transform_matrix(value: object) -> tuple[float, float, float] | None:
+    if not isinstance(value, list) or len(value) < 3:
+        return None
+
+    rows = value[:3]
+    if not all(isinstance(row, list) and len(row) >= 4 for row in rows):
+        return None
+
+    return (
+        float(rows[0][3]),
+        float(rows[1][3]),
+        float(rows[2][3]),
+    )

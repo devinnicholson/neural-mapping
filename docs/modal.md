@@ -113,6 +113,44 @@ This is still a baseline, not the uncertainty method. Its purpose is to test
 whether simple coverage already beats random frame selection on the same
 pipeline.
 
+## Pose Coverage Baseline
+
+If `farthest-index` underperforms, use camera positions from Nerfstudio
+`transform_matrix` values instead of sequence order:
+
+```bash
+modal run modal_app.py \
+  --action prepare \
+  --data-scene-name poster_available_farthest_pose \
+  --selection-method farthest-pose
+
+modal run modal_app.py \
+  --action train \
+  --data-scene-name poster_available_farthest_pose \
+  --budget 25 \
+  --iterations 10000 \
+  --scene-name poster_modal_pose_b25_10k
+
+modal run modal_app.py \
+  --action eval \
+  --budget 25 \
+  --scene-name poster_modal_pose_b25_10k
+
+modal run modal_app.py \
+  --action train \
+  --data-scene-name poster_available_farthest_pose \
+  --budget 50 \
+  --iterations 10000 \
+  --scene-name poster_modal_pose_b50_10k
+
+modal run modal_app.py \
+  --action eval \
+  --budget 50 \
+  --scene-name poster_modal_pose_b50_10k
+
+modal run modal_app.py --action metrics
+```
+
 ## GPU Choice
 
 The default GPU is `L4`, matching the cluster smoke environment. Override it at image/function definition time by setting:

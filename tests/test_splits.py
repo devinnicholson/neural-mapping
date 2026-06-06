@@ -11,7 +11,7 @@ SRC = ROOT / "src"
 if str(SRC) not in sys.path:
     sys.path.insert(0, str(SRC))
 
-from uncertainty_3dgs.splits import generate_split_plan, load_frame_ids
+from uncertainty_3dgs.splits import generate_split_plan, load_frame_ids, load_frame_positions
 
 
 class SplitGenerationTests(unittest.TestCase):
@@ -97,6 +97,44 @@ class SplitGenerationTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "selection_method"):
             generate_split_plan(["a.png", "b.png"], [1], selection_method="bad")
 
+    def test_farthest_pose_selection_uses_camera_centers(self) -> None:
+        frames = [f"frame_{index:03d}.png" for index in range(5)]
+        positions = {
+            "frame_000.png": (0.0, 0.0, 0.0),
+            "frame_001.png": (10.0, 0.0, 0.0),
+            "frame_002.png": (5.0, 0.0, 0.0),
+            "frame_003.png": (1.0, 0.0, 0.0),
+            "frame_004.png": (9.0, 0.0, 0.0),
+        }
+
+        plan = generate_split_plan(
+            frames,
+            [2, 3],
+            val_count=0,
+            test_count=0,
+            shuffle=False,
+            selection_method="farthest-pose",
+            frame_positions=positions,
+        )
+
+        split_2 = plan.splits["2"]
+        split_3 = plan.splits["3"]
+        self.assertEqual(plan.selection_method, "farthest-pose")
+        self.assertEqual(split_2["train"], ["frame_000.png", "frame_001.png"])
+        self.assertEqual(
+            split_3["train"],
+            ["frame_000.png", "frame_001.png", "frame_002.png"],
+        )
+        self.assertTrue(set(split_2["train"]).issubset(split_3["train"]))
+
+    def test_farthest_pose_requires_positions(self) -> None:
+        with self.assertRaisesRegex(ValueError, "frame_positions"):
+            generate_split_plan(
+                ["a.png", "b.png"],
+                [1],
+                selection_method="farthest-pose",
+            )
+
     def test_duplicate_frame_ids_are_rejected(self) -> None:
         with self.assertRaisesRegex(ValueError, "unique"):
             generate_split_plan(["a.png", "b.png", "a.png"], [1], val_count=0, test_count=1)
@@ -119,6 +157,45 @@ class SplitGenerationTests(unittest.TestCase):
             self.assertEqual(
                 load_frame_ids(path),
                 ["images/000.png", "images/001.png"],
+            )
+
+    def test_load_frame_positions_from_nerfstudio_style_json(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "transforms.json"
+            path.write_text(
+                json.dumps(
+                    {
+                        "frames": [
+                            {
+                                "file_path": "images/000.png",
+                                "transform_matrix": [
+                                    [1, 0, 0, 1.5],
+                                    [0, 1, 0, -2.0],
+                                    [0, 0, 1, 3.25],
+                                    [0, 0, 0, 1],
+                                ],
+                            },
+                            {
+                                "file_path": "images/001.png",
+                                "transform_matrix": [
+                                    [1, 0, 0, 4.0],
+                                    [0, 1, 0, 5.0],
+                                    [0, 0, 1, 6.0],
+                                    [0, 0, 0, 1],
+                                ],
+                            },
+                        ]
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            self.assertEqual(
+                load_frame_positions(path),
+                {
+                    "images/000.png": (1.5, -2.0, 3.25),
+                    "images/001.png": (4.0, 5.0, 6.0),
+                },
             )
 
     def test_load_frame_ids_from_directory(self) -> None:
