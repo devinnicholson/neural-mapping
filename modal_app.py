@@ -71,7 +71,12 @@ image = (
 app = modal.App(APP_NAME)
 
 
-def _run(command: list[str], *, env: dict[str, str] | None = None) -> None:
+def _run(
+    command: list[str],
+    *,
+    env: dict[str, str] | None = None,
+    input_text: str | None = None,
+) -> None:
     merged_env = os.environ.copy()
     merged_env["PYTHONPATH"] = str(REMOTE_PROJECT / "src")
     merged_env.setdefault("TORCH_CUDA_ARCH_LIST", "8.9")
@@ -79,7 +84,14 @@ def _run(command: list[str], *, env: dict[str, str] | None = None) -> None:
     if env:
         merged_env.update(env)
     print("+", " ".join(command), flush=True)
-    subprocess.run(command, cwd=REMOTE_PROJECT, env=merged_env, check=True)
+    subprocess.run(
+        command,
+        cwd=REMOTE_PROJECT,
+        env=merged_env,
+        input=input_text,
+        text=input_text is not None,
+        check=True,
+    )
 
 
 def _read_json(path: Path) -> dict[str, Any]:
@@ -349,6 +361,7 @@ def score_candidate_frames(
             str(scores_path),
         ],
         env={"TORCH_FORCE_NO_WEIGHTS_ONLY_LOAD": "1"},
+        input_text="y\n",
     )
 
     data_volume.commit()
@@ -399,9 +412,11 @@ def train_splatfacto(
             ns_data_dir,
             "--downscale-factor",
             str(downscale_factor),
-        ]
+        ],
+        input_text="y\n",
     )
 
+    data_volume.commit()
     outputs_volume.commit()
     configs = sorted((run_root / "train").glob("**/config.yml"))
     return {
@@ -485,10 +500,12 @@ def main(
     iterations: int = 3000,
     scene_name: str = "poster_modal_smoke",
     data_scene_name: str = "poster_available",
+    capture_name: str = "poster",
     source_data_scene_name: str = "poster_available",
     base_split_scene_name: str = "poster_available",
     selection_method: str = "random",
     split_seed: int = 20260529,
+    downscale_factor: int = 1,
     active_strategy: str = "pose-novelty",
     score_path: str = "",
     score_weight: float = 0.65,
@@ -502,6 +519,7 @@ def main(
     elif action == "prepare":
         print(
             prepare_poster_sample.remote(
+                capture_name=capture_name,
                 scene_name=data_scene_name,
                 selection_method=selection_method,
                 seed=split_seed,
@@ -539,6 +557,7 @@ def main(
                 scene_name=scene_name,
                 budget=budget,
                 max_num_iterations=iterations,
+                downscale_factor=downscale_factor,
             )
         )
     elif action == "eval":
@@ -550,6 +569,7 @@ def main(
         print(env_check.remote())
         print(
             prepare_poster_sample.remote(
+                capture_name=capture_name,
                 scene_name=data_scene_name,
                 selection_method=selection_method,
                 seed=split_seed,
@@ -562,6 +582,7 @@ def main(
                 scene_name=scene_name,
                 budget=budget,
                 max_num_iterations=iterations,
+                downscale_factor=downscale_factor,
             )
         )
         print(eval_latest_run.remote(scene_name=scene_name, budget=budget, render_outputs=render_outputs))
