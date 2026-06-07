@@ -469,7 +469,7 @@ Interpretation:
 - `std_accumulation` was the best average proxy, but mean AUROC was only 0.483, essentially random and close to the geometric nearest-distance baseline.
 - The next signal should use richer render information than global frame summaries, for example patch-level accumulation/residual maps, per-pixel error alignment, or ensemble disagreement.
 
-## Modal Dozer Pixel-Level Transmittance Smoke
+## Modal Dozer Pixel-Level Transmittance Failure Prediction
 
 Date: 2026-06-07
 
@@ -480,28 +480,37 @@ Question:
 
 Setup:
 
-- Source scene: `dozer_available_v1`.
-- Seed model: `dozer_modal_v1_d4_fixed_b25_10k`.
-- Candidate pool: 55 non-seed candidate frames from the v1 split.
+- Source scenes: `dozer_available_v1`, `dozer_available_v2`, `dozer_available_v3`.
+- Seed model for each scene: the corresponding random budget-25 Splatfacto run.
+- Candidate pool: 55 non-seed candidate frames per split.
 - Error target: per-pixel RGB L1 error after normalizing rendered and target RGB to `0..1`.
-- Pixel sampling: deterministic sample of 10,000 valid pixels per frame, 550,000 pixels total.
+- Pixel sampling: deterministic sample of 10,000 valid pixels per frame, 550,000 pixels per seed.
 - Bad-pixel threshold: report-local 80th percentile RGB L1 error.
 
-| Signal | Count | Mean Error | Spearman | AUROC | AUPRC | AUSE |
-|---|---:|---:|---:|---:|---:|---:|
-| transmittance | 550,000 | 0.125 | -0.013 | 0.481 | 0.205 | 0.085 |
+| Seed | Signal | Count | Mean Error | Spearman | AUROC | AUPRC | AUSE |
+|---|---|---:|---:|---:|---:|---:|---:|
+| v1 | transmittance | 550,000 | 0.125 | -0.013 | 0.481 | 0.205 | 0.085 |
+| v2 | transmittance | 550,000 | 0.150 | -0.108 | 0.439 | 0.179 | 0.105 |
+| v3 | transmittance | 550,000 | 0.119 | -0.033 | 0.479 | 0.201 | 0.082 |
+| mean | transmittance | 550,000 | 0.131 | -0.051 | 0.466 | 0.195 | 0.090 |
 
-Report artifact path in Modal:
+Report artifact paths in Modal:
 
-- `/workspace/neural-mapping/outputs/reports/render_uncertainty_maps/dozer_available_render_maps_v1_budget_025_rgb-l1.json`
+| Seed | Report path |
+|---|---|
+| v1 | `/workspace/neural-mapping/outputs/reports/render_uncertainty_maps/dozer_available_render_maps_v1_budget_025_rgb-l1.json` |
+| v2 | `/workspace/neural-mapping/outputs/reports/render_uncertainty_maps/dozer_available_render_maps_v2_budget_025_rgb-l1.json` |
+| v3 | `/workspace/neural-mapping/outputs/reports/render_uncertainty_maps/dozer_available_render_maps_v3_budget_025_rgb-l1.json` |
 
-Modal run URL:
+Modal run URLs:
 
-- Corrected smoke: `ap-rBry06nCbzXWfCPE35s2UP`.
+- v1 corrected run: `ap-rBry06nCbzXWfCPE35s2UP`.
+- v2 run: `ap-Fs4eIGJPyjV1jQoOV9pd4s`.
+- v3 run: `ap-PGl5A1iAuwVKBtaCKdsyns`.
 - Superseded pre-normalization smoke: `ap-hJCUdTi4auo6QC8YYq19Wo`.
 
 Interpretation:
 
 - The pixel-level extraction path works and catches raw renderer confidence maps without saving image files.
-- The first transmittance-only signal is a negative result: on dozer v1 it is slightly anti-correlated with RGB L1 error and below random for bad-pixel AUROC.
+- Raw transmittance is a negative result across all three dozer seeds: mean Spearman is -0.051 and mean bad-pixel AUROC is 0.466.
 - The next pixel-level signal should be less naive than raw transmittance, for example local residual propagation, patch-level statistics, or ensemble RGB disagreement.
