@@ -944,3 +944,77 @@ Interpretation:
 - Across v1/v2/v3, w0.45 versus w0.35 averages about +0.051 PSNR, +0.0001 SSIM, and -0.0009 LPIPS, with FPS about -0.070 lower.
 - Because v3 used the identical training set and v1/v2 changed only one or two added frames, the measured metric edge is a marginal selector refinement rather than a new behavior. Treat w0.35 and w0.45 as effectively the same acquisition rule unless a larger scene or another seed shows a clearer separation.
 - The practical read is that w0.45 is the best measured dozer tail-score setting so far, but w0.35 remains the safer default to report because it is simpler to justify and already captured the main effect.
+
+## Modal Dozer Ensemble Tail v4 Seed Check
+
+Date: 2026-06-07
+
+Question:
+
+- Does the ensemble tail-score-pose selector still beat random on a fresh
+  dozer split, and does the small w0.45 edge over w0.35 persist?
+
+Setup:
+
+- Source scene: `dozer_available_v4`, filtered from the Nerfstudio `dozer` sample.
+- Split seed: `20260609`.
+- The filtered scene kept 100 of 359 frames.
+- Base split: corrected dozer v4 budget-25 split.
+- Each budget uses the same 10 held-out test frames and 10 validation frames.
+- Ensemble uncertainty report: `outputs/reports/ensemble_uncertainty_maps/dozer_available_ensemble_maps_v4_budget_025_rgb-l1.json`.
+- Ensemble members: `dozer_modal_v1_d4_fixed_b25_10k`, `dozer_modal_v2_d4_b25_10k`, and `dozer_modal_v3_d4_b25_10k`.
+- Frame score: `top_decile_mean_uncertainty`.
+- Hybrid strategy: `score-pose-hybrid`.
+- Score weights tested: `0.35` and `0.45`.
+- Method: Nerfstudio `splatfacto`.
+- Training length: 10,000 iterations.
+- Downscale factor: 4.
+- GPU: Modal L4.
+
+Uncertainty report summary:
+
+| Count | Spearman | AUROC | AUPRC | Mean error | Bad threshold | Bad fraction |
+|---:|---:|---:|---:|---:|---:|---:|
+| 550,000 | 0.598 | 0.734 | 0.412 | 0.0998 | 0.1681 | 0.200 |
+
+| Seed | Selection | Scene | Budget | Iterations | PSNR | SSIM | LPIPS | FPS |
+|---|---|---|---:|---:|---:|---:|---:|---:|
+| v4 | Random dozer d4 | `dozer_modal_v4_d4_b50_10k` | 50 | 10,000 | 23.814 | 0.781 | 0.158 | 3.981 |
+| v4 | Tail-score-pose hybrid, `score_weight=0.35` | `dozer_modal_ensemble_tail_w035_v4_d4_b50_10k` | 50 | 10,000 | 23.885 | 0.787 | 0.149 | 4.633 |
+| v4 | Tail-score-pose hybrid, `score_weight=0.45` | `dozer_modal_ensemble_tail_w045_v4_d4_b50_10k` | 50 | 10,000 | 23.906 | 0.787 | 0.149 | 4.427 |
+
+Metric artifact paths in Modal:
+
+| Scene | Metrics path | Checkpoint |
+|---|---|---|
+| `dozer_modal_v4_d4_b50_10k` | `/workspace/neural-mapping/outputs/runs/dozer_modal_v4_d4_b50_10k/splatfacto/budget_050/metrics/ns_eval.json` | `/workspace/neural-mapping/outputs/runs/dozer_modal_v4_d4_b50_10k/splatfacto/budget_050/train/unnamed/splatfacto/2026-06-07_221329/nerfstudio_models/step-000009999.ckpt` |
+| `dozer_modal_ensemble_tail_w035_v4_d4_b50_10k` | `/workspace/neural-mapping/outputs/runs/dozer_modal_ensemble_tail_w035_v4_d4_b50_10k/splatfacto/budget_050/metrics/ns_eval.json` | `/workspace/neural-mapping/outputs/runs/dozer_modal_ensemble_tail_w035_v4_d4_b50_10k/splatfacto/budget_050/train/unnamed/splatfacto/2026-06-07_221653/nerfstudio_models/step-000009999.ckpt` |
+| `dozer_modal_ensemble_tail_w045_v4_d4_b50_10k` | `/workspace/neural-mapping/outputs/runs/dozer_modal_ensemble_tail_w045_v4_d4_b50_10k/splatfacto/budget_050/metrics/ns_eval.json` | `/workspace/neural-mapping/outputs/runs/dozer_modal_ensemble_tail_w045_v4_d4_b50_10k/splatfacto/budget_050/train/unnamed/splatfacto/2026-06-07_221643/nerfstudio_models/step-000009999.ckpt` |
+
+Modal run URLs:
+
+- v4 random split prep: `ap-Bz8tb8AAy8gazUWBLM7uoJ`.
+- v4 ensemble uncertainty maps: `ap-YJggzXnGP0g82VJ1juBwmK`.
+- v4 w0.35 split prep: `ap-y9tEHUlADCKDvLsDFRSooQ`.
+- v4 w0.45 split prep: `ap-SveqSQt96i6l1AfjL6mKSS`.
+- v4 random training: `ap-phu12x8r8dVgWeOCPV9VHn`.
+- v4 random eval: `ap-quWvPDAfZ00O31zKe9zGNu`.
+- v4 w0.35 training: `ap-O8xqVNFL3bO4tbQjvZinfD`.
+- v4 w0.35 eval: `ap-uqrlYQPHXD0FUiRRUTsfjk`.
+- v4 w0.45 training: `ap-l1ypH4MxoJLEEZeJnUymGp`.
+- v4 w0.45 eval: `ap-Ldwhh7HfBjebsFlvEEgqIi`.
+- v4 w0.35/w0.45 split-summary check: `ap-NrlKJhVVaOech7mzNOIzHb`.
+
+Split behavior:
+
+- v4 w0.45 changed one of the twenty-five added training frames versus w0.35: it selected `images/frame_00298.jpeg` instead of `images/frame_00299.jpeg`.
+- The validation and test sets were identical for w0.35 and w0.45.
+
+Interpretation:
+
+- Ensemble RGB variance remained predictive on v4: Spearman was 0.598, AUROC was 0.734, and AUPRC was 0.412.
+- The w0.35 tail-score-pose hybrid beat random v4 50 by +0.072 PSNR, +0.0065 SSIM, and -0.0095 LPIPS.
+- The w0.45 tail-score-pose hybrid beat random v4 50 by +0.092 PSNR, +0.0060 SSIM, and -0.0095 LPIPS.
+- w0.45 edged w0.35 by +0.020 PSNR and essentially tied LPIPS, but SSIM was lower by about 0.0006 and FPS was lower by about 0.206.
+- Across v1/v2/v3/v4, w0.35 tail-score-pose hybrid versus random 50 averages about +0.779 PSNR. The v4 gain is smaller than the v1-v3 gains but still positive across PSNR, SSIM, and LPIPS.
+- The v4 result strengthens the main claim that ensemble tail risk plus pose diversity improves over random acquisition on dozer. It does not justify promoting w0.45 over w0.35; the two settings remain effectively tied and differ by only one selected frame on this seed.
