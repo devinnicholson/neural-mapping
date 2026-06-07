@@ -484,6 +484,7 @@ def main(
     source_data_scene_name: str = "poster_available",
     base_split_scene_name: str = "poster_available",
     selection_method: str = "random",
+    split_seed: int = 20260529,
     active_strategy: str = "pose-novelty",
     score_path: str = "",
     score_metric: str = "lpips",
@@ -498,6 +499,7 @@ def main(
             prepare_poster_sample.remote(
                 scene_name=data_scene_name,
                 selection_method=selection_method,
+                seed=split_seed,
             )
         )
     elif action == "prepare-active":
@@ -544,6 +546,7 @@ def main(
             prepare_poster_sample.remote(
                 scene_name=data_scene_name,
                 selection_method=selection_method,
+                seed=split_seed,
             )
         )
         ns_data_dir = str(DATA_ROOT / "nerfstudio_splits" / data_scene_name / _budget_dir_name(budget))
