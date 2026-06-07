@@ -102,6 +102,31 @@ def _budget_dir_name(budget: int) -> str:
     return f"budget_{budget:03d}"
 
 
+def _compact_uncertainty_signals(signals: object) -> dict[str, dict[str, Any]]:
+    if not isinstance(signals, dict):
+        return {}
+    compact: dict[str, dict[str, Any]] = {}
+    keys = (
+        "count",
+        "mean_error",
+        "spearman",
+        "auroc",
+        "auprc",
+        "bad_threshold",
+        "bad_fraction",
+        "risk_coverage_auc",
+    )
+    for signal_name, summary in signals.items():
+        if not isinstance(summary, dict):
+            continue
+        row = {key: summary.get(key) for key in keys if key in summary}
+        sparsification = summary.get("sparsification")
+        if isinstance(sparsification, dict):
+            row["ause"] = sparsification.get("ause")
+        compact[str(signal_name)] = row
+    return compact
+
+
 @app.function(image=image, gpu=DEFAULT_GPU, volumes=volumes, timeout=900)
 def env_check() -> dict[str, Any]:
     """Verify the Modal GPU image can import torch, Nerfstudio, and gsplat."""
@@ -381,6 +406,63 @@ def score_candidate_frames(
     }
 
 
+@app.function(image=image, volumes=volumes, timeout=300)
+def evaluate_frame_uncertainty_baseline(
+    source_scene_name: str = "poster_available",
+    base_split_scene_name: str = "poster_available",
+    score_scene_name: str = "poster_available_active_error",
+    base_budget: int = 25,
+    error_metric: str = "lpips",
+    bad_quantile: float = 0.8,
+) -> dict[str, Any]:
+    """Evaluate simple frame-level uncertainty baselines against scored errors."""
+
+    frames_path = DATA_ROOT / "nerfstudio" / source_scene_name / "transforms.json"
+    split_json = DATA_ROOT / "splits" / f"{base_split_scene_name}.json"
+    scores_path = DATA_ROOT / "scores" / f"{score_scene_name}.json"
+    output_path = (
+        OUTPUT_ROOT
+        / "reports"
+        / "frame_uncertainty"
+        / f"{score_scene_name}_budget_{base_budget:03d}_{error_metric}.json"
+    )
+
+    _run(
+        [
+            "python",
+            "scripts/evaluate_frame_uncertainty.py",
+            "--frames",
+            str(frames_path),
+            "--split-json",
+            str(split_json),
+            "--budget",
+            str(base_budget),
+            "--scores",
+            str(scores_path),
+            "--error-metric",
+            error_metric,
+            "--bad-quantile",
+            str(bad_quantile),
+            "--output",
+            str(output_path),
+        ]
+    )
+
+    outputs_volume.commit()
+    report = _read_json(output_path)
+    return {
+        "status": "ok",
+        "source_scene_name": source_scene_name,
+        "base_split_scene_name": base_split_scene_name,
+        "score_scene_name": score_scene_name,
+        "base_budget": base_budget,
+        "error_metric": error_metric,
+        "bad_quantile": bad_quantile,
+        "report_path": str(output_path),
+        "signals": _compact_uncertainty_signals(report.get("signals")),
+    }
+
+
 @app.function(image=image, gpu=DEFAULT_GPU, volumes=volumes, timeout=TRAIN_TIMEOUT_SECONDS)
 def train_splatfacto(
     ns_data_dir: str,
@@ -510,6 +592,7 @@ def main(
     score_path: str = "",
     score_weight: float = 0.65,
     score_metric: str = "lpips",
+    bad_quantile: float = 0.8,
     render_outputs: bool = True,
 ) -> None:
     """Run Modal workflow stages from the local CLI."""
@@ -547,6 +630,17 @@ def main(
                 seed_scene_name=scene_name,
                 base_budget=budget,
                 score_metric=score_metric,
+            )
+        )
+    elif action == "frame-uncertainty":
+        print(
+            evaluate_frame_uncertainty_baseline.remote(
+                source_scene_name=source_data_scene_name,
+                base_split_scene_name=base_split_scene_name,
+                score_scene_name=data_scene_name,
+                base_budget=budget,
+                error_metric=score_metric,
+                bad_quantile=bad_quantile,
             )
         )
     elif action == "train":
@@ -589,5 +683,6 @@ def main(
     else:
         raise ValueError(
             f"Unknown action {action!r}. "
-            "Use env, prepare, score-candidates, prepare-active, train, eval, metrics, or smoke."
+            "Use env, prepare, score-candidates, frame-uncertainty, "
+            "prepare-active, train, eval, metrics, or smoke."
         )

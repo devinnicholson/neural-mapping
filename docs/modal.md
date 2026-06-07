@@ -224,6 +224,25 @@ modal run modal_app.py \
 modal run modal_app.py --action metrics
 ```
 
+After scoring candidates, evaluate frame-level failure-prediction baselines
+against the candidate LPIPS errors. This compares nearest training-camera
+distance, temporal index distance, and a uniform control:
+
+```bash
+modal run modal_app.py \
+  --action frame-uncertainty \
+  --source-data-scene-name poster_available \
+  --base-split-scene-name poster_available \
+  --data-scene-name poster_available_active_error \
+  --budget 25 \
+  --score-metric lpips \
+  --bad-quantile 0.8
+```
+
+The report is written under
+`/workspace/neural-mapping/outputs/reports/frame_uncertainty/` in the Modal
+output volume.
+
 ## GPU Choice
 
 The default GPU is `L4`, matching the cluster smoke environment. Override it at image/function definition time by setting:

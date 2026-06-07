@@ -1,7 +1,10 @@
 from __future__ import annotations
 
 import math
+import json
+import subprocess
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -78,6 +81,100 @@ class MetricTests(unittest.TestCase):
             spearman_correlation([1.0, float("nan"), 3.0], [1.0, 100.0, 2.0]),
             1.0,
         )
+
+    def test_frame_uncertainty_cli_evaluates_camera_distance_baseline(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            transforms = root / "transforms.json"
+            split = root / "split.json"
+            scores = root / "scores.json"
+            output = root / "report.json"
+
+            transforms.write_text(
+                json.dumps(
+                    {
+                        "frames": [
+                            {
+                                "file_path": f"./images/frame_{index:03d}.png",
+                                "transform_matrix": [
+                                    [1, 0, 0, float(index)],
+                                    [0, 1, 0, 0.0],
+                                    [0, 0, 1, 0.0],
+                                    [0, 0, 0, 1],
+                                ],
+                            }
+                            for index in range(4)
+                        ]
+                    }
+                ),
+                encoding="utf-8",
+            )
+            split.write_text(
+                json.dumps(
+                    {
+                        "splits": {
+                            "2": {
+                                "train": [
+                                    "./images/frame_000.png",
+                                    "./images/frame_001.png",
+                                ],
+                                "val": [],
+                                "test": ["./images/frame_002.png"],
+                            }
+                        }
+                    }
+                ),
+                encoding="utf-8",
+            )
+            scores.write_text(
+                json.dumps(
+                    {
+                        "scores": [
+                            {"file_path": "images/frame_002.png", "lpips": 0.2},
+                            {"file_path": "images/frame_003.png", "lpips": 0.9},
+                        ]
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            subprocess.run(
+                [
+                    sys.executable,
+                    str(ROOT / "scripts" / "evaluate_frame_uncertainty.py"),
+                    "--frames",
+                    str(transforms),
+                    "--split-json",
+                    str(split),
+                    "--budget",
+                    "2",
+                    "--scores",
+                    str(scores),
+                    "--signals",
+                    "nearest-train-distance",
+                    "temporal-index-distance",
+                    "uniform",
+                    "--bad-threshold",
+                    "0.5",
+                    "--output",
+                    str(output),
+                ],
+                check=True,
+            )
+
+            report = json.loads(output.read_text(encoding="utf-8"))
+            nearest = report["signals"]["nearest-train-distance"]
+            temporal = report["signals"]["temporal-index-distance"]
+
+            self.assertEqual(report["metadata"]["count"], 2)
+            self.assertAlmostEqual(nearest["spearman"], 1.0)
+            self.assertAlmostEqual(nearest["auroc"], 1.0)
+            self.assertAlmostEqual(temporal["spearman"], 1.0)
+            self.assertTrue(math.isnan(report["signals"]["uniform"]["spearman"]))
+            self.assertEqual(
+                [row["signals"]["nearest-train-distance"] for row in report["frames"]],
+                [1.0, 2.0],
+            )
 
 
 if __name__ == "__main__":

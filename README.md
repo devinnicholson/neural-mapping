@@ -97,6 +97,24 @@ python scripts/score_candidate_frames.py \
   --output data/scores/poster_available_active_error.json
 ```
 
+Evaluate whether simple frame-level uncertainty baselines predict those
+candidate errors:
+
+```bash
+python scripts/evaluate_frame_uncertainty.py \
+  --frames data/nerfstudio/poster_available/transforms.json \
+  --split-json data/splits/poster_available.json \
+  --budget 25 \
+  --scores data/scores/poster_available_active_error.json \
+  --error-metric lpips \
+  --bad-quantile 0.8 \
+  --output outputs/reports/poster_available_frame_uncertainty.json
+```
+
+This compares nearest-training-camera distance, temporal distance, and a
+uniform control against held-out frame errors using the same
+uncertainty-alignment metrics as pixel-level maps.
+
 Compute uncertainty/error alignment metrics:
 
 ```bash

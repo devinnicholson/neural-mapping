@@ -355,3 +355,53 @@ Interpretation:
 - On v3 it beat random 50 by +1.678 PSNR, +0.046 SSIM, and -0.040 LPIPS.
 - Across dozer v1/v2/v3, hybrid `score_weight=0.35` versus random 50 averages +0.947 PSNR, +0.023 SSIM, and -0.021 LPIPS.
 - This is the strongest current evidence that hybrid error-plus-pose selection is not just a poster-scene artifact.
+
+## Modal Dozer Frame-Level Coverage Failure Prediction
+
+Date: 2026-06-07
+
+Question:
+
+- Do simple camera-coverage uncertainty signals predict which candidate frames
+  the budget-25 seed model renders poorly?
+
+Setup:
+
+- Source scenes: `dozer_available_v1`, `dozer_available_v2`, `dozer_available_v3`.
+- Seed model for each scene: the corresponding random budget-25 Splatfacto run.
+- Candidate error target: candidate-frame LPIPS from the seed model.
+- Bad-frame threshold: seed-local 80th percentile of candidate LPIPS.
+- Signals:
+  - `nearest-train-distance`: camera-center distance to the nearest seed training frame.
+  - `temporal-index-distance`: nearest seed training frame by trajectory index.
+  - `uniform`: constant-score control.
+
+| Seed | Signal | Spearman | AUROC | AUPRC | AUSE |
+|---|---|---:|---:|---:|---:|
+| v1 | nearest-train-distance | 0.178 | 0.729 | 0.648 | 0.047 |
+| v1 | temporal-index-distance | 0.010 | 0.528 | 0.226 | 0.073 |
+| v1 | uniform | n/a | 0.500 | 0.218 | 0.119 |
+| v2 | nearest-train-distance | -0.293 | 0.329 | 0.172 | 0.085 |
+| v2 | temporal-index-distance | -0.103 | 0.366 | 0.198 | 0.109 |
+| v2 | uniform | n/a | 0.500 | 0.218 | 0.138 |
+| v3 | nearest-train-distance | 0.074 | 0.391 | 0.195 | 0.050 |
+| v3 | temporal-index-distance | 0.018 | 0.384 | 0.190 | 0.081 |
+| v3 | uniform | n/a | 0.500 | 0.218 | 0.109 |
+| mean | nearest-train-distance | -0.014 | 0.483 | 0.338 | 0.061 |
+| mean | temporal-index-distance | -0.025 | 0.426 | 0.205 | 0.088 |
+
+Report artifact paths in Modal:
+
+| Seed | Report path |
+|---|---|
+| v1 | `/workspace/neural-mapping/outputs/reports/frame_uncertainty/dozer_available_active_error_v1_budget_025_lpips.json` |
+| v2 | `/workspace/neural-mapping/outputs/reports/frame_uncertainty/dozer_available_active_error_v2_budget_025_lpips.json` |
+| v3 | `/workspace/neural-mapping/outputs/reports/frame_uncertainty/dozer_available_active_error_v3_budget_025_lpips.json` |
+
+Interpretation:
+
+- Nearest training-camera distance predicted seed-model LPIPS failures on v1, but it was anti-correlated or weak on v2/v3.
+- Temporal index distance was weaker than nearest camera distance and mostly near the uniform control.
+- The mean nearest-distance AUROC was below random because v2/v3 failed despite v1 looking strong.
+- This is an important negative baseline: simple camera distance is not a robust failure predictor on the dozer candidate pools, even though pose diversity helped active frame selection.
+- The next uncertainty signal should be render-derived rather than purely geometric, for example opacity/transmittance confidence, residual maps, or ensemble disagreement.
