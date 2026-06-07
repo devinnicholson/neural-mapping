@@ -288,6 +288,15 @@ modal run modal_app.py \
 The report is written under
 `/workspace/neural-mapping/outputs/reports/ensemble_uncertainty_maps/`.
 
+Summarize a report, including compact uncertainty/error bins, without
+downloading the Modal volume:
+
+```bash
+modal run modal_app.py \
+  --action report-summary \
+  --report-path reports/ensemble_uncertainty_maps/dozer_available_ensemble_maps_v1_budget_025_rgb-l1.json
+```
+
 To use that report as an active-selection signal, pass it to `prepare-active`
 and select the frame-level `mean_uncertainty` field:
 

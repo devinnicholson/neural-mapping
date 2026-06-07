@@ -123,8 +123,37 @@ def _compact_uncertainty_signals(signals: object) -> dict[str, dict[str, Any]]:
         sparsification = summary.get("sparsification")
         if isinstance(sparsification, dict):
             row["ause"] = sparsification.get("ause")
+        bins = summary.get("uncertainty_bins")
+        if isinstance(bins, list):
+            row["uncertainty_bins"] = _compact_uncertainty_bins(bins)
         compact[str(signal_name)] = row
     return compact
+
+
+def _compact_uncertainty_bins(bins: object) -> list[dict[str, Any]]:
+    if not isinstance(bins, list):
+        return []
+    keys = (
+        "bin",
+        "count",
+        "lower_quantile",
+        "upper_quantile",
+        "mean_uncertainty",
+        "mean_error",
+        "bad_fraction",
+    )
+    compact = []
+    for item in bins:
+        if isinstance(item, dict):
+            compact.append({key: item.get(key) for key in keys if key in item})
+    return compact
+
+
+def _resolve_output_path(path: str) -> Path:
+    candidate = Path(path)
+    if candidate.is_absolute():
+        return candidate
+    return OUTPUT_ROOT / candidate
 
 
 def _split_fields(value: str) -> list[str]:
@@ -747,6 +776,20 @@ def eval_latest_run(
 
 
 @app.function(image=image, volumes=volumes, timeout=300)
+def summarize_report(report_path: str) -> dict[str, Any]:
+    """Read a report JSON from the Modal output volume and compact key metrics."""
+
+    path = _resolve_output_path(report_path)
+    report = _read_json(path)
+    return {
+        "status": "ok",
+        "report_path": str(path),
+        "metadata": report.get("metadata"),
+        "signals": _compact_uncertainty_signals(report.get("signals")),
+    }
+
+
+@app.function(image=image, volumes=volumes, timeout=300)
 def collect_metric_rows() -> list[dict[str, Any]]:
     """Collect compact metric rows from Modal output volume."""
 
@@ -798,6 +841,7 @@ def main(
     render_map_signals: str = "transmittance",
     patch_size: int = 15,
     ensemble_scene_names: str = "",
+    report_path: str = "",
     render_outputs: bool = True,
 ) -> None:
     """Run Modal workflow stages from the local CLI."""
@@ -894,6 +938,10 @@ def main(
     elif action == "metrics":
         for row in collect_metric_rows.remote():
             print(json.dumps(row, indent=2))
+    elif action == "report-summary":
+        if not report_path:
+            raise ValueError("--report-path is required for report-summary.")
+        print(json.dumps(summarize_report.remote(report_path), indent=2))
     elif action == "smoke":
         print(env_check.remote())
         print(
@@ -920,5 +968,5 @@ def main(
             f"Unknown action {action!r}. "
             "Use env, prepare, score-candidates, frame-uncertainty, "
             "render-uncertainty-maps, ensemble-uncertainty-maps, "
-            "prepare-active, train, eval, metrics, or smoke."
+            "prepare-active, train, eval, metrics, report-summary, or smoke."
         )

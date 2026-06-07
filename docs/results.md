@@ -605,6 +605,14 @@ Setup:
 | `dozer_available_v3` | ensemble-rgb-variance | 275,000 | 0.110 | 0.555 | 0.705 | 0.371 | 0.029 |
 | mean | ensemble-rgb-variance | 275,000 | 0.105 | 0.583 | 0.724 | 0.399 | 0.025 |
 
+Reliability-bin check from regenerated reports:
+
+| Candidate Scene | Lowest-Uncertainty Decile Mean Error | Lowest-Decile Bad Fraction | Highest-Uncertainty Decile Mean Error | Highest-Decile Bad Fraction |
+|---|---:|---:|---:|---:|
+| `dozer_available_v1` | 0.012 | 0.009 | 0.179 | 0.492 |
+| `dozer_available_v2` | 0.011 | 0.007 | 0.183 | 0.494 |
+| `dozer_available_v3` | 0.016 | 0.015 | 0.183 | 0.444 |
+
 Report artifact paths in Modal:
 
 | Seed | Report path |
@@ -618,12 +626,21 @@ Modal run URLs:
 - v1: `ap-eHnUaQrGL5Ff4jttG1JWwD`.
 - v2: `ap-B6mpcaJmgX26dVXEOqiAsL`.
 - v3: `ap-41kQSMs3ksoDhOVxrDpaOv`.
+- Regenerated with uncertainty bins:
+  - v1: `ap-89fFvOKkwBWWDh9A43odR3`.
+  - v2: `ap-afsJRrDc85wKpkV4OuAeHX`.
+  - v3: `ap-6kuVi0MeVfpc1QOLn14QSE`.
+- Report-summary checks:
+  - v1: `ap-7CkCmLv6Nyy7ZhRNpzviwd`.
+  - v2: `ap-8NYo0tkZF65idbcEzdMWq6`.
+  - v3: `ap-EQkpfjPPK2LyOzul9YWTSS`.
 
 Interpretation:
 
 - This is the first uncertainty signal in the dozer sequence that clearly tracks pixel-level render failure across all three candidate pools.
 - Ensemble RGB variance substantially outperformed single-model renderer proxies: mean AUROC improved from roughly random (`0.475` best expanded single-model mean) to `0.724`.
 - Mean AUSE dropped to `0.025`, meaning sorting pixels by ensemble disagreement removes high-error pixels much closer to the oracle risk-coverage curve than the renderer-map baselines.
+- Equal-count uncertainty bins show a large reliability-style separation: the highest-uncertainty decile has roughly `0.44` to `0.49` bad-pixel fraction, while the lowest-uncertainty decile stays near `0.01`.
 - The result supports model disagreement as the next active-learning signal. The next project step should aggregate ensemble disagreement to candidate-frame scores, materialize a 50-frame ensemble-active split, train it, and compare it against random and pose-hybrid dozer baselines.
 
 ## Modal Dozer Ensemble-Active Selection Check
