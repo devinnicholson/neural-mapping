@@ -305,3 +305,53 @@ Interpretation:
 - The best SSIM and LPIPS row was `score_weight=0.35`, beating random 50 by +0.219 PSNR, +0.006 SSIM, and -0.008 LPIPS.
 - This is a modest but positive second-scene result for the hybrid selector; it does not prove robustness, but it reduces the chance that the poster result is purely scene-specific.
 - Dozer required `downscale_factor=4` and non-interactive COLMAP point conversion because the mirrored dataset was processed by an older Nerfstudio pipeline without `sparse_pc.ply`.
+
+## Modal Dozer Hybrid Seed Repeat
+
+Date: 2026-06-06 Pacific / 2026-06-07 UTC
+
+Dataset:
+
+- Source capture: Nerfstudio `dozer`.
+- Filtered seed scenes: `dozer_available_v1`, `dozer_available_v2`, `dozer_available_v3`.
+- Split seeds: `20260609`, `20260610`, `20260611`.
+- Each seed uses 100 filtered frames, 10 held-out test frames, and 10 validation frames.
+- Hybrid strategy: `score-pose-hybrid`.
+- Hybrid score weight: `0.35`; pose-novelty weight is `0.65`.
+- Candidate score: held-out seed-model LPIPS from each seed's budget-25 checkpoint.
+- Method: Nerfstudio `splatfacto`.
+- Training length: 10,000 iterations.
+- Downscale factor: 4.
+- GPU: Modal L4.
+
+| Seed | Selection | Scene | Budget | Iterations | PSNR | SSIM | LPIPS | FPS |
+|---|---|---|---:|---:|---:|---:|---:|---:|
+| v1 | Random dozer d4 | `dozer_modal_v1_d4_fixed_b25_10k` | 25 | 10,000 | 22.094 | 0.735 | 0.186 | 3.620 |
+| v1 | Random dozer d4 | `dozer_modal_v1_d4_fixed_b50_10k` | 50 | 10,000 | 23.625 | 0.780 | 0.158 | 4.595 |
+| v1 | Active score-pose hybrid, `score_weight=0.35` | `dozer_modal_active_hybrid_w035_v1_d4_b50_10k` | 50 | 10,000 | 23.844 | 0.785 | 0.150 | 4.624 |
+| v2 | Random dozer d4 | `dozer_modal_v2_d4_b25_10k` | 25 | 10,000 | 20.903 | 0.724 | 0.202 | 4.780 |
+| v2 | Random dozer d4 | `dozer_modal_v2_d4_b50_10k` | 50 | 10,000 | 22.367 | 0.773 | 0.169 | 4.699 |
+| v2 | Active score-pose hybrid, `score_weight=0.35` | `dozer_modal_active_hybrid_w035_v2_d4_b50_10k` | 50 | 10,000 | 23.311 | 0.789 | 0.153 | 4.848 |
+| v3 | Random dozer d4 | `dozer_modal_v3_d4_b25_10k` | 25 | 10,000 | 20.850 | 0.692 | 0.230 | 4.649 |
+| v3 | Random dozer d4 | `dozer_modal_v3_d4_b50_10k` | 50 | 10,000 | 23.036 | 0.750 | 0.192 | 4.444 |
+| v3 | Active score-pose hybrid, `score_weight=0.35` | `dozer_modal_active_hybrid_w035_v3_d4_b50_10k` | 50 | 10,000 | 24.714 | 0.796 | 0.152 | 4.589 |
+
+New metric artifact paths in Modal:
+
+| Scene | Metrics path | Checkpoint |
+|---|---|---|
+| `dozer_modal_v2_d4_b25_10k` | `/workspace/neural-mapping/outputs/runs/dozer_modal_v2_d4_b25_10k/splatfacto/budget_025/metrics/ns_eval.json` | `/workspace/neural-mapping/outputs/runs/dozer_modal_v2_d4_b25_10k/splatfacto/budget_025/train/unnamed/splatfacto/2026-06-07_053914/nerfstudio_models/step-000009999.ckpt` |
+| `dozer_modal_v2_d4_b50_10k` | `/workspace/neural-mapping/outputs/runs/dozer_modal_v2_d4_b50_10k/splatfacto/budget_050/metrics/ns_eval.json` | `/workspace/neural-mapping/outputs/runs/dozer_modal_v2_d4_b50_10k/splatfacto/budget_050/train/unnamed/splatfacto/2026-06-07_053916/nerfstudio_models/step-000009999.ckpt` |
+| `dozer_modal_active_hybrid_w035_v2_d4_b50_10k` | `/workspace/neural-mapping/outputs/runs/dozer_modal_active_hybrid_w035_v2_d4_b50_10k/splatfacto/budget_050/metrics/ns_eval.json` | `/workspace/neural-mapping/outputs/runs/dozer_modal_active_hybrid_w035_v2_d4_b50_10k/splatfacto/budget_050/train/unnamed/splatfacto/2026-06-07_054702/nerfstudio_models/step-000009999.ckpt` |
+| `dozer_modal_v3_d4_b25_10k` | `/workspace/neural-mapping/outputs/runs/dozer_modal_v3_d4_b25_10k/splatfacto/budget_025/metrics/ns_eval.json` | `/workspace/neural-mapping/outputs/runs/dozer_modal_v3_d4_b25_10k/splatfacto/budget_025/train/unnamed/splatfacto/2026-06-07_053915/nerfstudio_models/step-000009999.ckpt` |
+| `dozer_modal_v3_d4_b50_10k` | `/workspace/neural-mapping/outputs/runs/dozer_modal_v3_d4_b50_10k/splatfacto/budget_050/metrics/ns_eval.json` | `/workspace/neural-mapping/outputs/runs/dozer_modal_v3_d4_b50_10k/splatfacto/budget_050/train/unnamed/splatfacto/2026-06-07_053920/nerfstudio_models/step-000009999.ckpt` |
+| `dozer_modal_active_hybrid_w035_v3_d4_b50_10k` | `/workspace/neural-mapping/outputs/runs/dozer_modal_active_hybrid_w035_v3_d4_b50_10k/splatfacto/budget_050/metrics/ns_eval.json` | `/workspace/neural-mapping/outputs/runs/dozer_modal_active_hybrid_w035_v3_d4_b50_10k/splatfacto/budget_050/train/unnamed/splatfacto/2026-06-07_054720/nerfstudio_models/step-000009999.ckpt` |
+
+Interpretation:
+
+- The hybrid `score_weight=0.35` selector beat random 50 on PSNR, SSIM, and LPIPS in all three dozer seeds.
+- On v1 it beat random 50 by +0.219 PSNR, +0.006 SSIM, and -0.008 LPIPS.
+- On v2 it beat random 50 by +0.944 PSNR, +0.016 SSIM, and -0.016 LPIPS.
+- On v3 it beat random 50 by +1.678 PSNR, +0.046 SSIM, and -0.040 LPIPS.
+- Across dozer v1/v2/v3, hybrid `score_weight=0.35` versus random 50 averages +0.947 PSNR, +0.023 SSIM, and -0.021 LPIPS.
+- This is the strongest current evidence that hybrid error-plus-pose selection is not just a poster-scene artifact.
