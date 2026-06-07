@@ -630,6 +630,10 @@ Modal run URLs:
   - v1: `ap-89fFvOKkwBWWDh9A43odR3`.
   - v2: `ap-afsJRrDc85wKpkV4OuAeHX`.
   - v3: `ap-6kuVi0MeVfpc1QOLn14QSE`.
+- Regenerated with frame tail-risk score fields:
+  - v1: `ap-3hRJSuuqQCs8ipfKoQaKE6`.
+  - v2: `ap-kX7tpeQtZZcqTFeCbf9rDc`.
+  - v3: `ap-cflxHwCWjzrvRiHqEhUZGT`.
 - Report-summary checks:
   - v1: `ap-7CkCmLv6Nyy7ZhRNpzviwd`.
   - v2: `ap-8NYo0tkZF65idbcEzdMWq6`.
@@ -705,3 +709,65 @@ Interpretation:
 - Across v1/v2/v3, ensemble-score-pose hybrid versus random 50 averages about +0.955 PSNR, +0.024 SSIM, and -0.023 LPIPS.
 - Compared with the prior active score-pose hybrid w0.35 rows, the ensemble hybrid is essentially tied on PSNR, with a small average edge of about +0.008 PSNR, +0.001 SSIM, and -0.002 LPIPS.
 - The practical read is that ensemble disagreement is a useful failure signal, but it needs pose diversity in the acquisition rule. It does not clearly replace the existing score-pose hybrid yet; it gives a slightly better dozer mean at higher compute cost because it requires multiple seed models and ensemble renders.
+
+## Modal Dozer Ensemble Tail-Risk Active Selection
+
+Date: 2026-06-07
+
+Question:
+
+- Does a frame-level tail-risk aggregation of ensemble disagreement improve the
+  active selector compared with using mean frame disagreement?
+
+Setup:
+
+- Source scenes: `dozer_available_v1`, `dozer_available_v2`, and `dozer_available_v3`.
+- Base splits: corrected dozer budget-25 split for each seed.
+- Ensemble uncertainty reports: regenerated per-seed reports from `outputs/reports/ensemble_uncertainty_maps`.
+- Frame score: `top_decile_mean_uncertainty`, the average ensemble RGB variance in each candidate frame's highest-uncertainty pixel decile.
+- Hybrid strategy: `score-pose-hybrid`.
+- Score weight: `0.35`; pose-novelty weight is `0.65`.
+- Method: Nerfstudio `splatfacto`.
+- Training length: 10,000 iterations.
+- Downscale factor: 4.
+- GPU: Modal L4.
+
+| Seed | Selection | Scene | Budget | Iterations | PSNR | SSIM | LPIPS | FPS |
+|---|---|---|---:|---:|---:|---:|---:|---:|
+| v1 | Random dozer d4 | `dozer_modal_v1_d4_fixed_b50_10k` | 50 | 10,000 | 23.625 | 0.780 | 0.158 | 4.595 |
+| v1 | Active ensemble mean-score-pose hybrid, `score_weight=0.35` | `dozer_modal_ensemble_hybrid_w035_v1_d4_b50_10k` | 50 | 10,000 | 23.897 | 0.786 | 0.149 | 4.639 |
+| v1 | Active ensemble tail-score-pose hybrid, `score_weight=0.35` | `dozer_modal_ensemble_tail_w035_v1_d4_b50_10k` | 50 | 10,000 | 23.900 | 0.787 | 0.150 | 4.712 |
+| v2 | Random dozer d4 | `dozer_modal_v2_d4_b50_10k` | 50 | 10,000 | 22.367 | 0.773 | 0.169 | 4.699 |
+| v2 | Active ensemble mean-score-pose hybrid, `score_weight=0.35` | `dozer_modal_ensemble_hybrid_w035_v2_d4_b50_10k` | 50 | 10,000 | 23.298 | 0.793 | 0.150 | 4.706 |
+| v2 | Active ensemble tail-score-pose hybrid, `score_weight=0.35` | `dozer_modal_ensemble_tail_w035_v2_d4_b50_10k` | 50 | 10,000 | 23.455 | 0.795 | 0.151 | 4.778 |
+| v3 | Random dozer d4 | `dozer_modal_v3_d4_b50_10k` | 50 | 10,000 | 23.036 | 0.750 | 0.192 | 4.444 |
+| v3 | Active ensemble mean-score-pose hybrid, `score_weight=0.35` | `dozer_modal_ensemble_hybrid_w035_v3_d4_b50_10k` | 50 | 10,000 | 24.698 | 0.795 | 0.151 | 4.356 |
+| v3 | Active ensemble tail-score-pose hybrid, `score_weight=0.35` | `dozer_modal_ensemble_tail_w035_v3_d4_b50_10k` | 50 | 10,000 | 24.717 | 0.795 | 0.153 | 4.550 |
+
+Metric artifact paths in Modal:
+
+| Scene | Metrics path | Checkpoint |
+|---|---|---|
+| `dozer_modal_ensemble_tail_w035_v1_d4_b50_10k` | `/workspace/neural-mapping/outputs/runs/dozer_modal_ensemble_tail_w035_v1_d4_b50_10k/splatfacto/budget_050/metrics/ns_eval.json` | `/workspace/neural-mapping/outputs/runs/dozer_modal_ensemble_tail_w035_v1_d4_b50_10k/splatfacto/budget_050/train/unnamed/splatfacto/2026-06-07_205111/nerfstudio_models/step-000009999.ckpt` |
+| `dozer_modal_ensemble_tail_w035_v2_d4_b50_10k` | `/workspace/neural-mapping/outputs/runs/dozer_modal_ensemble_tail_w035_v2_d4_b50_10k/splatfacto/budget_050/metrics/ns_eval.json` | `/workspace/neural-mapping/outputs/runs/dozer_modal_ensemble_tail_w035_v2_d4_b50_10k/splatfacto/budget_050/train/unnamed/splatfacto/2026-06-07_205809/nerfstudio_models/step-000009999.ckpt` |
+| `dozer_modal_ensemble_tail_w035_v3_d4_b50_10k` | `/workspace/neural-mapping/outputs/runs/dozer_modal_ensemble_tail_w035_v3_d4_b50_10k/splatfacto/budget_050/metrics/ns_eval.json` | `/workspace/neural-mapping/outputs/runs/dozer_modal_ensemble_tail_w035_v3_d4_b50_10k/splatfacto/budget_050/train/unnamed/splatfacto/2026-06-07_210506/nerfstudio_models/step-000009999.ckpt` |
+
+Modal run URLs:
+
+- v1 tail-score-pose hybrid split prep: `ap-KKqNloDxPK3wQSIdZtesRh`.
+- v1 tail-score-pose hybrid training: `ap-F9XMJzaMSPs16BFD2svFBo`.
+- v1 tail-score-pose hybrid eval: `ap-tMbMpPMx3G4CHzh7AiCBs2`.
+- v2 tail-score-pose hybrid split prep: `ap-eI7kIRVHfoKy0LtLC9VujT`.
+- v2 tail-score-pose hybrid training: `ap-pqnxx9Hx8pdYwgSAEhALS8`.
+- v2 tail-score-pose hybrid eval: `ap-AHwCni2tTED9H1Uu5y08Lz`.
+- v3 tail-score-pose hybrid split prep: `ap-9TPLarifON5noFmJSfErJb`.
+- v3 tail-score-pose hybrid training: `ap-OTVYcHSAeG2aYEfaW46H0w`.
+- v3 tail-score-pose hybrid eval: `ap-gzpih3kKam9utz2orEvEE9`.
+
+Interpretation:
+
+- Tail-risk scoring beat random 50 on PSNR, SSIM, and LPIPS in all three dozer seeds.
+- Versus random 50, the tail-score-pose hybrid improved by +0.275 PSNR on v1, +1.088 PSNR on v2, and +1.681 PSNR on v3.
+- Across v1/v2/v3, tail-score-pose hybrid versus random 50 averages about +1.015 PSNR, +0.024 SSIM, and -0.022 LPIPS.
+- Compared with the ensemble mean-score-pose hybrid, the tail-score aggregation is a small PSNR improvement on all three seeds, with average gains around +0.060 PSNR and +0.001 SSIM, but LPIPS is slightly worse by about +0.001.
+- The practical read is that tail aggregation is a modest selector improvement for reconstruction fidelity, not a decisive replacement. It is the best current dozer PSNR variant, while mean ensemble disagreement remains slightly better on perceptual LPIPS.
