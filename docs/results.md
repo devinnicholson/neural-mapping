@@ -928,6 +928,13 @@ Modal run URLs:
 - v3 w0.45 split prep: `ap-s92JXZw57ZeWf1S6EdRsC0`.
 - v3 w0.45 training: `ap-12ALwaQUu8VldYGvMf7m9n`.
 - v3 w0.45 eval: `ap-V812R889PBL6uPXE6jlj42`.
+- w0.35/w0.45 split-summary check: `ap-Zlq1bpns7EqFErrjPNJL3S`.
+
+Split behavior:
+
+- v1 w0.45 changed two of the twenty-five added training frames versus w0.35: it selected `images/frame_00241.jpeg` and `images/frame_00298.jpeg` instead of `images/frame_00240.jpeg` and `images/frame_00299.jpeg`.
+- v2 w0.45 changed one added training frame versus w0.35: it selected `images/frame_00319.jpeg` instead of `images/frame_00358.jpeg`.
+- v3 w0.45 selected the same budget-50 training frame set as w0.35.
 
 Interpretation:
 
@@ -935,4 +942,5 @@ Interpretation:
 - w0.45 also improved LPIPS on all three seeds, with small absolute gains between about 0.0004 and 0.0018.
 - SSIM is effectively tied: v1 improved by +0.0013, while v2 and v3 moved down by less than 0.001.
 - Across v1/v2/v3, w0.45 versus w0.35 averages about +0.051 PSNR, +0.0001 SSIM, and -0.0009 LPIPS, with FPS about -0.070 lower.
-- The practical read is that w0.45 is now the best dozer tail-score setting we have tested, but the gain over w0.35 is small. Use w0.45 as the current PSNR/LPIPS default; keep w0.35 as a defensible safer default if split stability matters more than a small metric edge.
+- Because v3 used the identical training set and v1/v2 changed only one or two added frames, the measured metric edge is a marginal selector refinement rather than a new behavior. Treat w0.35 and w0.45 as effectively the same acquisition rule unless a larger scene or another seed shows a clearer separation.
+- The practical read is that w0.45 is the best measured dozer tail-score setting so far, but w0.35 remains the safer default to report because it is simpler to justify and already captured the main effect.
