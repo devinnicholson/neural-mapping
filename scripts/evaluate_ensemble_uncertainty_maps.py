@@ -133,9 +133,9 @@ def main() -> int:
                 {
                     "file_path": candidates[index],
                     "sampled_pixels": len(error_values),
-                    "mean_uncertainty": _mean(uncertainty_values),
                     "mean_error": _mean(error_values),
                     "bad_threshold": bad_threshold,
+                    **_uncertainty_summary_fields(uncertainty_values),
                     "signals": {"ensemble-rgb-variance": summary},
                 }
             )
@@ -262,6 +262,29 @@ def _quantile(values: Sequence[float], quantile: float) -> float:
     ordered = sorted(float(value) for value in values)
     index = min(len(ordered) - 1, max(0, math.ceil(quantile * len(ordered)) - 1))
     return ordered[index]
+
+
+def _uncertainty_summary_fields(values: Sequence[float]) -> dict[str, float]:
+    if not values:
+        return {
+            "mean_uncertainty": math.nan,
+            "uncertainty_std": math.nan,
+            "p90_uncertainty": math.nan,
+            "p95_uncertainty": math.nan,
+            "top_decile_mean_uncertainty": math.nan,
+        }
+
+    mean = _mean(values)
+    p90 = _quantile(values, 0.9)
+    top_decile = [float(value) for value in values if float(value) >= p90]
+    variance = _mean([(float(value) - mean) ** 2 for value in values])
+    return {
+        "mean_uncertainty": mean,
+        "uncertainty_std": math.sqrt(variance),
+        "p90_uncertainty": p90,
+        "p95_uncertainty": _quantile(values, 0.95),
+        "top_decile_mean_uncertainty": _mean(top_decile),
+    }
 
 
 def _mean(values: Sequence[float]) -> float:

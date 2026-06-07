@@ -314,6 +314,10 @@ modal run modal_app.py \
   --score-weight 0.35
 ```
 
+The ensemble report also includes frame-level tail-risk fields that can be used
+as `--score-key` values: `p90_uncertainty`, `p95_uncertainty`, and
+`top_decile_mean_uncertainty`.
+
 ## GPU Choice
 
 The default GPU is `L4`, matching the cluster smoke environment. Override it at image/function definition time by setting:
