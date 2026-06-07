@@ -211,4 +211,49 @@ Interpretation:
 - The first hybrid setting, `score_weight=0.65`, improved over pure active-error v4 by +1.437 PSNR, +0.013 SSIM, and -0.030 LPIPS, but still underperformed corrected random v4 50.
 - Reducing score weight improved v4 PSNR monotonically in this small sweep: `0.65` -> 28.051, `0.50` -> 28.186, `0.35` -> 28.645.
 - The best sweep row, `score_weight=0.35`, beat corrected random v4 50 by +0.184 PSNR, but still trailed by -0.001 SSIM and +0.006 LPIPS.
-- Mixing model error with stronger pose diversity reduced the v4 failure mode. The next useful experiment is to repeat `score_weight=0.35` on v2/v3 or test a nearby local sweep around `0.25` to `0.45`.
+- Mixing model error with stronger pose diversity reduced the v4 failure mode. The `score_weight=0.35` setting was repeated on v2/v3 below.
+
+## Corrected Modal Poster Hybrid Seed Repeat
+
+Date: 2026-06-06 Pacific / 2026-06-07 UTC
+
+Dataset:
+
+- Source scenes: `poster_available_v2`, `poster_available_v3`, and `poster_available_v4`.
+- Base split scenes: same as the source scene for each seed.
+- Hybrid strategy: `score-pose-hybrid`.
+- Score weight: `0.35`; pose-novelty weight is `0.65`.
+- Candidate score: held-out seed-model LPIPS from each seed's 25-frame random model.
+- Each active set kept the corrected 25-frame random seed set fixed and added 25 hybrid-selected candidate frames.
+- Method: Nerfstudio `splatfacto`.
+- Training length: 10,000 iterations.
+- GPU: Modal L4.
+
+| Seed | Selection | Scene | Budget | Iterations | PSNR | SSIM | LPIPS | FPS |
+|---|---|---|---:|---:|---:|---:|---:|---:|
+| v2 | Random | `poster_modal_v2_b50_10k` | 50 | 10,000 | 29.323 | 0.930 | 0.225 | 0.690 |
+| v2 | Active model error | `poster_modal_active_error_v2_b50_10k` | 50 | 10,000 | 30.390 | 0.945 | 0.199 | 0.806 |
+| v2 | Active score-pose hybrid, `score_weight=0.35` | `poster_modal_active_hybrid_w035_v2_b50_10k` | 50 | 10,000 | 30.667 | 0.948 | 0.196 | 0.877 |
+| v3 | Random | `poster_modal_v3_b50_10k` | 50 | 10,000 | 29.788 | 0.945 | 0.201 | 0.825 |
+| v3 | Active model error | `poster_modal_active_error_v3_b50_10k` | 50 | 10,000 | 30.061 | 0.951 | 0.187 | 0.912 |
+| v3 | Active score-pose hybrid, `score_weight=0.35` | `poster_modal_active_hybrid_w035_v3_b50_10k` | 50 | 10,000 | 31.668 | 0.957 | 0.171 | 0.668 |
+| v4 | Random | `poster_modal_v4_b50_10k` | 50 | 10,000 | 28.461 | 0.936 | 0.215 | 0.826 |
+| v4 | Active model error | `poster_modal_active_error_v4_b50_10k` | 50 | 10,000 | 26.615 | 0.919 | 0.253 | 0.889 |
+| v4 | Active score-pose hybrid, `score_weight=0.35` | `poster_modal_active_hybrid_w035_v4_b50_10k` | 50 | 10,000 | 28.645 | 0.935 | 0.221 | 0.753 |
+
+Metric artifact paths in Modal:
+
+| Scene | Metrics path | Checkpoint |
+|---|---|---|
+| `poster_modal_active_hybrid_w035_v2_b50_10k` | `/workspace/neural-mapping/outputs/runs/poster_modal_active_hybrid_w035_v2_b50_10k/splatfacto/budget_050/metrics/ns_eval.json` | `/workspace/neural-mapping/outputs/runs/poster_modal_active_hybrid_w035_v2_b50_10k/splatfacto/budget_050/train/unnamed/splatfacto/2026-06-07_043555/nerfstudio_models/step-000009999.ckpt` |
+| `poster_modal_active_hybrid_w035_v3_b50_10k` | `/workspace/neural-mapping/outputs/runs/poster_modal_active_hybrid_w035_v3_b50_10k/splatfacto/budget_050/metrics/ns_eval.json` | `/workspace/neural-mapping/outputs/runs/poster_modal_active_hybrid_w035_v3_b50_10k/splatfacto/budget_050/train/unnamed/splatfacto/2026-06-07_043554/nerfstudio_models/step-000009999.ckpt` |
+| `poster_modal_active_hybrid_w035_v4_b50_10k` | `/workspace/neural-mapping/outputs/runs/poster_modal_active_hybrid_w035_v4_b50_10k/splatfacto/budget_050/metrics/ns_eval.json` | `/workspace/neural-mapping/outputs/runs/poster_modal_active_hybrid_w035_v4_b50_10k/splatfacto/budget_050/train/unnamed/splatfacto/2026-06-07_041636/nerfstudio_models/step-000009999.ckpt` |
+
+Interpretation:
+
+- The `score_weight=0.35` hybrid beat random 50 on PSNR in all three corrected seeds.
+- On v2 it beat random 50 by +1.344 PSNR, +0.017 SSIM, and -0.028 LPIPS; it also edged active-error by +0.277 PSNR, +0.002 SSIM, and -0.003 LPIPS.
+- On v3 it beat random 50 by +1.880 PSNR, +0.011 SSIM, and -0.030 LPIPS; it also beat active-error by +1.607 PSNR, +0.006 SSIM, and -0.016 LPIPS.
+- On v4 it beat random 50 by +0.184 PSNR but trailed by -0.001 SSIM and +0.006 LPIPS; it still repaired the pure active-error failure by +2.031 PSNR, +0.016 SSIM, and -0.032 LPIPS.
+- Across v2/v3/v4, hybrid `score_weight=0.35` versus random 50 averages about +1.136 PSNR, +0.009 SSIM, and -0.017 LPIPS.
+- This is the strongest current selector for the corrected poster experiments. The next useful step is to validate it on a second scene, then try a small local sweep around `score_weight=0.25` to `0.45` if it still holds up.
