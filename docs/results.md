@@ -405,3 +405,66 @@ Interpretation:
 - The mean nearest-distance AUROC was below random because v2/v3 failed despite v1 looking strong.
 - This is an important negative baseline: simple camera distance is not a robust failure predictor on the dozer candidate pools, even though pose diversity helped active frame selection.
 - The next uncertainty signal should be render-derived rather than purely geometric, for example opacity/transmittance confidence, residual maps, or ensemble disagreement.
+
+## Modal Dozer Renderer Proxy Failure Prediction
+
+Date: 2026-06-07
+
+Question:
+
+- Do Splatfacto renderer-output summaries predict which candidate frames the
+  budget-25 seed model renders poorly?
+
+Setup:
+
+- Source scenes: `dozer_available_v1`, `dozer_available_v2`, `dozer_available_v3`.
+- Seed model for each scene: the corresponding random budget-25 Splatfacto run.
+- Candidate error target: candidate-frame LPIPS from the seed model.
+- Bad-frame threshold: seed-local 80th percentile of candidate LPIPS.
+- Candidate scorer additionally exported renderer-derived fields from
+  `outputs["accumulation"]` and `outputs["depth"]`.
+- Signals:
+  - `mean_transmittance`: `1 - mean(accumulation)`.
+  - `low_accumulation_fraction`: fraction of rendered pixels with accumulation below 0.5.
+  - `std_accumulation`: standard deviation of rendered accumulation.
+  - `std_depth`: standard deviation of rendered depth.
+
+| Seed | Signal | Spearman | AUROC | AUPRC | AUSE |
+|---|---|---:|---:|---:|---:|
+| v1 | mean_transmittance | -0.005 | 0.624 | 0.397 | 0.049 |
+| v1 | low_accumulation_fraction | -0.094 | 0.515 | 0.357 | 0.058 |
+| v1 | std_accumulation | 0.007 | 0.630 | 0.398 | 0.046 |
+| v1 | std_depth | -0.219 | 0.438 | 0.319 | 0.086 |
+| v2 | mean_transmittance | -0.482 | 0.134 | 0.146 | 0.113 |
+| v2 | low_accumulation_fraction | -0.028 | 0.395 | 0.204 | 0.102 |
+| v2 | std_accumulation | -0.225 | 0.271 | 0.167 | 0.095 |
+| v2 | std_depth | -0.169 | 0.205 | 0.159 | 0.085 |
+| v3 | mean_transmittance | 0.240 | 0.473 | 0.218 | 0.043 |
+| v3 | low_accumulation_fraction | 0.213 | 0.527 | 0.221 | 0.056 |
+| v3 | std_accumulation | 0.303 | 0.548 | 0.245 | 0.040 |
+| v3 | std_depth | 0.138 | 0.393 | 0.237 | 0.062 |
+| mean | mean_transmittance | -0.083 | 0.410 | 0.254 | 0.068 |
+| mean | low_accumulation_fraction | 0.030 | 0.479 | 0.260 | 0.072 |
+| mean | std_accumulation | 0.028 | 0.483 | 0.270 | 0.060 |
+| mean | std_depth | -0.083 | 0.346 | 0.238 | 0.078 |
+
+Report artifact paths in Modal:
+
+| Seed | Score path | Report path |
+|---|---|---|
+| v1 | `/workspace/neural-mapping/data/scores/dozer_available_render_proxy_v1.json` | `/workspace/neural-mapping/outputs/reports/frame_uncertainty/dozer_available_render_proxy_v1_budget_025_lpips.json` |
+| v2 | `/workspace/neural-mapping/data/scores/dozer_available_render_proxy_v2.json` | `/workspace/neural-mapping/outputs/reports/frame_uncertainty/dozer_available_render_proxy_v2_budget_025_lpips.json` |
+| v3 | `/workspace/neural-mapping/data/scores/dozer_available_render_proxy_v3.json` | `/workspace/neural-mapping/outputs/reports/frame_uncertainty/dozer_available_render_proxy_v3_budget_025_lpips.json` |
+
+Modal run URLs:
+
+- v1 scoring: `ap-NbkFTgddX79IimjpLw1IPs`; v1 evaluation: `ap-dyWwxPvLJzbUqvcTipSExc`.
+- v2 scoring: `ap-ey2uSHmGvbFTVG3GB860Cr`; v2 evaluation: `ap-BQcr1myjgncUmxWFl0TNUF`.
+- v3 scoring: `ap-DMiZQjx6yVDkYrYp2u62Jw`; v3 evaluation: `ap-gf1VyRK8hx1aQ85iyUPSXa`.
+
+Interpretation:
+
+- The renderer proxy fields were present and measurable, so the extraction path works.
+- These simple accumulation/depth summaries are not robust frame-level failure predictors on dozer.
+- `std_accumulation` was the best average proxy, but mean AUROC was only 0.483, essentially random and close to the geometric nearest-distance baseline.
+- The next signal should use richer render information than global frame summaries, for example patch-level accumulation/residual maps, per-pixel error alignment, or ensemble disagreement.
