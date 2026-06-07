@@ -3,6 +3,58 @@
 This page records lightweight experiment results that are small enough to track in Git.
 Checkpoints, renders, and full Modal output volumes are intentionally not tracked.
 
+## Current Evidence Snapshot
+
+Date: 2026-06-07
+
+Best-supported acquisition rule so far:
+
+1. Start from a locked random budget-25 seed split with fixed validation and
+   held-out test frames.
+2. Train independent budget-25 Splatfacto seed models.
+3. Render remaining candidate views from multiple seed models and compute
+   per-pixel ensemble RGB variance.
+4. Aggregate each candidate frame by `top_decile_mean_uncertainty`, the mean
+   ensemble disagreement inside that frame's highest-uncertainty pixel decile.
+5. Expand from 25 to 50 training frames with `score-pose-hybrid` and
+   `score_weight=0.35`, so uncertainty tail risk is mixed with camera-pose
+   diversity.
+
+The important negative result is that pure score selection and single-model
+renderer proxies are not enough. Single-model transmittance-style maps were
+near random or worse on dozer, and pure ensemble-score selection underperformed
+random on the first dozer seed. The useful behavior appears when disagreement
+is treated as a failure signal but pose diversity is kept in the acquisition
+rule.
+
+| Scene group | Seeds | Score signal | Active rule | Mean active-vs-random delta at budget 50 |
+|---|---:|---|---|---:|
+| Corrected poster v2-v4 | 3 | Seed-model LPIPS candidate error | `score-pose-hybrid`, `score_weight=0.35` | +1.136 PSNR, +0.009 SSIM, -0.017 LPIPS |
+| Dozer v1-v4 | 4 | Ensemble top-decile RGB disagreement | tail-score-pose hybrid, `score_weight=0.35` | +0.779 PSNR, +0.020 SSIM, -0.018 LPIPS |
+| Redwoods2 v1-v4 | 4 | Ensemble top-decile RGB disagreement | tail-score-pose hybrid, `score_weight=0.35` | +0.699 PSNR, +0.027 SSIM, -0.012 LPIPS |
+
+Across the eight dozer and redwoods2 ensemble-tail seeds, the active selector
+averages about +0.739 PSNR, +0.023 SSIM, and -0.015 LPIPS versus same-seed
+random budget-50 training. No dozer or redwoods2 seed regressed on PSNR, SSIM,
+or LPIPS; redwoods2 v3 is the weak case, where PSNR essentially tied while
+SSIM and LPIPS still improved.
+
+Current interpretation:
+
+- The main claim is now stronger than a single-scene smoke result: ensemble
+  disagreement predicts failure regions, and tail-risk-plus-pose active
+  selection improves budget-50 quality on two held-out Nerfstudio sample scenes
+  with repeated seeds.
+- Poster remains useful as the development scene, but its final corrected
+  result used a seed-model LPIPS score rather than ensemble disagreement. Treat
+  poster as evidence for the `score-pose-hybrid` acquisition shape, not as a
+  direct ensemble-tail replication.
+- The next research step is to leave toy Nerfstudio samples and run the same
+  protocol on a depth-bearing indoor dataset such as Replica or ScanNet-style
+  data. If that setup blocks progress, the fallback is one additional
+  Nerfstudio sample scene with the same budget-25 ensemble, budget-50 random,
+  and budget-50 active comparison.
+
 ## Modal Poster Baselines
 
 Date: 2026-06-05 Pacific / 2026-06-06 UTC
