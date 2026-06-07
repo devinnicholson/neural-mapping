@@ -1188,3 +1188,59 @@ Interpretation:
 - FPS moved down on v1, from 8.986 to 7.500, was effectively tied on v2 and v3, and moved down on v4 from 10.555 to 8.582.
 - The result is useful because the active split improved average quality metrics across four checked seeds; v3 shows the per-seed gain can collapse to a tie, but no redwoods2 seed has regressed on PSNR, SSIM, or LPIPS.
 - This is the first repeated positive transfer result beyond `poster` and `dozer`; it supports treating ensemble tail-risk plus pose diversity as a scene-agnostic acquisition heuristic rather than a dozer-only artifact.
+
+## Modal Library Baseline Start
+
+Date: 2026-06-07
+
+Question:
+
+- Can the workflow start transferring to another indoor Nerfstudio sample scene
+  after adding ZIP-mirror download support?
+
+Setup:
+
+- Source capture: `library`.
+- Download source: `nerfbaselines/nerfbaselines-data` Nerfstudio ZIP mirror,
+  used as a fallback because `nerfstudioteam/datasets` returned no files for
+  this capture layout.
+- Source scene: `library_available_v1`.
+- Split seed: `20260614`.
+- Filtered scene kept 398 of 398 frames.
+- Each budget uses 10 held-out test frames and 10 validation frames.
+- Method: Nerfstudio `splatfacto`.
+- Training length: 10,000 iterations.
+- Downscale factor: 4.
+- GPU: Modal L4.
+
+| Seed | Selection | Scene | Budget | Iterations | PSNR | SSIM | LPIPS | FPS |
+|---|---|---|---:|---:|---:|---:|---:|---:|
+| v1 | Random library d4 | `library_modal_v1_d4_b25_10k` | 25 | 10,000 | 26.923 | 0.884 | 0.082 | 10.273 |
+| v1 | Random library d4 | `library_modal_v1_d4_b50_10k` | 50 | 10,000 | 28.155 | 0.925 | 0.045 | 9.645 |
+
+Metric artifact paths in Modal:
+
+| Scene | Metrics path | Checkpoint |
+|---|---|---|
+| `library_modal_v1_d4_b25_10k` | `/workspace/neural-mapping/outputs/runs/library_modal_v1_d4_b25_10k/splatfacto/budget_025/metrics/ns_eval.json` | `/workspace/neural-mapping/outputs/runs/library_modal_v1_d4_b25_10k/splatfacto/budget_025/train/unnamed/splatfacto/2026-06-07_233947/nerfstudio_models/step-000009999.ckpt` |
+| `library_modal_v1_d4_b50_10k` | `/workspace/neural-mapping/outputs/runs/library_modal_v1_d4_b50_10k/splatfacto/budget_050/metrics/ns_eval.json` | `/workspace/neural-mapping/outputs/runs/library_modal_v1_d4_b50_10k/splatfacto/budget_050/train/unnamed/splatfacto/2026-06-07_234408/nerfstudio_models/step-000009999.ckpt` |
+
+Modal run URLs:
+
+- Initial primary-mirror prepare failure: `ap-Ka0tUpnEbwO9lqDzLE0UJN`.
+- ZIP-fallback prepare: `ap-szEK2Agn4lrM3MjzEpjCMb`.
+- v1 random b25 training: `ap-FWmThb4xYiroutqb0yo2Rj`.
+- v1 random b50 training: `ap-4SIzSLRlycO3JrdQIlMwG3`.
+- v1 random b25 eval: `ap-xFQbYhiFjmJxgvTehgyXpK`.
+- v1 random b50 eval: `ap-ShvMLKztaRiu92tIWDmdnw`.
+
+Interpretation:
+
+- The ZIP fallback unblocked `library`, and the scene trains/evaluates cleanly
+  with explicit Nerfstudio split fields.
+- Random budget 50 improved over random budget 25 by +1.232 PSNR, +0.041 SSIM,
+  and -0.037 LPIPS.
+- This is only a baseline start, not an active-selection result. The next
+  `library` step should prepare v2/v3 split seeds, train the budget-25 seed
+  ensemble, generate ensemble uncertainty maps for v1, then compare random
+  budget 50 against the tail-score-pose active budget-50 split.
