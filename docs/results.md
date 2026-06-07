@@ -171,7 +171,7 @@ Interpretation:
 - The active-error strategy is not consistently better across seeds on this scene. Across v2, v3, and v4, active-error 50 versus random 50 averages about -0.169 PSNR, +0.001 SSIM, and -0.001 LPIPS.
 - The current evidence says active-error selection can help, but it is high variance on this small poster sample. The next step should be either another scene or a less myopic selection rule that mixes high-error frames with pose/coverage diversity.
 
-## Corrected Modal Poster V4 Hybrid Selector
+## Corrected Modal Poster V4 Hybrid Selector Sweep
 
 Date: 2026-06-06 Pacific / 2026-06-07 UTC
 
@@ -180,11 +180,11 @@ Dataset:
 - Source scene: `poster_available_v4`, filtered from the Nerfstudio `poster` sample.
 - Split seed: `20260608`.
 - Base split scene: `poster_available_v4`.
-- Hybrid active scene: `poster_available_active_hybrid_v4`.
+- Hybrid active scenes: `poster_available_active_hybrid_v4`, `poster_available_active_hybrid_w050_v4`, `poster_available_active_hybrid_w035_v4`.
 - Hybrid strategy: `score-pose-hybrid`.
 - Score source: `/workspace/neural-mapping/data/scores/poster_available_active_error_v4.json`.
 - Score source model: `poster_modal_v4_b25_10k`.
-- Score weight: `0.65`; pose-novelty weight: `0.35`.
+- Score weights tested: `0.65`, `0.50`, `0.35`; pose-novelty weight is `1 - score_weight`.
 - Candidate score: held-out seed-model LPIPS.
 - Method: Nerfstudio `splatfacto`.
 - Training length: 10,000 iterations.
@@ -194,17 +194,21 @@ Dataset:
 |---|---|---:|---:|---:|---:|---:|---:|
 | Random v4 | `poster_modal_v4_b50_10k` | 50 | 10,000 | 28.461 | 0.936 | 0.215 | 0.826 |
 | Active model error v4 | `poster_modal_active_error_v4_b50_10k` | 50 | 10,000 | 26.615 | 0.919 | 0.253 | 0.889 |
-| Active score-pose hybrid v4 | `poster_modal_active_hybrid_v4_b50_10k` | 50 | 10,000 | 28.051 | 0.932 | 0.223 | 0.830 |
+| Active score-pose hybrid v4, `score_weight=0.65` | `poster_modal_active_hybrid_v4_b50_10k` | 50 | 10,000 | 28.051 | 0.932 | 0.223 | 0.830 |
+| Active score-pose hybrid v4, `score_weight=0.50` | `poster_modal_active_hybrid_w050_v4_b50_10k` | 50 | 10,000 | 28.186 | 0.933 | 0.221 | 0.651 |
+| Active score-pose hybrid v4, `score_weight=0.35` | `poster_modal_active_hybrid_w035_v4_b50_10k` | 50 | 10,000 | 28.645 | 0.935 | 0.221 | 0.753 |
 
 Metric artifact paths in Modal:
 
 | Scene | Metrics path | Checkpoint |
 |---|---|---|
 | `poster_modal_active_hybrid_v4_b50_10k` | `/workspace/neural-mapping/outputs/runs/poster_modal_active_hybrid_v4_b50_10k/splatfacto/budget_050/metrics/ns_eval.json` | `/workspace/neural-mapping/outputs/runs/poster_modal_active_hybrid_v4_b50_10k/splatfacto/budget_050/train/unnamed/splatfacto/2026-06-07_034145/nerfstudio_models/step-000009999.ckpt` |
+| `poster_modal_active_hybrid_w050_v4_b50_10k` | `/workspace/neural-mapping/outputs/runs/poster_modal_active_hybrid_w050_v4_b50_10k/splatfacto/budget_050/metrics/ns_eval.json` | `/workspace/neural-mapping/outputs/runs/poster_modal_active_hybrid_w050_v4_b50_10k/splatfacto/budget_050/train/unnamed/splatfacto/2026-06-07_041639/nerfstudio_models/step-000009999.ckpt` |
+| `poster_modal_active_hybrid_w035_v4_b50_10k` | `/workspace/neural-mapping/outputs/runs/poster_modal_active_hybrid_w035_v4_b50_10k/splatfacto/budget_050/metrics/ns_eval.json` | `/workspace/neural-mapping/outputs/runs/poster_modal_active_hybrid_w035_v4_b50_10k/splatfacto/budget_050/train/unnamed/splatfacto/2026-06-07_041636/nerfstudio_models/step-000009999.ckpt` |
 
 Interpretation:
 
-- The hybrid selector improved over pure active-error v4 by +1.437 PSNR, +0.013 SSIM, and -0.030 LPIPS.
-- The hybrid selector still underperformed corrected random v4 50 by -0.410 PSNR, -0.004 SSIM, and +0.008 LPIPS.
-- Mixing model error with pose diversity reduced the worst v4 failure mode, but it did not beat the random 50-frame baseline on this split.
-- The next useful experiment is a small sweep over `score_weight` values, or repeating this hybrid rule on the v2/v3 seeds where pure active-error was already competitive.
+- The first hybrid setting, `score_weight=0.65`, improved over pure active-error v4 by +1.437 PSNR, +0.013 SSIM, and -0.030 LPIPS, but still underperformed corrected random v4 50.
+- Reducing score weight improved v4 PSNR monotonically in this small sweep: `0.65` -> 28.051, `0.50` -> 28.186, `0.35` -> 28.645.
+- The best sweep row, `score_weight=0.35`, beat corrected random v4 50 by +0.184 PSNR, but still trailed by -0.001 SSIM and +0.006 LPIPS.
+- Mixing model error with stronger pose diversity reduced the v4 failure mode. The next useful experiment is to repeat `score_weight=0.35` on v2/v3 or test a nearby local sweep around `0.25` to `0.45`.
