@@ -1018,3 +1018,76 @@ Interpretation:
 - w0.45 edged w0.35 by +0.020 PSNR and essentially tied LPIPS, but SSIM was lower by about 0.0006 and FPS was lower by about 0.206.
 - Across v1/v2/v3/v4, w0.35 tail-score-pose hybrid versus random 50 averages about +0.779 PSNR. The v4 gain is smaller than the v1-v3 gains but still positive across PSNR, SSIM, and LPIPS.
 - The v4 result strengthens the main claim that ensemble tail risk plus pose diversity improves over random acquisition on dozer. It does not justify promoting w0.45 over w0.35; the two settings remain effectively tied and differ by only one selected frame on this seed.
+
+## Modal Redwoods2 Ensemble Tail v1 Check
+
+Date: 2026-06-07
+
+Question:
+
+- Does the ensemble tail-score-pose acquisition rule transfer from `dozer` to a
+  third Nerfstudio sample scene, `redwoods2`?
+
+Setup:
+
+- Source scene: `redwoods2_available_v1`, filtered from the Nerfstudio `redwoods2` sample.
+- Split seed: `20260610`.
+- The filtered scene kept 100 of 346 frames.
+- Base split: random redwoods2 v1 budget-25 split.
+- Each budget uses the same 10 held-out test frames and 10 validation frames.
+- Ensemble uncertainty report: `outputs/reports/ensemble_uncertainty_maps/redwoods2_available_ensemble_maps_v1_budget_025_rgb-l1.json`.
+- Ensemble members: `redwoods2_modal_v1_d4_b25_10k`, `redwoods2_modal_v2_d4_b25_10k`, and `redwoods2_modal_v3_d4_b25_10k`.
+- Frame score: `top_decile_mean_uncertainty`.
+- Hybrid strategy: `score-pose-hybrid`.
+- Score weight tested: `0.35`.
+- Method: Nerfstudio `splatfacto`.
+- Training length: 10,000 iterations.
+- Downscale factor: 4.
+- GPU: Modal L4.
+
+Uncertainty report summary:
+
+| Count | Spearman | AUROC | AUPRC | Mean error | Bad threshold | Bad fraction |
+|---:|---:|---:|---:|---:|---:|---:|
+| 550,000 | 0.249 | 0.572 | 0.254 | 0.1682 | 0.2744 | 0.200 |
+
+The uncertainty signal was weaker than on `dozer`, but still monotonic: the
+lowest uncertainty decile had a 0.150 bad-pixel fraction, while the highest
+uncertainty decile had a 0.303 bad-pixel fraction.
+
+| Seed | Selection | Scene | Budget | Iterations | PSNR | SSIM | LPIPS | FPS |
+|---|---|---|---:|---:|---:|---:|---:|---:|
+| v1 | Random redwoods2 d4 | `redwoods2_modal_v1_d4_b25_10k` | 25 | 10,000 | 22.086 | 0.725 | 0.162 | 10.107 |
+| v1 | Random redwoods2 d4 | `redwoods2_modal_v1_d4_b50_10k` | 50 | 10,000 | 25.227 | 0.860 | 0.095 | 8.986 |
+| v1 | Tail-score-pose hybrid, `score_weight=0.35` | `redwoods2_modal_ensemble_tail_w035_v1_d4_b50_10k` | 50 | 10,000 | 26.098 | 0.895 | 0.082 | 7.500 |
+
+Metric artifact paths in Modal:
+
+| Scene | Metrics path | Checkpoint |
+|---|---|---|
+| `redwoods2_modal_v1_d4_b25_10k` | `/workspace/neural-mapping/outputs/runs/redwoods2_modal_v1_d4_b25_10k/splatfacto/budget_025/metrics/ns_eval.json` | `/workspace/neural-mapping/outputs/runs/redwoods2_modal_v1_d4_b25_10k/splatfacto/budget_025/train/unnamed/splatfacto/2026-06-07_222944/nerfstudio_models/step-000009999.ckpt` |
+| `redwoods2_modal_v1_d4_b50_10k` | `/workspace/neural-mapping/outputs/runs/redwoods2_modal_v1_d4_b50_10k/splatfacto/budget_050/metrics/ns_eval.json` | `/workspace/neural-mapping/outputs/runs/redwoods2_modal_v1_d4_b50_10k/splatfacto/budget_050/train/unnamed/splatfacto/2026-06-07_222948/nerfstudio_models/step-000009999.ckpt` |
+| `redwoods2_modal_ensemble_tail_w035_v1_d4_b50_10k` | `/workspace/neural-mapping/outputs/runs/redwoods2_modal_ensemble_tail_w035_v1_d4_b50_10k/splatfacto/budget_050/metrics/ns_eval.json` | `/workspace/neural-mapping/outputs/runs/redwoods2_modal_ensemble_tail_w035_v1_d4_b50_10k/splatfacto/budget_050/train/unnamed/splatfacto/2026-06-07_224424/nerfstudio_models/step-000009999.ckpt` |
+
+Modal run URLs:
+
+- v1 random split prep: `ap-JfVxPi5FjpHmEroyZP9NTq`.
+- v2 random split prep: `ap-0KlkcsC20Gfp0OYx436NzJ`.
+- v3 random split prep: `ap-l9iZe9QK7K0CSD4LDA2bzq`.
+- v1 random b25 training: `ap-9tro8wP7eoGBCCWyemlxaf`.
+- v2 random b25 training: `ap-hBFyuIrvmA8kThn3lU5lcm`.
+- v3 random b25 training: `ap-aGLIfBzceeQgF9JrOTKMdr`.
+- v1 random b50 training: `ap-4bovOtSDatxN07v4I3NlJT`.
+- v1 random b25 eval: `ap-5Y26CulP4H85pLJ6V7lZIT`.
+- v1 random b50 eval: `ap-41mPh74jS2Bj4NwEmDg2mr`.
+- v1 ensemble uncertainty maps: `ap-vx4UHkg6PmabdMTm2sBSb7`.
+- v1 w0.35 active split prep: `ap-0NuIXSwXzH8QCv4WjiphZ7`.
+- v1 w0.35 active b50 training: `ap-zNSuINXymiz4hl5kqgTSW0`.
+- v1 w0.35 active b50 eval: `ap-qVTKHspXtv5H0zXlBexLgQ`.
+
+Interpretation:
+
+- On redwoods2 v1, the w0.35 tail-score-pose hybrid beat random b50 by +0.871 PSNR, +0.035 SSIM, and -0.013 LPIPS.
+- FPS moved from 8.986 to 7.500, so the quality improvement came with lower eval throughput.
+- The result is useful because the uncertainty predictor was only moderately informative, yet the active split still improved all quality metrics.
+- This is the first positive transfer result beyond `poster` and `dozer`; it supports treating ensemble tail-risk plus pose diversity as a scene-agnostic acquisition heuristic rather than a dozer-only artifact.
