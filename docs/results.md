@@ -576,7 +576,7 @@ Interpretation:
 - `accumulation-gradient` was the best average signal, but mean AUROC was only 0.475, still below random.
 - The next credible uncertainty baseline should be model-disagreement based, for example rendering the same candidate views from multiple independently trained seed models and scoring per-pixel RGB variance.
 
-## Modal Dozer Ensemble Pixel-Level Disagreement Smoke
+## Modal Dozer Ensemble Pixel-Level Disagreement
 
 Date: 2026-06-07
 
@@ -587,34 +587,41 @@ Question:
 
 Setup:
 
-- Candidate source scene: `dozer_available_v1`.
-- Candidate pool: 55 non-seed candidate frames from the budget-25 split.
+- Candidate source scenes: `dozer_available_v1`, `dozer_available_v2`, and `dozer_available_v3`.
+- Candidate pool: 55 non-seed candidate frames from each budget-25 split.
 - Ensemble seed models:
   - `dozer_modal_v1_d4_fixed_b25_10k`
   - `dozer_modal_v2_d4_b25_10k`
   - `dozer_modal_v3_d4_b25_10k`
 - Error target: per-pixel RGB L1 error between the ensemble mean render and target RGB, normalized to `0..1`.
 - Uncertainty signal: per-pixel mean RGB variance across the three rendered predictions.
-- Pixel sampling: deterministic sample of 5,000 valid pixels per frame, 275,000 total sampled pixels.
+- Pixel sampling: deterministic sample of 5,000 valid pixels per frame, 275,000 sampled pixels per seed.
 - Bad-pixel threshold: report-local 80th percentile RGB L1 error.
 
 | Candidate Scene | Signal | Count | Mean Error | Spearman | AUROC | AUPRC | AUSE |
 |---|---|---:|---:|---:|---:|---:|---:|
 | `dozer_available_v1` | ensemble-rgb-variance | 275,000 | 0.100 | 0.597 | 0.733 | 0.412 | 0.023 |
+| `dozer_available_v2` | ensemble-rgb-variance | 275,000 | 0.104 | 0.596 | 0.734 | 0.413 | 0.024 |
+| `dozer_available_v3` | ensemble-rgb-variance | 275,000 | 0.110 | 0.555 | 0.705 | 0.371 | 0.029 |
+| mean | ensemble-rgb-variance | 275,000 | 0.105 | 0.583 | 0.724 | 0.399 | 0.025 |
 
-Report artifact path in Modal:
+Report artifact paths in Modal:
 
-| Report path |
-|---|
-| `/workspace/neural-mapping/outputs/reports/ensemble_uncertainty_maps/dozer_available_ensemble_maps_v1_budget_025_rgb-l1.json` |
+| Seed | Report path |
+|---|---|
+| v1 | `/workspace/neural-mapping/outputs/reports/ensemble_uncertainty_maps/dozer_available_ensemble_maps_v1_budget_025_rgb-l1.json` |
+| v2 | `/workspace/neural-mapping/outputs/reports/ensemble_uncertainty_maps/dozer_available_ensemble_maps_v2_budget_025_rgb-l1.json` |
+| v3 | `/workspace/neural-mapping/outputs/reports/ensemble_uncertainty_maps/dozer_available_ensemble_maps_v3_budget_025_rgb-l1.json` |
 
-Modal run URL:
+Modal run URLs:
 
-- `ap-eHnUaQrGL5Ff4jttG1JWwD`
+- v1: `ap-eHnUaQrGL5Ff4jttG1JWwD`.
+- v2: `ap-B6mpcaJmgX26dVXEOqiAsL`.
+- v3: `ap-41kQSMs3ksoDhOVxrDpaOv`.
 
 Interpretation:
 
-- This is the first uncertainty signal in the dozer sequence that clearly tracks pixel-level render failure.
-- Ensemble RGB variance substantially outperformed single-model renderer proxies: AUROC improved from roughly random (`0.475` best expanded single-model mean) to `0.733`.
-- AUSE dropped to `0.023`, meaning sorting pixels by ensemble disagreement removes high-error pixels much closer to the oracle risk-coverage curve than the renderer-map baselines.
-- This is still one candidate pool and one three-model ensemble. The next check should repeat the same ensemble-disagreement evaluation on v2/v3 candidate pools or use it to drive active frame selection, then train/evaluate the selected 50-frame set.
+- This is the first uncertainty signal in the dozer sequence that clearly tracks pixel-level render failure across all three candidate pools.
+- Ensemble RGB variance substantially outperformed single-model renderer proxies: mean AUROC improved from roughly random (`0.475` best expanded single-model mean) to `0.724`.
+- Mean AUSE dropped to `0.025`, meaning sorting pixels by ensemble disagreement removes high-error pixels much closer to the oracle risk-coverage curve than the renderer-map baselines.
+- The result supports model disagreement as the next active-learning signal. The next project step should aggregate ensemble disagreement to candidate-frame scores, materialize a 50-frame ensemble-active split, train it, and compare it against random and pose-hybrid dozer baselines.
