@@ -472,6 +472,93 @@ def evaluate_frame_uncertainty_baseline(
     }
 
 
+@app.function(image=image, gpu=DEFAULT_GPU, volumes=volumes, timeout=EVAL_TIMEOUT_SECONDS)
+def evaluate_render_uncertainty_maps(
+    source_scene_name: str = "poster_available",
+    base_split_scene_name: str = "poster_available",
+    report_scene_name: str = "poster_available_render_maps",
+    seed_scene_name: str = "poster_modal_b25_10k",
+    base_budget: int = 25,
+    error_metric: str = "rgb-l1",
+    bad_error_quantile: float = 0.8,
+    max_pixels_per_frame: int = 50000,
+) -> dict[str, Any]:
+    """Evaluate per-pixel renderer confidence maps against RGB error maps."""
+
+    source_dir = DATA_ROOT / "nerfstudio" / source_scene_name
+    base_split_json = DATA_ROOT / "splits" / f"{base_split_scene_name}.json"
+    candidate_dir = DATA_ROOT / "candidate_eval" / report_scene_name
+    seed_run_root = OUTPUT_ROOT / "runs" / seed_scene_name / "splatfacto" / _budget_dir_name(base_budget)
+    output_path = (
+        OUTPUT_ROOT
+        / "reports"
+        / "render_uncertainty_maps"
+        / f"{report_scene_name}_budget_{base_budget:03d}_{error_metric}.json"
+    )
+
+    if not source_dir.exists():
+        raise FileNotFoundError(f"Missing source scene directory: {source_dir}")
+    if not base_split_json.exists():
+        raise FileNotFoundError(f"Missing base split JSON: {base_split_json}")
+    configs = sorted((seed_run_root / "train").glob("**/config.yml"))
+    if not configs:
+        raise FileNotFoundError(f"No seed config.yml found under {seed_run_root / 'train'}")
+    load_config = configs[-1]
+
+    _run(
+        [
+            "python",
+            "scripts/materialize_candidate_eval.py",
+            "--source-dir",
+            str(source_dir),
+            "--base-split",
+            str(base_split_json),
+            "--base-budget",
+            str(base_budget),
+            "--output-dir",
+            str(candidate_dir),
+        ]
+    )
+    _run(
+        [
+            "python",
+            "scripts/evaluate_render_uncertainty_maps.py",
+            "--load-config",
+            str(load_config),
+            "--candidate-data",
+            str(candidate_dir),
+            "--error-metric",
+            error_metric,
+            "--bad-error-quantile",
+            str(bad_error_quantile),
+            "--max-pixels-per-frame",
+            str(max_pixels_per_frame),
+            "--output",
+            str(output_path),
+        ],
+        env={"TORCH_FORCE_NO_WEIGHTS_ONLY_LOAD": "1"},
+        input_text="y\n",
+    )
+
+    data_volume.commit()
+    outputs_volume.commit()
+    report = _read_json(output_path)
+    return {
+        "status": "ok",
+        "source_scene_name": source_scene_name,
+        "base_split_scene_name": base_split_scene_name,
+        "report_scene_name": report_scene_name,
+        "seed_scene_name": seed_scene_name,
+        "base_budget": base_budget,
+        "error_metric": error_metric,
+        "bad_error_quantile": bad_error_quantile,
+        "max_pixels_per_frame": max_pixels_per_frame,
+        "candidate_dir": str(candidate_dir),
+        "report_path": str(output_path),
+        "signals": _compact_uncertainty_signals(report.get("signals")),
+    }
+
+
 @app.function(image=image, gpu=DEFAULT_GPU, volumes=volumes, timeout=TRAIN_TIMEOUT_SECONDS)
 def train_splatfacto(
     ns_data_dir: str,
@@ -603,6 +690,7 @@ def main(
     score_metric: str = "lpips",
     bad_quantile: float = 0.8,
     score_signal_fields: str = "",
+    max_pixels_per_frame: int = 50000,
     render_outputs: bool = True,
 ) -> None:
     """Run Modal workflow stages from the local CLI."""
@@ -654,6 +742,19 @@ def main(
                 score_signal_fields=_split_fields(score_signal_fields),
             )
         )
+    elif action == "render-uncertainty-maps":
+        print(
+            evaluate_render_uncertainty_maps.remote(
+                source_scene_name=source_data_scene_name,
+                base_split_scene_name=base_split_scene_name,
+                report_scene_name=data_scene_name,
+                seed_scene_name=scene_name,
+                base_budget=budget,
+                error_metric=score_metric,
+                bad_error_quantile=bad_quantile,
+                max_pixels_per_frame=max_pixels_per_frame,
+            )
+        )
     elif action == "train":
         ns_data_dir = str(DATA_ROOT / "nerfstudio_splits" / data_scene_name / _budget_dir_name(budget))
         print(
@@ -695,5 +796,5 @@ def main(
         raise ValueError(
             f"Unknown action {action!r}. "
             "Use env, prepare, score-candidates, frame-uncertainty, "
-            "prepare-active, train, eval, metrics, or smoke."
+            "render-uncertainty-maps, prepare-active, train, eval, metrics, or smoke."
         )

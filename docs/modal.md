@@ -246,6 +246,26 @@ The report is written under
 `/workspace/neural-mapping/outputs/reports/frame_uncertainty/` in the Modal
 output volume.
 
+For a direct pixel-level uncertainty/error test, render the candidate pool and
+compare per-pixel transmittance (`1 - accumulation`) against per-pixel RGB
+error:
+
+```bash
+modal run modal_app.py \
+  --action render-uncertainty-maps \
+  --source-data-scene-name dozer_available_v1 \
+  --base-split-scene-name dozer_available_v1 \
+  --data-scene-name dozer_available_render_maps_v1 \
+  --scene-name dozer_modal_v1_d4_fixed_b25_10k \
+  --budget 25 \
+  --score-metric rgb-l1 \
+  --bad-quantile 0.8 \
+  --max-pixels-per-frame 50000
+```
+
+The report is written under
+`/workspace/neural-mapping/outputs/reports/render_uncertainty_maps/`.
+
 ## GPU Choice
 
 The default GPU is `L4`, matching the cluster smoke environment. Override it at image/function definition time by setting:

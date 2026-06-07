@@ -128,6 +128,19 @@ python scripts/compute_uncertainty_metrics.py \
   --output outputs/reports/example_metrics.json
 ```
 
+On a Nerfstudio/Splatfacto runtime, evaluate per-pixel renderer confidence maps
+directly against RGB error maps:
+
+```bash
+python scripts/evaluate_render_uncertainty_maps.py \
+  --load-config outputs/runs/poster_modal_b25_10k/splatfacto/budget_025/train/unnamed/splatfacto/.../config.yml \
+  --candidate-data data/candidate_eval/poster_available_active_error \
+  --error-metric rgb-l1 \
+  --bad-error-quantile 0.8 \
+  --max-pixels-per-frame 50000 \
+  --output outputs/reports/poster_available_render_uncertainty_maps.json
+```
+
 Run both example commands:
 
 ```bash
