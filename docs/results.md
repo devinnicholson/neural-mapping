@@ -626,28 +626,35 @@ Interpretation:
 - Mean AUSE dropped to `0.025`, meaning sorting pixels by ensemble disagreement removes high-error pixels much closer to the oracle risk-coverage curve than the renderer-map baselines.
 - The result supports model disagreement as the next active-learning signal. The next project step should aggregate ensemble disagreement to candidate-frame scores, materialize a 50-frame ensemble-active split, train it, and compare it against random and pose-hybrid dozer baselines.
 
-## Modal Dozer Ensemble-Active V1 Selection Check
+## Modal Dozer Ensemble-Active Selection Check
 
 Date: 2026-06-07
 
 Dataset:
 
-- Source scene: `dozer_available_v1`.
-- Base split: corrected dozer v1 budget-25 split.
-- Ensemble uncertainty report:
-  `/workspace/neural-mapping/outputs/reports/ensemble_uncertainty_maps/dozer_available_ensemble_maps_v1_budget_025_rgb-l1.json`.
+- Source scenes: `dozer_available_v1`, `dozer_available_v2`, and `dozer_available_v3`.
+- Base splits: corrected dozer budget-25 split for each seed.
+- Ensemble uncertainty reports: per-seed reports from `outputs/reports/ensemble_uncertainty_maps`.
 - Frame score: `mean_uncertainty` from the ensemble disagreement report.
+- Hybrid strategy: `score-pose-hybrid`.
+- Score weight: `0.35`; pose-novelty weight is `0.65`.
 - Method: Nerfstudio `splatfacto`.
 - Training length: 10,000 iterations.
 - Downscale factor: 4.
 - GPU: Modal L4.
 
-| Selection | Scene | Budget | Iterations | PSNR | SSIM | LPIPS | FPS |
-|---|---|---:|---:|---:|---:|---:|---:|
-| Random dozer v1 d4 | `dozer_modal_v1_d4_fixed_b50_10k` | 50 | 10,000 | 23.625 | 0.780 | 0.158 | 4.595 |
-| Active score-pose hybrid dozer v1 d4, `score_weight=0.35` | `dozer_modal_active_hybrid_w035_v1_d4_b50_10k` | 50 | 10,000 | 23.844 | 0.785 | 0.150 | 4.624 |
-| Active ensemble-score dozer v1 d4 | `dozer_modal_ensemble_active_v1_d4_b50_10k` | 50 | 10,000 | 22.718 | 0.763 | 0.172 | 4.250 |
-| Active ensemble-score-pose hybrid dozer v1 d4, `score_weight=0.35` | `dozer_modal_ensemble_hybrid_w035_v1_d4_b50_10k` | 50 | 10,000 | 23.897 | 0.786 | 0.149 | 4.639 |
+| Seed | Selection | Scene | Budget | Iterations | PSNR | SSIM | LPIPS | FPS |
+|---|---|---|---:|---:|---:|---:|---:|---:|
+| v1 | Random dozer d4 | `dozer_modal_v1_d4_fixed_b50_10k` | 50 | 10,000 | 23.625 | 0.780 | 0.158 | 4.595 |
+| v1 | Active score-pose hybrid, `score_weight=0.35` | `dozer_modal_active_hybrid_w035_v1_d4_b50_10k` | 50 | 10,000 | 23.844 | 0.785 | 0.150 | 4.624 |
+| v1 | Active ensemble-score | `dozer_modal_ensemble_active_v1_d4_b50_10k` | 50 | 10,000 | 22.718 | 0.763 | 0.172 | 4.250 |
+| v1 | Active ensemble-score-pose hybrid, `score_weight=0.35` | `dozer_modal_ensemble_hybrid_w035_v1_d4_b50_10k` | 50 | 10,000 | 23.897 | 0.786 | 0.149 | 4.639 |
+| v2 | Random dozer d4 | `dozer_modal_v2_d4_b50_10k` | 50 | 10,000 | 22.367 | 0.773 | 0.169 | 4.699 |
+| v2 | Active score-pose hybrid, `score_weight=0.35` | `dozer_modal_active_hybrid_w035_v2_d4_b50_10k` | 50 | 10,000 | 23.311 | 0.789 | 0.153 | 4.848 |
+| v2 | Active ensemble-score-pose hybrid, `score_weight=0.35` | `dozer_modal_ensemble_hybrid_w035_v2_d4_b50_10k` | 50 | 10,000 | 23.298 | 0.793 | 0.150 | 4.706 |
+| v3 | Random dozer d4 | `dozer_modal_v3_d4_b50_10k` | 50 | 10,000 | 23.036 | 0.750 | 0.192 | 4.444 |
+| v3 | Active score-pose hybrid, `score_weight=0.35` | `dozer_modal_active_hybrid_w035_v3_d4_b50_10k` | 50 | 10,000 | 24.714 | 0.796 | 0.152 | 4.589 |
+| v3 | Active ensemble-score-pose hybrid, `score_weight=0.35` | `dozer_modal_ensemble_hybrid_w035_v3_d4_b50_10k` | 50 | 10,000 | 24.698 | 0.795 | 0.151 | 4.356 |
 
 Metric artifact paths in Modal:
 
@@ -655,20 +662,29 @@ Metric artifact paths in Modal:
 |---|---|---|
 | `dozer_modal_ensemble_active_v1_d4_b50_10k` | `/workspace/neural-mapping/outputs/runs/dozer_modal_ensemble_active_v1_d4_b50_10k/splatfacto/budget_050/metrics/ns_eval.json` | `/workspace/neural-mapping/outputs/runs/dozer_modal_ensemble_active_v1_d4_b50_10k/splatfacto/budget_050/train/unnamed/splatfacto/2026-06-07_195145/nerfstudio_models/step-000009999.ckpt` |
 | `dozer_modal_ensemble_hybrid_w035_v1_d4_b50_10k` | `/workspace/neural-mapping/outputs/runs/dozer_modal_ensemble_hybrid_w035_v1_d4_b50_10k/splatfacto/budget_050/metrics/ns_eval.json` | `/workspace/neural-mapping/outputs/runs/dozer_modal_ensemble_hybrid_w035_v1_d4_b50_10k/splatfacto/budget_050/train/unnamed/splatfacto/2026-06-07_200001/nerfstudio_models/step-000009999.ckpt` |
+| `dozer_modal_ensemble_hybrid_w035_v2_d4_b50_10k` | `/workspace/neural-mapping/outputs/runs/dozer_modal_ensemble_hybrid_w035_v2_d4_b50_10k/splatfacto/budget_050/metrics/ns_eval.json` | `/workspace/neural-mapping/outputs/runs/dozer_modal_ensemble_hybrid_w035_v2_d4_b50_10k/splatfacto/budget_050/train/unnamed/splatfacto/2026-06-07_200858/nerfstudio_models/step-000009999.ckpt` |
+| `dozer_modal_ensemble_hybrid_w035_v3_d4_b50_10k` | `/workspace/neural-mapping/outputs/runs/dozer_modal_ensemble_hybrid_w035_v3_d4_b50_10k/splatfacto/budget_050/metrics/ns_eval.json` | `/workspace/neural-mapping/outputs/runs/dozer_modal_ensemble_hybrid_w035_v3_d4_b50_10k/splatfacto/budget_050/train/unnamed/splatfacto/2026-06-07_201618/nerfstudio_models/step-000009999.ckpt` |
 
 Modal run URLs:
 
-- Ensemble-score split prep: `ap-oQSqriqOikiAjMEpV4K0wU`.
-- Ensemble-score training: `ap-6MX7k7hg5lEgBQUTJmDhnK`.
-- Ensemble-score eval: `ap-DFfUgpcuAyQItCCZ1ESn0t`.
-- Ensemble-score-pose hybrid split prep: `ap-QjoTd0mCSYdZE85xrXOFH2`.
-- Ensemble-score-pose hybrid training: `ap-FFg3arT2w3soShEWoWOtYg`.
-- Ensemble-score-pose hybrid eval: `ap-go2F04fUpzRyxjsIIz34Gf`.
+- v1 ensemble-score split prep: `ap-oQSqriqOikiAjMEpV4K0wU`.
+- v1 ensemble-score training: `ap-6MX7k7hg5lEgBQUTJmDhnK`.
+- v1 ensemble-score eval: `ap-DFfUgpcuAyQItCCZ1ESn0t`.
+- v1 ensemble-score-pose hybrid split prep: `ap-QjoTd0mCSYdZE85xrXOFH2`.
+- v1 ensemble-score-pose hybrid training: `ap-FFg3arT2w3soShEWoWOtYg`.
+- v1 ensemble-score-pose hybrid eval: `ap-go2F04fUpzRyxjsIIz34Gf`.
+- v2 ensemble-score-pose hybrid split prep: `ap-okT3lDCLF0Yc6AudF1Li1P`.
+- v2 ensemble-score-pose hybrid training: `ap-DnHMpWQzBDsMzuLQLbeikv`.
+- v2 ensemble-score-pose hybrid eval: `ap-QPsQFQPQYwMLzBOnMWhhqM`.
+- v3 ensemble-score-pose hybrid split prep: `ap-QpzfYHxoDmushevSyV20wV`.
+- v3 ensemble-score-pose hybrid training: `ap-au2kQtAcj5Vsv9ifpSPpLd`.
+- v3 ensemble-score-pose hybrid eval: `ap-EJ5ltp9ZnVR8IKoe3SOhuF`.
 
 Interpretation:
 
 - Pure ensemble-disagreement selection performed worse than random 50 and the previous pose-hybrid row, suggesting the highest-disagreement frames are not a good training set by themselves.
-- Mixing ensemble disagreement with pose diversity fixed that failure mode. The `score_weight=0.35` ensemble-score-pose hybrid is the best dozer v1 50-frame row so far by PSNR and LPIPS.
-- Compared with corrected random dozer v1 50, ensemble-score-pose hybrid improved by +0.272 PSNR, +0.006 SSIM, and -0.009 LPIPS.
-- Compared with the prior active score-pose hybrid w0.35 row, ensemble-score-pose hybrid improved by +0.053 PSNR, +0.001 SSIM, and -0.001 LPIPS.
-- The gain is small on v1. The next check should repeat the same ensemble-score-pose hybrid on v2 and v3 before treating it as robust.
+- Mixing ensemble disagreement with pose diversity fixed that failure mode. The ensemble-score-pose hybrid beat random 50 on PSNR, SSIM, and LPIPS in all three dozer seeds.
+- Versus random 50, the ensemble-score-pose hybrid improved by +0.272 PSNR on v1, +0.931 PSNR on v2, and +1.662 PSNR on v3.
+- Across v1/v2/v3, ensemble-score-pose hybrid versus random 50 averages about +0.955 PSNR, +0.024 SSIM, and -0.023 LPIPS.
+- Compared with the prior active score-pose hybrid w0.35 rows, the ensemble hybrid is essentially tied on PSNR, with a small average edge of about +0.008 PSNR, +0.001 SSIM, and -0.002 LPIPS.
+- The practical read is that ensemble disagreement is a useful failure signal, but it needs pose diversity in the acquisition rule. It does not clearly replace the existing score-pose hybrid yet; it gives a slightly better dozer mean at higher compute cost because it requires multiple seed models and ensemble renders.
