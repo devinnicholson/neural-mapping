@@ -625,3 +625,50 @@ Interpretation:
 - Ensemble RGB variance substantially outperformed single-model renderer proxies: mean AUROC improved from roughly random (`0.475` best expanded single-model mean) to `0.724`.
 - Mean AUSE dropped to `0.025`, meaning sorting pixels by ensemble disagreement removes high-error pixels much closer to the oracle risk-coverage curve than the renderer-map baselines.
 - The result supports model disagreement as the next active-learning signal. The next project step should aggregate ensemble disagreement to candidate-frame scores, materialize a 50-frame ensemble-active split, train it, and compare it against random and pose-hybrid dozer baselines.
+
+## Modal Dozer Ensemble-Active V1 Selection Check
+
+Date: 2026-06-07
+
+Dataset:
+
+- Source scene: `dozer_available_v1`.
+- Base split: corrected dozer v1 budget-25 split.
+- Ensemble uncertainty report:
+  `/workspace/neural-mapping/outputs/reports/ensemble_uncertainty_maps/dozer_available_ensemble_maps_v1_budget_025_rgb-l1.json`.
+- Frame score: `mean_uncertainty` from the ensemble disagreement report.
+- Method: Nerfstudio `splatfacto`.
+- Training length: 10,000 iterations.
+- Downscale factor: 4.
+- GPU: Modal L4.
+
+| Selection | Scene | Budget | Iterations | PSNR | SSIM | LPIPS | FPS |
+|---|---|---:|---:|---:|---:|---:|---:|
+| Random dozer v1 d4 | `dozer_modal_v1_d4_fixed_b50_10k` | 50 | 10,000 | 23.625 | 0.780 | 0.158 | 4.595 |
+| Active score-pose hybrid dozer v1 d4, `score_weight=0.35` | `dozer_modal_active_hybrid_w035_v1_d4_b50_10k` | 50 | 10,000 | 23.844 | 0.785 | 0.150 | 4.624 |
+| Active ensemble-score dozer v1 d4 | `dozer_modal_ensemble_active_v1_d4_b50_10k` | 50 | 10,000 | 22.718 | 0.763 | 0.172 | 4.250 |
+| Active ensemble-score-pose hybrid dozer v1 d4, `score_weight=0.35` | `dozer_modal_ensemble_hybrid_w035_v1_d4_b50_10k` | 50 | 10,000 | 23.897 | 0.786 | 0.149 | 4.639 |
+
+Metric artifact paths in Modal:
+
+| Scene | Metrics path | Checkpoint |
+|---|---|---|
+| `dozer_modal_ensemble_active_v1_d4_b50_10k` | `/workspace/neural-mapping/outputs/runs/dozer_modal_ensemble_active_v1_d4_b50_10k/splatfacto/budget_050/metrics/ns_eval.json` | `/workspace/neural-mapping/outputs/runs/dozer_modal_ensemble_active_v1_d4_b50_10k/splatfacto/budget_050/train/unnamed/splatfacto/2026-06-07_195145/nerfstudio_models/step-000009999.ckpt` |
+| `dozer_modal_ensemble_hybrid_w035_v1_d4_b50_10k` | `/workspace/neural-mapping/outputs/runs/dozer_modal_ensemble_hybrid_w035_v1_d4_b50_10k/splatfacto/budget_050/metrics/ns_eval.json` | `/workspace/neural-mapping/outputs/runs/dozer_modal_ensemble_hybrid_w035_v1_d4_b50_10k/splatfacto/budget_050/train/unnamed/splatfacto/2026-06-07_200001/nerfstudio_models/step-000009999.ckpt` |
+
+Modal run URLs:
+
+- Ensemble-score split prep: `ap-oQSqriqOikiAjMEpV4K0wU`.
+- Ensemble-score training: `ap-6MX7k7hg5lEgBQUTJmDhnK`.
+- Ensemble-score eval: `ap-DFfUgpcuAyQItCCZ1ESn0t`.
+- Ensemble-score-pose hybrid split prep: `ap-QjoTd0mCSYdZE85xrXOFH2`.
+- Ensemble-score-pose hybrid training: `ap-FFg3arT2w3soShEWoWOtYg`.
+- Ensemble-score-pose hybrid eval: `ap-go2F04fUpzRyxjsIIz34Gf`.
+
+Interpretation:
+
+- Pure ensemble-disagreement selection performed worse than random 50 and the previous pose-hybrid row, suggesting the highest-disagreement frames are not a good training set by themselves.
+- Mixing ensemble disagreement with pose diversity fixed that failure mode. The `score_weight=0.35` ensemble-score-pose hybrid is the best dozer v1 50-frame row so far by PSNR and LPIPS.
+- Compared with corrected random dozer v1 50, ensemble-score-pose hybrid improved by +0.272 PSNR, +0.006 SSIM, and -0.009 LPIPS.
+- Compared with the prior active score-pose hybrid w0.35 row, ensemble-score-pose hybrid improved by +0.053 PSNR, +0.001 SSIM, and -0.001 LPIPS.
+- The gain is small on v1. The next check should repeat the same ensemble-score-pose hybrid on v2 and v3 before treating it as robust.

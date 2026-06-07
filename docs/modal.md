@@ -288,6 +288,23 @@ modal run modal_app.py \
 The report is written under
 `/workspace/neural-mapping/outputs/reports/ensemble_uncertainty_maps/`.
 
+To use that report as an active-selection signal, pass it to `prepare-active`
+and select the frame-level `mean_uncertainty` field:
+
+```bash
+modal run modal_app.py \
+  --action prepare-active \
+  --source-data-scene-name dozer_available_v1 \
+  --base-split-scene-name dozer_available_v1 \
+  --data-scene-name dozer_available_ensemble_hybrid_w035_v1 \
+  --budget 25 \
+  --target-budget 50 \
+  --active-strategy score-pose-hybrid \
+  --score-path /workspace/neural-mapping/outputs/reports/ensemble_uncertainty_maps/dozer_available_ensemble_maps_v1_budget_025_rgb-l1.json \
+  --score-key mean_uncertainty \
+  --score-weight 0.35
+```
+
 ## GPU Choice
 
 The default GPU is `L4`, matching the cluster smoke environment. Override it at image/function definition time by setting:
