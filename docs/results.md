@@ -877,4 +877,62 @@ Interpretation:
 
 - The v2 sweep suggests the useful tail-score balance is narrow. w0.45 gave the best one-seed PSNR and LPIPS, but it is only a one-frame split change from w0.35.
 - w0.55 is too score-heavy: it loses pose coverage and falls below the random v2 baseline on PSNR and LPIPS.
-- The practical next comparison is to repeat w0.45 on v1 and v3 only if we want to test a small refinement of the current best tail selector. The safer default remains w0.35 because it already has all-three-seed evidence.
+- The w0.45 repeat below tests whether the small v2 improvement generalizes beyond a one-frame split change.
+
+## Modal Dozer Ensemble Tail w0.45 Seed Repeat
+
+Date: 2026-06-07
+
+Question:
+
+- Does increasing the tail-score-pose hybrid `score_weight` from `0.35` to
+  `0.45` improve the repeated dozer result across v1/v2/v3?
+
+Setup:
+
+- Source scenes: `dozer_available_v1`, `dozer_available_v2`, and `dozer_available_v3`.
+- Base split: each seed's corrected dozer budget-25 split.
+- Frame score: `top_decile_mean_uncertainty`.
+- Hybrid strategy: `score-pose-hybrid`.
+- Score weight: `0.45`; pose-novelty weight is `0.55`.
+- Method: Nerfstudio `splatfacto`.
+- Training length: 10,000 iterations.
+- Downscale factor: 4.
+- GPU: Modal L4.
+
+| Seed | Selection | Scene | Budget | Iterations | PSNR | SSIM | LPIPS | FPS |
+|---|---|---|---:|---:|---:|---:|---:|---:|
+| v1 | Tail-score-pose hybrid, `score_weight=0.35` | `dozer_modal_ensemble_tail_w035_v1_d4_b50_10k` | 50 | 10,000 | 23.900 | 0.787 | 0.150 | 4.712 |
+| v1 | Tail-score-pose hybrid, `score_weight=0.45` | `dozer_modal_ensemble_tail_w045_v1_d4_b50_10k` | 50 | 10,000 | 23.962 | 0.788 | 0.150 | 4.630 |
+| v2 | Tail-score-pose hybrid, `score_weight=0.35` | `dozer_modal_ensemble_tail_w035_v2_d4_b50_10k` | 50 | 10,000 | 23.455 | 0.795 | 0.151 | 4.778 |
+| v2 | Tail-score-pose hybrid, `score_weight=0.45` | `dozer_modal_ensemble_tail_w045_v2_d4_b50_10k` | 50 | 10,000 | 23.520 | 0.795 | 0.149 | 4.482 |
+| v3 | Tail-score-pose hybrid, `score_weight=0.35` | `dozer_modal_ensemble_tail_w035_v3_d4_b50_10k` | 50 | 10,000 | 24.717 | 0.795 | 0.153 | 4.550 |
+| v3 | Tail-score-pose hybrid, `score_weight=0.45` | `dozer_modal_ensemble_tail_w045_v3_d4_b50_10k` | 50 | 10,000 | 24.744 | 0.794 | 0.153 | 4.717 |
+
+Metric artifact paths in Modal:
+
+| Scene | Metrics path | Checkpoint |
+|---|---|---|
+| `dozer_modal_ensemble_tail_w045_v1_d4_b50_10k` | `/workspace/neural-mapping/outputs/runs/dozer_modal_ensemble_tail_w045_v1_d4_b50_10k/splatfacto/budget_050/metrics/ns_eval.json` | `/workspace/neural-mapping/outputs/runs/dozer_modal_ensemble_tail_w045_v1_d4_b50_10k/splatfacto/budget_050/train/unnamed/splatfacto/2026-06-07_215517/nerfstudio_models/step-000009999.ckpt` |
+| `dozer_modal_ensemble_tail_w045_v2_d4_b50_10k` | `/workspace/neural-mapping/outputs/runs/dozer_modal_ensemble_tail_w045_v2_d4_b50_10k/splatfacto/budget_050/metrics/ns_eval.json` | `/workspace/neural-mapping/outputs/runs/dozer_modal_ensemble_tail_w045_v2_d4_b50_10k/splatfacto/budget_050/train/unnamed/splatfacto/2026-06-07_213203/nerfstudio_models/step-000009999.ckpt` |
+| `dozer_modal_ensemble_tail_w045_v3_d4_b50_10k` | `/workspace/neural-mapping/outputs/runs/dozer_modal_ensemble_tail_w045_v3_d4_b50_10k/splatfacto/budget_050/metrics/ns_eval.json` | `/workspace/neural-mapping/outputs/runs/dozer_modal_ensemble_tail_w045_v3_d4_b50_10k/splatfacto/budget_050/train/unnamed/splatfacto/2026-06-07_220225/nerfstudio_models/step-000009999.ckpt` |
+
+Modal run URLs:
+
+- v1 w0.45 split prep: `ap-WF8Njcvou8VNBysyH9Jmxi`.
+- v1 w0.45 training: `ap-vupRUQmsPe0TjeA7LEkrSd`.
+- v1 w0.45 eval: `ap-ssdtseajbjkpnL8sCXqC0X`.
+- v2 w0.45 split prep: `ap-Wa6hNFvrF0XRfv5lJfbfth`.
+- v2 w0.45 training: `ap-cuUsYTiuBIMOoS3CHPWsSN`.
+- v2 w0.45 eval: `ap-ZNMPKUmhR8dpzCwxHcon4Y`.
+- v3 w0.45 split prep: `ap-s92JXZw57ZeWf1S6EdRsC0`.
+- v3 w0.45 training: `ap-12ALwaQUu8VldYGvMf7m9n`.
+- v3 w0.45 eval: `ap-V812R889PBL6uPXE6jlj42`.
+
+Interpretation:
+
+- w0.45 improved PSNR over w0.35 on all three seeds: +0.063 on v1, +0.065 on v2, and +0.026 on v3.
+- w0.45 also improved LPIPS on all three seeds, with small absolute gains between about 0.0004 and 0.0018.
+- SSIM is effectively tied: v1 improved by +0.0013, while v2 and v3 moved down by less than 0.001.
+- Across v1/v2/v3, w0.45 versus w0.35 averages about +0.051 PSNR, +0.0001 SSIM, and -0.0009 LPIPS, with FPS about -0.070 lower.
+- The practical read is that w0.45 is now the best dozer tail-score setting we have tested, but the gain over w0.35 is small. Use w0.45 as the current PSNR/LPIPS default; keep w0.35 as a defensible safer default if split stability matters more than a small metric edge.
