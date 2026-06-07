@@ -143,6 +143,20 @@ python scripts/evaluate_render_uncertainty_maps.py \
   --output outputs/reports/poster_available_render_uncertainty_maps.json
 ```
 
+Evaluate pixel-level ensemble RGB disagreement when multiple independently
+trained seed models are available:
+
+```bash
+python scripts/evaluate_ensemble_uncertainty_maps.py \
+  --load-config outputs/runs/seed_a/splatfacto/budget_025/train/unnamed/splatfacto/.../config.yml \
+                outputs/runs/seed_b/splatfacto/budget_025/train/unnamed/splatfacto/.../config.yml \
+  --candidate-data data/candidate_eval/poster_available_active_error \
+  --error-metric rgb-l1 \
+  --bad-error-quantile 0.8 \
+  --max-pixels-per-frame 50000 \
+  --output outputs/reports/poster_available_ensemble_uncertainty_maps.json
+```
+
 Run both example commands:
 
 ```bash

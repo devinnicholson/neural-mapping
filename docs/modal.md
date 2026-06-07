@@ -269,6 +269,25 @@ modal run modal_app.py \
 The report is written under
 `/workspace/neural-mapping/outputs/reports/render_uncertainty_maps/`.
 
+To test model-disagreement uncertainty, render the same candidate views from
+multiple independently trained seed models and score per-pixel RGB variance:
+
+```bash
+modal run modal_app.py \
+  --action ensemble-uncertainty-maps \
+  --source-data-scene-name dozer_available_v1 \
+  --base-split-scene-name dozer_available_v1 \
+  --data-scene-name dozer_available_ensemble_maps_v1 \
+  --budget 25 \
+  --score-metric rgb-l1 \
+  --bad-quantile 0.8 \
+  --max-pixels-per-frame 10000 \
+  --ensemble-scene-names dozer_modal_v1_d4_fixed_b25_10k,dozer_modal_v2_d4_b25_10k,dozer_modal_v3_d4_b25_10k
+```
+
+The report is written under
+`/workspace/neural-mapping/outputs/reports/ensemble_uncertainty_maps/`.
+
 ## GPU Choice
 
 The default GPU is `L4`, matching the cluster smoke environment. Override it at image/function definition time by setting:
