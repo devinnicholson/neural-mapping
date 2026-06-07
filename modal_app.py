@@ -16,7 +16,9 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
 import subprocess
+import zipfile
 from pathlib import Path
 from typing import Any
 
@@ -160,6 +162,92 @@ def _split_fields(value: str) -> list[str]:
     return [field for field in value.replace(",", " ").split() if field]
 
 
+def _capture_zip_candidates(capture_name: str) -> list[str]:
+    aliases = {
+        "campanile": "campanelle",
+        "floating_tree": "floating-tree",
+        "floating-tree": "floating-tree",
+        "giannini_hall": "giannini-hall",
+        "giannini-hall": "giannini-hall",
+    }
+    raw_candidates = [
+        aliases.get(capture_name.lower(), ""),
+        capture_name,
+        capture_name.lower(),
+        capture_name.replace("_", "-"),
+        capture_name.lower().replace("_", "-"),
+        capture_name.replace("-", "_"),
+        capture_name.lower().replace("-", "_"),
+    ]
+    candidates: list[str] = []
+    seen: set[str] = set()
+    for candidate in raw_candidates:
+        if not candidate or candidate in seen:
+            continue
+        seen.add(candidate)
+        candidates.append(f"nerfstudio/{candidate}.zip")
+    return candidates
+
+
+def _copy_extracted_capture(extract_root: Path, source_dir: Path) -> Path:
+    transform_paths = sorted(extract_root.glob("**/transforms.json"))
+    if not transform_paths:
+        raise FileNotFoundError(f"No transforms.json found in extracted archive: {extract_root}")
+
+    extracted_scene_dir = transform_paths[0].parent
+    if source_dir.exists():
+        shutil.rmtree(source_dir)
+    source_dir.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copytree(extracted_scene_dir, source_dir)
+    return extracted_scene_dir
+
+
+def _download_nerfstudio_capture(capture_name: str) -> Path:
+    """Download a Nerfstudio sample capture into DATA_ROOT / "nerfstudio"."""
+
+    from huggingface_hub import snapshot_download
+
+    source_dir = DATA_ROOT / "nerfstudio" / capture_name
+
+    print("Downloading Hugging Face Nerfstudio sample mirror", flush=True)
+    snapshot_download(
+        repo_id="nerfstudioteam/datasets",
+        repo_type="dataset",
+        local_dir=str(DATA_ROOT / "nerfstudio"),
+        allow_patterns=[f"{capture_name}/**"],
+    )
+    if (source_dir / "transforms.json").exists():
+        return source_dir
+
+    print("Falling back to NerfBaselines Nerfstudio ZIP mirror", flush=True)
+    mirror_dir = DATA_ROOT / "nerfbaselines-data"
+    extract_root = DATA_ROOT / "nerfstudio_mirror_extract" / capture_name
+    for zip_pattern in _capture_zip_candidates(capture_name):
+        snapshot_download(
+            repo_id="nerfbaselines/nerfbaselines-data",
+            repo_type="dataset",
+            local_dir=str(mirror_dir),
+            allow_patterns=[zip_pattern],
+        )
+        zip_path = mirror_dir / zip_pattern
+        if not zip_path.exists():
+            print(f"ZIP candidate not found in mirror: {zip_pattern}", flush=True)
+            continue
+        if extract_root.exists():
+            shutil.rmtree(extract_root)
+        extract_root.mkdir(parents=True, exist_ok=True)
+        with zipfile.ZipFile(zip_path) as archive:
+            archive.extractall(extract_root)
+        extracted_scene_dir = _copy_extracted_capture(extract_root, source_dir)
+        print(f"Extracted {zip_path} from {extracted_scene_dir} to {source_dir}", flush=True)
+        return source_dir
+
+    raise FileNotFoundError(
+        f"Could not find Nerfstudio capture {capture_name!r} in nerfstudioteam/datasets "
+        "or nerfbaselines/nerfbaselines-data."
+    )
+
+
 @app.function(image=image, gpu=DEFAULT_GPU, volumes=volumes, timeout=900)
 def env_check() -> dict[str, Any]:
     """Verify the Modal GPU image can import torch, Nerfstudio, and gsplat."""
@@ -209,17 +297,7 @@ def prepare_poster_sample(
     (DATA_ROOT / "splits").mkdir(parents=True, exist_ok=True)
     (DATA_ROOT / "nerfstudio_splits").mkdir(parents=True, exist_ok=True)
 
-    print("Downloading Hugging Face Nerfstudio sample mirror", flush=True)
-    from huggingface_hub import snapshot_download
-
-    snapshot_download(
-        repo_id="nerfstudioteam/datasets",
-        repo_type="dataset",
-        local_dir=str(DATA_ROOT / "nerfstudio"),
-        allow_patterns=[f"{capture_name}/**"],
-    )
-
-    source_dir = DATA_ROOT / "nerfstudio" / capture_name
+    source_dir = _download_nerfstudio_capture(capture_name)
     filtered_dir = DATA_ROOT / "nerfstudio" / scene_name
     split_json = DATA_ROOT / "splits" / f"{scene_name}.json"
     materialized_root = DATA_ROOT / "nerfstudio_splits" / scene_name
