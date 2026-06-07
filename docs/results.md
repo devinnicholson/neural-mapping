@@ -771,3 +771,110 @@ Interpretation:
 - Across v1/v2/v3, tail-score-pose hybrid versus random 50 averages about +1.015 PSNR, +0.024 SSIM, and -0.022 LPIPS.
 - Compared with the ensemble mean-score-pose hybrid, the tail-score aggregation is a small PSNR improvement on all three seeds, with average gains around +0.060 PSNR and +0.001 SSIM, but LPIPS is slightly worse by about +0.001.
 - The practical read is that tail aggregation is a modest selector improvement for reconstruction fidelity, not a decisive replacement. It is the best current dozer PSNR variant, while mean ensemble disagreement remains slightly better on perceptual LPIPS.
+
+## Modal Dozer Ensemble p95 One-Seed Check
+
+Date: 2026-06-07
+
+Question:
+
+- Does using the 95th percentile of per-frame ensemble disagreement beat the
+  top-decile mean tail-risk score on the v2 dozer split?
+
+Setup:
+
+- Source scene: `dozer_available_v2`.
+- Base split: corrected dozer v2 budget-25 split.
+- Ensemble uncertainty report: `outputs/reports/ensemble_uncertainty_maps/dozer_available_ensemble_maps_v2_budget_025_rgb-l1.json`.
+- Frame score: `p95_uncertainty`.
+- Hybrid strategy: `score-pose-hybrid`.
+- Score weight: `0.35`; pose-novelty weight is `0.65`.
+- Method: Nerfstudio `splatfacto`.
+- Training length: 10,000 iterations.
+- Downscale factor: 4.
+- GPU: Modal L4.
+
+| Seed | Selection | Scene | Budget | Iterations | PSNR | SSIM | LPIPS | FPS |
+|---|---|---|---:|---:|---:|---:|---:|---:|
+| v2 | Active ensemble mean-score-pose hybrid, `score_weight=0.35` | `dozer_modal_ensemble_hybrid_w035_v2_d4_b50_10k` | 50 | 10,000 | 23.298 | 0.793 | 0.150 | 4.706 |
+| v2 | Active ensemble tail-score-pose hybrid, `score_weight=0.35` | `dozer_modal_ensemble_tail_w035_v2_d4_b50_10k` | 50 | 10,000 | 23.455 | 0.795 | 0.151 | 4.778 |
+| v2 | Active ensemble p95-score-pose hybrid, `score_weight=0.35` | `dozer_modal_ensemble_p95_w035_v2_d4_b50_10k` | 50 | 10,000 | 23.434 | 0.795 | 0.148 | 4.688 |
+
+Metric artifact path in Modal:
+
+| Scene | Metrics path | Checkpoint |
+|---|---|---|
+| `dozer_modal_ensemble_p95_w035_v2_d4_b50_10k` | `/workspace/neural-mapping/outputs/runs/dozer_modal_ensemble_p95_w035_v2_d4_b50_10k/splatfacto/budget_050/metrics/ns_eval.json` | `/workspace/neural-mapping/outputs/runs/dozer_modal_ensemble_p95_w035_v2_d4_b50_10k/splatfacto/budget_050/train/unnamed/splatfacto/2026-06-07_211718/nerfstudio_models/step-000009999.ckpt` |
+
+Modal run URLs:
+
+- v2 p95-score-pose hybrid split prep: `ap-WPsPejIYXF67wnem7FK6wY`.
+- v2 p95-score-pose hybrid training: `ap-sOEhyenKEyv4meZmslzSIi`.
+- v2 p95-score-pose hybrid eval: `ap-qWl4ybPGO9gc8kitt7ifjo`.
+
+Interpretation:
+
+- The p95 selector beat the ensemble mean-score hybrid on all three quality metrics for this seed.
+- Compared with the top-decile mean tail selector, p95 was essentially tied: PSNR was lower by `0.021`, SSIM was higher by `0.0004`, and LPIPS was better by `0.002`.
+- The practical read is that a sharper percentile statistic is viable, but this one-seed result does not justify replacing the top-decile mean score for the main repeated comparison. It is more useful as a follow-up for perceptual quality than as the next PSNR-focused selector.
+
+## Modal Dozer Ensemble Tail Weight Sweep
+
+Date: 2026-06-07
+
+Question:
+
+- On the v2 dozer split, is the tail-score-pose hybrid sensitive to the
+  `score_weight` used to balance ensemble tail-risk against pose novelty?
+
+Setup:
+
+- Source scene: `dozer_available_v2`.
+- Base split: corrected dozer v2 budget-25 split.
+- Ensemble uncertainty report: `outputs/reports/ensemble_uncertainty_maps/dozer_available_ensemble_maps_v2_budget_025_rgb-l1.json`.
+- Frame score: `top_decile_mean_uncertainty`.
+- Hybrid strategy: `score-pose-hybrid`.
+- Method: Nerfstudio `splatfacto`.
+- Training length: 10,000 iterations.
+- Downscale factor: 4.
+- GPU: Modal L4.
+
+| Seed | Selection | Scene | Budget | Iterations | PSNR | SSIM | LPIPS | FPS |
+|---|---|---|---:|---:|---:|---:|---:|---:|
+| v2 | Tail-score-pose hybrid, `score_weight=0.25` | `dozer_modal_ensemble_tail_w025_v2_d4_b50_10k` | 50 | 10,000 | 23.397 | 0.795 | 0.149 | 4.761 |
+| v2 | Tail-score-pose hybrid, `score_weight=0.35` | `dozer_modal_ensemble_tail_w035_v2_d4_b50_10k` | 50 | 10,000 | 23.455 | 0.795 | 0.151 | 4.778 |
+| v2 | Tail-score-pose hybrid, `score_weight=0.45` | `dozer_modal_ensemble_tail_w045_v2_d4_b50_10k` | 50 | 10,000 | 23.520 | 0.795 | 0.149 | 4.482 |
+| v2 | Tail-score-pose hybrid, `score_weight=0.55` | `dozer_modal_ensemble_tail_w055_v2_d4_b50_10k` | 50 | 10,000 | 22.328 | 0.769 | 0.171 | 3.603 |
+
+Metric artifact paths in Modal:
+
+| Scene | Metrics path | Checkpoint |
+|---|---|---|
+| `dozer_modal_ensemble_tail_w025_v2_d4_b50_10k` | `/workspace/neural-mapping/outputs/runs/dozer_modal_ensemble_tail_w025_v2_d4_b50_10k/splatfacto/budget_050/metrics/ns_eval.json` | `/workspace/neural-mapping/outputs/runs/dozer_modal_ensemble_tail_w025_v2_d4_b50_10k/splatfacto/budget_050/train/unnamed/splatfacto/2026-06-07_212505/nerfstudio_models/step-000009999.ckpt` |
+| `dozer_modal_ensemble_tail_w045_v2_d4_b50_10k` | `/workspace/neural-mapping/outputs/runs/dozer_modal_ensemble_tail_w045_v2_d4_b50_10k/splatfacto/budget_050/metrics/ns_eval.json` | `/workspace/neural-mapping/outputs/runs/dozer_modal_ensemble_tail_w045_v2_d4_b50_10k/splatfacto/budget_050/train/unnamed/splatfacto/2026-06-07_213203/nerfstudio_models/step-000009999.ckpt` |
+| `dozer_modal_ensemble_tail_w055_v2_d4_b50_10k` | `/workspace/neural-mapping/outputs/runs/dozer_modal_ensemble_tail_w055_v2_d4_b50_10k/splatfacto/budget_050/metrics/ns_eval.json` | `/workspace/neural-mapping/outputs/runs/dozer_modal_ensemble_tail_w055_v2_d4_b50_10k/splatfacto/budget_050/train/unnamed/splatfacto/2026-06-07_214024/nerfstudio_models/step-000009999.ckpt` |
+
+Modal run URLs:
+
+- w0.25 split prep: `ap-luRYDwE3jcqhARQcjTond7`.
+- w0.25 training: `ap-psoSxhKDSiyN1w8yIAK5X6`.
+- w0.25 eval: `ap-xV4QVPZFRHGprlRM9F8dDb`.
+- w0.45 split prep: `ap-Wa6hNFvrF0XRfv5lJfbfth`.
+- w0.45 training: `ap-cuUsYTiuBIMOoS3CHPWsSN`.
+- w0.45 eval: `ap-ZNMPKUmhR8dpzCwxHcon4Y`.
+- w0.55 split prep: `ap-SSPmy8nrAURfCLWZl1DWoE`.
+- w0.55 training: `ap-uwcrT4bXBfonn2Y6FgJPtg`.
+- w0.55 eval: `ap-pfJ6dLVH83yU13xuUsj5Rw`.
+- split-summary checks: `ap-2nPnSZLEUOdAscYEYbYIF1`, `ap-RrY67NRJmswK8dmvhUmeRN`.
+
+Split behavior:
+
+- w0.25 and w0.35 selected the same budget-50 training frame set.
+- w0.45 changed one added training frame versus w0.35: it selected `images/frame_00319.jpeg` instead of `images/frame_00358.jpeg`.
+- w0.55 changed nine of the twenty-five added training frames versus w0.35, which coincided with the sharp quality drop.
+
+Interpretation:
+
+- The v2 sweep suggests the useful tail-score balance is narrow. w0.45 gave the best one-seed PSNR and LPIPS, but it is only a one-frame split change from w0.35.
+- w0.55 is too score-heavy: it loses pose coverage and falls below the random v2 baseline on PSNR and LPIPS.
+- The practical next comparison is to repeat w0.45 on v1 and v3 only if we want to test a small refinement of the current best tail selector. The safer default remains w0.35 because it already has all-three-seed evidence.

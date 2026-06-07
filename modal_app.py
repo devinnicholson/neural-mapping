@@ -815,6 +815,53 @@ def collect_metric_rows() -> list[dict[str, Any]]:
     return rows
 
 
+@app.function(image=image, volumes=volumes, timeout=300)
+def summarize_splits(split_scene_names: list[str], budget: int = 50, base_budget: int = 25) -> list[dict[str, Any]]:
+    """Collect compact train/val/test summaries from Modal split JSON files."""
+
+    rows = []
+    for scene_name in split_scene_names:
+        path = DATA_ROOT / "splits" / f"{scene_name}.json"
+        payload = _read_json(path)
+        splits = payload.get("splits")
+        if not isinstance(splits, dict):
+            raise ValueError(f"Split JSON is missing object-valued 'splits': {path}")
+        entry = splits.get(str(budget))
+        if not isinstance(entry, dict):
+            raise ValueError(f"Split JSON {path} is missing budget {budget}.")
+        base_entry = splits.get(str(base_budget))
+        train = _json_list(entry, "train")
+        val = _json_list(entry, "val")
+        test = _json_list(entry, "test")
+        base_train = _json_list(base_entry, "train") if isinstance(base_entry, dict) else []
+        base_train_set = set(base_train)
+        added_train = [frame for frame in train if frame not in base_train_set]
+        rows.append(
+            {
+                "scene": scene_name,
+                "path": str(path),
+                "budget": budget,
+                "base_budget": base_budget,
+                "train_count": len(train),
+                "val_count": len(val),
+                "test_count": len(test),
+                "added_train_count": len(added_train),
+                "train": train,
+                "added_train": added_train,
+                "val": val,
+                "test": test,
+            }
+        )
+    return rows
+
+
+def _json_list(payload: dict[str, Any], key: str) -> list[str]:
+    values = payload.get(key)
+    if not isinstance(values, list):
+        raise ValueError(f"Expected list-valued {key!r}.")
+    return [str(value) for value in values]
+
+
 @app.local_entrypoint()
 def main(
     action: str = "smoke",
@@ -938,6 +985,12 @@ def main(
     elif action == "metrics":
         for row in collect_metric_rows.remote():
             print(json.dumps(row, indent=2))
+    elif action == "split-summary":
+        split_scene_names = _split_fields(data_scene_name)
+        if not split_scene_names:
+            raise ValueError("--data-scene-name must contain at least one split scene name.")
+        for row in summarize_splits.remote(split_scene_names, budget=budget, base_budget=base_budget):
+            print(json.dumps(row, indent=2))
     elif action == "report-summary":
         if not report_path:
             raise ValueError("--report-path is required for report-summary.")
@@ -968,5 +1021,5 @@ def main(
             f"Unknown action {action!r}. "
             "Use env, prepare, score-candidates, frame-uncertainty, "
             "render-uncertainty-maps, ensemble-uncertainty-maps, "
-            "prepare-active, train, eval, metrics, report-summary, or smoke."
+            "prepare-active, train, eval, metrics, split-summary, report-summary, or smoke."
         )
