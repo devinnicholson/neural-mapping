@@ -272,7 +272,7 @@ Dataset:
 - Hybrid strategy: `score-pose-hybrid`.
 - Score source: `/workspace/neural-mapping/data/scores/dozer_available_active_error_v1.json`.
 - Score source model: `dozer_modal_v1_d4_fixed_b25_10k`.
-- Score weight: `0.35`; pose-novelty weight is `0.65`.
+- Score weights tested: `0.25`, `0.35`, `0.45`; pose-novelty weight is `1 - score_weight`.
 - Candidate score: held-out seed-model LPIPS.
 - Method: Nerfstudio `splatfacto`.
 - Training length: 10,000 iterations.
@@ -283,7 +283,9 @@ Dataset:
 |---|---|---:|---:|---:|---:|---:|---:|
 | Random dozer v1 d4 | `dozer_modal_v1_d4_fixed_b25_10k` | 25 | 10,000 | 22.094 | 0.735 | 0.186 | 3.620 |
 | Random dozer v1 d4 | `dozer_modal_v1_d4_fixed_b50_10k` | 50 | 10,000 | 23.625 | 0.780 | 0.158 | 4.595 |
+| Active score-pose hybrid dozer v1 d4, `score_weight=0.25` | `dozer_modal_active_hybrid_w025_v1_d4_b50_10k` | 50 | 10,000 | 23.834 | 0.785 | 0.151 | 4.630 |
 | Active score-pose hybrid dozer v1 d4, `score_weight=0.35` | `dozer_modal_active_hybrid_w035_v1_d4_b50_10k` | 50 | 10,000 | 23.844 | 0.785 | 0.150 | 4.624 |
+| Active score-pose hybrid dozer v1 d4, `score_weight=0.45` | `dozer_modal_active_hybrid_w045_v1_d4_b50_10k` | 50 | 10,000 | 23.879 | 0.784 | 0.152 | 4.310 |
 
 Metric artifact paths in Modal:
 
@@ -291,11 +293,15 @@ Metric artifact paths in Modal:
 |---|---|---|
 | `dozer_modal_v1_d4_fixed_b25_10k` | `/workspace/neural-mapping/outputs/runs/dozer_modal_v1_d4_fixed_b25_10k/splatfacto/budget_025/metrics/ns_eval.json` | `/workspace/neural-mapping/outputs/runs/dozer_modal_v1_d4_fixed_b25_10k/splatfacto/budget_025/train/unnamed/splatfacto/2026-06-07_050422/nerfstudio_models/step-000009999.ckpt` |
 | `dozer_modal_v1_d4_fixed_b50_10k` | `/workspace/neural-mapping/outputs/runs/dozer_modal_v1_d4_fixed_b50_10k/splatfacto/budget_050/metrics/ns_eval.json` | `/workspace/neural-mapping/outputs/runs/dozer_modal_v1_d4_fixed_b50_10k/splatfacto/budget_050/train/unnamed/splatfacto/2026-06-07_050421/nerfstudio_models/step-000009999.ckpt` |
+| `dozer_modal_active_hybrid_w025_v1_d4_b50_10k` | `/workspace/neural-mapping/outputs/runs/dozer_modal_active_hybrid_w025_v1_d4_b50_10k/splatfacto/budget_050/metrics/ns_eval.json` | `/workspace/neural-mapping/outputs/runs/dozer_modal_active_hybrid_w025_v1_d4_b50_10k/splatfacto/budget_050/train/unnamed/splatfacto/2026-06-07_052604/nerfstudio_models/step-000009999.ckpt` |
 | `dozer_modal_active_hybrid_w035_v1_d4_b50_10k` | `/workspace/neural-mapping/outputs/runs/dozer_modal_active_hybrid_w035_v1_d4_b50_10k/splatfacto/budget_050/metrics/ns_eval.json` | `/workspace/neural-mapping/outputs/runs/dozer_modal_active_hybrid_w035_v1_d4_b50_10k/splatfacto/budget_050/train/unnamed/splatfacto/2026-06-07_051337/nerfstudio_models/step-000009999.ckpt` |
+| `dozer_modal_active_hybrid_w045_v1_d4_b50_10k` | `/workspace/neural-mapping/outputs/runs/dozer_modal_active_hybrid_w045_v1_d4_b50_10k/splatfacto/budget_050/metrics/ns_eval.json` | `/workspace/neural-mapping/outputs/runs/dozer_modal_active_hybrid_w045_v1_d4_b50_10k/splatfacto/budget_050/train/unnamed/splatfacto/2026-06-07_052607/nerfstudio_models/step-000009999.ckpt` |
 
 Interpretation:
 
 - Random 50 improved over random 25 by +1.531 PSNR, +0.045 SSIM, and -0.028 LPIPS.
-- The dozer hybrid run beat dozer random 50 by +0.219 PSNR, +0.006 SSIM, and -0.008 LPIPS.
-- This is a modest but positive second-scene result for `score_weight=0.35`; it does not prove robustness, but it reduces the chance that the poster result is purely scene-specific.
+- All three dozer hybrid weights beat dozer random 50 on PSNR, SSIM, and LPIPS.
+- The best PSNR row was `score_weight=0.45`, beating random 50 by +0.254 PSNR, +0.004 SSIM, and -0.006 LPIPS.
+- The best SSIM and LPIPS row was `score_weight=0.35`, beating random 50 by +0.219 PSNR, +0.006 SSIM, and -0.008 LPIPS.
+- This is a modest but positive second-scene result for the hybrid selector; it does not prove robustness, but it reduces the chance that the poster result is purely scene-specific.
 - Dozer required `downscale_factor=4` and non-interactive COLMAP point conversion because the mirrored dataset was processed by an older Nerfstudio pipeline without `sparse_pc.ply`.
