@@ -30,6 +30,12 @@ def parse_args() -> argparse.Namespace:
         default=None,
         help="Error threshold for AUROC/AUPRC bad-sample detection.",
     )
+    parser.add_argument(
+        "--reliability-bins",
+        type=int,
+        default=10,
+        help="Equal-count uncertainty/error bins to include in the summary.",
+    )
     return parser.parse_args()
 
 
@@ -46,6 +52,7 @@ def main() -> int:
         payload["error"],
         bad_threshold=args.bad_threshold,
         mask=payload.get("mask"),
+        num_reliability_bins=args.reliability_bins,
     )
 
     output = json.dumps(summary, indent=2, sort_keys=True)

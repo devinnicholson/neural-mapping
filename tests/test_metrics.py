@@ -21,6 +21,7 @@ from uncertainty_3dgs.metrics import (
     roc_auc_score,
     sparsification_summary,
     spearman_correlation,
+    uncertainty_error_bins,
 )
 
 
@@ -44,6 +45,21 @@ class MetricTests(unittest.TestCase):
         self.assertAlmostEqual(result["ece"], 0.15)
         self.assertEqual(result["bins"][0]["count"], 2)
         self.assertEqual(result["bins"][1]["count"], 2)
+
+    def test_uncertainty_error_bins_track_observed_error(self) -> None:
+        bins = uncertainty_error_bins(
+            uncertainty=[0.1, 0.2, 0.8, 0.9],
+            error=[0.0, 0.2, 1.0, 2.0],
+            bad_threshold=0.5,
+            num_bins=2,
+        )
+
+        self.assertEqual(len(bins), 2)
+        self.assertEqual(bins[0]["count"], 2)
+        self.assertAlmostEqual(bins[0]["mean_error"], 0.1)
+        self.assertAlmostEqual(bins[0]["bad_fraction"], 0.0)
+        self.assertAlmostEqual(bins[1]["mean_error"], 1.5)
+        self.assertAlmostEqual(bins[1]["bad_fraction"], 1.0)
 
     def test_sparsification_is_zero_gap_when_uncertainty_matches_error_order(self) -> None:
         result = sparsification_summary(
@@ -71,6 +87,43 @@ class MetricTests(unittest.TestCase):
         self.assertAlmostEqual(summary["auroc"], 1.0)
         self.assertAlmostEqual(summary["auprc"], 1.0)
         self.assertIn("sparsification", summary)
+        self.assertIn("uncertainty_bins", summary)
+
+    def test_compute_uncertainty_metrics_cli_accepts_reliability_bins(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            metric_input = root / "metric_input.json"
+            output = root / "summary.json"
+            metric_input.write_text(
+                json.dumps(
+                    {
+                        "uncertainty": [0.1, 0.2, 0.8, 0.9],
+                        "error": [0.0, 0.2, 1.0, 2.0],
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            subprocess.run(
+                [
+                    sys.executable,
+                    str(ROOT / "scripts" / "compute_uncertainty_metrics.py"),
+                    "--input",
+                    str(metric_input),
+                    "--bad-threshold",
+                    "0.5",
+                    "--reliability-bins",
+                    "2",
+                    "--output",
+                    str(output),
+                ],
+                check=True,
+            )
+
+            summary = json.loads(output.read_text(encoding="utf-8"))
+            self.assertEqual(len(summary["uncertainty_bins"]), 2)
+            self.assertAlmostEqual(summary["uncertainty_bins"][1]["mean_error"], 1.5)
+            self.assertAlmostEqual(summary["uncertainty_bins"][1]["bad_fraction"], 1.0)
 
     def test_non_finite_values_are_filtered_without_shifting_pairs(self) -> None:
         self.assertAlmostEqual(

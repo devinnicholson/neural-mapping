@@ -9,6 +9,7 @@ from .metrics import (
     roc_auc_score,
     sparsification_summary,
     spearman_correlation,
+    uncertainty_error_bins,
 )
 from .splits import (
     SplitPlan,
@@ -33,5 +34,6 @@ __all__ = [
     "roc_auc_score",
     "sparsification_summary",
     "spearman_correlation",
+    "uncertainty_error_bins",
     "write_split_plan",
 ]

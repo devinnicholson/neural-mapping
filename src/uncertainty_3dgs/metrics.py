@@ -21,6 +21,7 @@ def evaluate_uncertainty(
     bad_threshold: float | None = None,
     mask: object | None = None,
     sparsification_fractions: Sequence[float] | None = None,
+    num_reliability_bins: int = 10,
 ) -> dict[str, object]:
     """Return a compact metric summary for uncertainty-error alignment.
 
@@ -44,6 +45,12 @@ def evaluate_uncertainty(
             uncertainties,
             fractions=sparsification_fractions,
         ),
+        "uncertainty_bins": uncertainty_error_bins(
+            uncertainties,
+            errors,
+            bad_threshold=bad_threshold,
+            num_bins=num_reliability_bins,
+        ),
     }
 
     if bad_threshold is not None:
@@ -58,6 +65,56 @@ def evaluate_uncertainty(
         )
 
     return summary
+
+
+def uncertainty_error_bins(
+    uncertainty: object,
+    error: object,
+    *,
+    bad_threshold: float | None = None,
+    num_bins: int = 10,
+    mask: object | None = None,
+) -> list[dict[str, float | int]]:
+    """Equal-count bins for reliability-style uncertainty/error plots.
+
+    The input uncertainty does not need to be a calibrated probability. Bins are
+    sorted by increasing uncertainty and report the observed mean error in each
+    bin. When ``bad_threshold`` is provided, each bin also reports the empirical
+    bad-sample fraction.
+    """
+
+    if num_bins <= 0:
+        raise ValueError("num_bins must be positive.")
+
+    pairs = sorted(_finite_pairs(uncertainty, error, mask=mask), key=lambda pair: pair[0])
+    if not pairs:
+        return []
+
+    total = len(pairs)
+    bins: list[dict[str, float | int]] = []
+    for bin_index in range(num_bins):
+        start = math.floor(bin_index * total / num_bins)
+        end = math.floor((bin_index + 1) * total / num_bins)
+        if start == end:
+            continue
+
+        values = pairs[start:end]
+        uncertainties = [value[0] for value in values]
+        errors = [value[1] for value in values]
+        row: dict[str, float | int] = {
+            "bin": bin_index,
+            "count": len(values),
+            "lower_quantile": start / total,
+            "upper_quantile": end / total,
+            "min_uncertainty": min(uncertainties),
+            "max_uncertainty": max(uncertainties),
+            "mean_uncertainty": _mean(uncertainties),
+            "mean_error": _mean(errors),
+        }
+        if bad_threshold is not None:
+            row["bad_fraction"] = _mean(1.0 if err >= bad_threshold else 0.0 for err in errors)
+        bins.append(row)
+    return bins
 
 
 def spearman_correlation(

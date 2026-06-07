@@ -125,8 +125,13 @@ Compute uncertainty/error alignment metrics:
 python scripts/compute_uncertainty_metrics.py \
   --input examples/metric_input.json \
   --bad-threshold 0.5 \
+  --reliability-bins 10 \
   --output outputs/reports/example_metrics.json
 ```
+
+The summary includes equal-count `uncertainty_bins` for reliability-style plots:
+each bin is sorted by increasing uncertainty and reports observed mean error,
+plus bad-sample fraction when `--bad-threshold` is set.
 
 On a Nerfstudio/Splatfacto runtime, evaluate per-pixel renderer confidence maps
 directly against RGB error maps:
