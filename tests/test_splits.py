@@ -14,6 +14,7 @@ if str(SRC) not in sys.path:
 
 from uncertainty_3dgs.splits import (
     active_pose_novelty_order,
+    active_score_pose_hybrid_order,
     generate_split_plan,
     load_frame_ids,
     load_frame_positions,
@@ -161,6 +162,33 @@ class SplitGenerationTests(unittest.TestCase):
         )
 
         self.assertEqual(order[:2], ["frame_005.png", "frame_003.png"])
+
+    def test_active_score_pose_hybrid_balances_score_and_pose(self) -> None:
+        frames = [f"frame_{index:03d}.png" for index in range(5)]
+        original_order = {frame: index for index, frame in enumerate(frames)}
+        positions = {
+            "frame_000.png": (0.0, 0.0, 0.0),
+            "frame_001.png": (1.0, 0.0, 0.0),
+            "frame_002.png": (1.1, 0.0, 0.0),
+            "frame_003.png": (8.0, 0.0, 0.0),
+            "frame_004.png": (10.0, 0.0, 0.0),
+        }
+        scores = {
+            "frame_002.png": 1.0,
+            "frame_003.png": 0.7,
+            "frame_004.png": 0.1,
+        }
+
+        order = active_score_pose_hybrid_order(
+            ["frame_002.png", "frame_003.png", "frame_004.png"],
+            ["frame_000.png", "frame_001.png"],
+            positions,
+            scores,
+            original_order,
+            score_weight=0.5,
+        )
+
+        self.assertEqual(order[0], "frame_003.png")
 
     def test_duplicate_frame_ids_are_rejected(self) -> None:
         with self.assertRaisesRegex(ValueError, "unique"):
@@ -377,6 +405,86 @@ class SplitGenerationTests(unittest.TestCase):
             payload = json.loads(output.read_text(encoding="utf-8"))
             self.assertIn("frame_005.png", payload["splits"]["3"]["train"])
             self.assertNotIn("frame_004.png", payload["splits"]["3"]["train"])
+
+    def test_generate_active_split_cli_accepts_score_pose_hybrid(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            transforms = root / "transforms.json"
+            transforms.write_text(
+                json.dumps(
+                    {
+                        "frames": [
+                            {
+                                "file_path": f"frame_{index:03d}.png",
+                                "transform_matrix": [
+                                    [1, 0, 0, float(index)],
+                                    [0, 1, 0, 0.0],
+                                    [0, 0, 1, 0.0],
+                                    [0, 0, 0, 1],
+                                ],
+                            }
+                            for index in range(6)
+                        ]
+                    }
+                ),
+                encoding="utf-8",
+            )
+            base_split = root / "base.json"
+            base_split.write_text(
+                json.dumps(
+                    {
+                        "splits": {
+                            "2": {
+                                "train": ["frame_000.png", "frame_001.png"],
+                                "val": ["frame_002.png"],
+                                "test": ["frame_003.png"],
+                            }
+                        }
+                    }
+                ),
+                encoding="utf-8",
+            )
+            scores = root / "scores.json"
+            scores.write_text(
+                json.dumps(
+                    {
+                        "scores": [
+                            {"file_path": "frame_004.png", "score": 0.1},
+                            {"file_path": "frame_005.png", "score": 0.9},
+                        ],
+                    }
+                ),
+                encoding="utf-8",
+            )
+            output = root / "active.json"
+
+            subprocess.run(
+                [
+                    sys.executable,
+                    str(ROOT / "scripts" / "generate_active_split.py"),
+                    "--frames",
+                    str(transforms),
+                    "--base-split",
+                    str(base_split),
+                    "--base-budget",
+                    "2",
+                    "--target-budget",
+                    "3",
+                    "--strategy",
+                    "score-pose-hybrid",
+                    "--scores",
+                    str(scores),
+                    "--score-weight",
+                    "0.65",
+                    "--output",
+                    str(output),
+                ],
+                check=True,
+            )
+
+            payload = json.loads(output.read_text(encoding="utf-8"))
+            self.assertEqual(payload["selection_method"], "active-score-pose-hybrid")
+            self.assertIn("frame_005.png", payload["splits"]["3"]["train"])
 
     def test_materialize_nerfstudio_split_cli_writes_explicit_split_filenames(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

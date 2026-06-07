@@ -17,6 +17,7 @@ if str(SRC_ROOT) not in sys.path:
 from uncertainty_3dgs.splits import (
     SplitPlan,
     active_pose_novelty_order,
+    active_score_pose_hybrid_order,
     load_frame_ids,
     load_frame_positions,
     write_split_plan,
@@ -37,11 +38,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--scene", default=None, help="Optional scene name.")
     parser.add_argument(
         "--strategy",
-        choices=("pose-novelty", "score-desc"),
+        choices=("pose-novelty", "score-desc", "score-pose-hybrid"),
         default="pose-novelty",
         help=(
             "How to select extra frames. pose-novelty expands from the seed set by "
-            "camera-center novelty. score-desc selects highest scored candidates."
+            "camera-center novelty. score-desc selects highest scored candidates. "
+            "score-pose-hybrid mixes candidate score with camera-center novelty."
         ),
     )
     parser.add_argument(
@@ -52,7 +54,13 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--score-key",
         default="score",
-        help="Score field for JSON/CSV files used by --strategy score-desc.",
+        help="Score field for JSON/CSV files used by score-based strategies.",
+    )
+    parser.add_argument(
+        "--score-weight",
+        type=float,
+        default=0.65,
+        help="Score weight for --strategy score-pose-hybrid; pose weight is 1-score_weight.",
     )
     return parser.parse_args()
 
@@ -94,7 +102,7 @@ def main() -> int:
         if not positions:
             raise SystemExit("--strategy pose-novelty requires transform_matrix camera poses.")
         extra_order = active_pose_novelty_order(candidates, seed_train, positions, original_order)
-    else:
+    elif args.strategy == "score-desc":
         if args.scores is None:
             raise SystemExit("--strategy score-desc requires --scores.")
         scores = _load_scores(Path(args.scores), args.score_key)
@@ -105,6 +113,24 @@ def main() -> int:
             candidates,
             key=lambda frame: (-float(scores[frame]), original_order[frame]),
         )
+    else:
+        if args.scores is None:
+            raise SystemExit("--strategy score-pose-hybrid requires --scores.")
+        positions = load_frame_positions(args.frames)
+        if not positions:
+            raise SystemExit("--strategy score-pose-hybrid requires transform_matrix camera poses.")
+        scores = _load_scores(Path(args.scores), args.score_key)
+        try:
+            extra_order = active_score_pose_hybrid_order(
+                candidates,
+                seed_train,
+                positions,
+                scores,
+                original_order,
+                score_weight=args.score_weight,
+            )
+        except ValueError as error:
+            raise SystemExit(str(error)) from error
 
     selected_extra = extra_order[:add_count]
     active_train = _order_like_input([*seed_train, *selected_extra], original_order)

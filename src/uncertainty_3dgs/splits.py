@@ -300,6 +300,78 @@ def active_pose_novelty_order(
     return ordered
 
 
+def active_score_pose_hybrid_order(
+    candidates: Sequence[str],
+    seed_frames: Sequence[str],
+    positions: Mapping[str, Sequence[float]],
+    scores: Mapping[str, float],
+    original_order: Mapping[str, int],
+    *,
+    score_weight: float = 0.65,
+) -> list[str]:
+    """Order candidates by a greedy score and pose-novelty mixture.
+
+    Scores are normalized over the remaining pool on each greedy step, as are
+    nearest-selected pose distances. This keeps the combined objective stable
+    even when LPIPS and scene distances live on different numeric scales.
+    """
+
+    if not 0.0 <= score_weight <= 1.0:
+        raise ValueError("score_weight must be between 0.0 and 1.0.")
+    if not seed_frames:
+        raise ValueError("hybrid active selection requires at least one seed frame.")
+
+    ordered_candidates = _order_like_input(candidates, original_order)
+    _require_positions([*seed_frames, *ordered_candidates], positions)
+    missing_scores = [frame for frame in ordered_candidates if frame not in scores]
+    if missing_scores:
+        sample = ", ".join(missing_scores[:5])
+        raise ValueError(f"Missing scores for candidate frames: {sample}")
+
+    selected = list(seed_frames)
+    remaining = set(ordered_candidates)
+    ordered: list[str] = []
+
+    while remaining:
+        candidate_scores = {frame: float(scores[frame]) for frame in remaining}
+        candidate_distances = {
+            frame: _nearest_selected_pose_distance(frame, selected, positions)
+            for frame in remaining
+        }
+        score_min, score_max = min(candidate_scores.values()), max(candidate_scores.values())
+        distance_min = min(candidate_distances.values())
+        distance_max = max(candidate_distances.values())
+
+        def combined_key(frame: str) -> tuple[float, float, float, int]:
+            normalized_score = _minmax_normalize(
+                candidate_scores[frame],
+                score_min,
+                score_max,
+            )
+            normalized_distance = _minmax_normalize(
+                candidate_distances[frame],
+                distance_min,
+                distance_max,
+            )
+            combined = (
+                score_weight * normalized_score
+                + (1.0 - score_weight) * normalized_distance
+            )
+            return (
+                combined,
+                normalized_score,
+                normalized_distance,
+                -original_order[frame],
+            )
+
+        next_frame = max(remaining, key=combined_key)
+        ordered.append(next_frame)
+        selected.append(next_frame)
+        remaining.remove(next_frame)
+
+    return ordered
+
+
 def _frame_ids_from_json(payload: object) -> list[str]:
     if isinstance(payload, list):
         return [_frame_id_from_item(item) for item in payload]
@@ -492,6 +564,12 @@ def _euclidean_distance(left: Sequence[float], right: Sequence[float]) -> float:
     if len(left) != 3 or len(right) != 3:
         raise ValueError("Frame positions must be 3D coordinates.")
     return math.sqrt(sum((float(a) - float(b)) ** 2 for a, b in zip(left, right)))
+
+
+def _minmax_normalize(value: float, minimum: float, maximum: float) -> float:
+    if maximum == minimum:
+        return 0.0
+    return (float(value) - minimum) / (maximum - minimum)
 
 
 def _require_positions(

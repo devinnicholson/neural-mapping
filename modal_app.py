@@ -225,6 +225,7 @@ def prepare_active_split(
     strategy: str = "pose-novelty",
     scores_path: str | None = None,
     score_key: str = "score",
+    score_weight: float = 0.65,
 ) -> dict[str, Any]:
     """Create and materialize an active-expansion split from a seed split."""
 
@@ -237,7 +238,7 @@ def prepare_active_split(
         raise FileNotFoundError(f"Missing source scene directory: {source_dir}")
     if not base_split_json.exists():
         raise FileNotFoundError(f"Missing base split JSON: {base_split_json}")
-    if strategy == "score-desc" and scores_path is None:
+    if strategy in {"score-desc", "score-pose-hybrid"} and scores_path is None:
         scores_path = str(DATA_ROOT / "scores" / f"{active_scene_name}.json")
 
     command = [
@@ -260,6 +261,8 @@ def prepare_active_split(
     ]
     if scores_path is not None:
         command.extend(["--scores", scores_path, "--score-key", score_key])
+    if strategy == "score-pose-hybrid":
+        command.extend(["--score-weight", str(score_weight)])
     _run(command)
     _run(
         [
@@ -285,6 +288,7 @@ def prepare_active_split(
         "active_scene_name": active_scene_name,
         "strategy": strategy,
         "scores_path": scores_path,
+        "score_weight": score_weight,
         "split_json": str(active_split_json),
         "materialized_root": str(materialized_root),
         "summary": _read_json(materialized_root / "materialization_summary.json"),
@@ -487,6 +491,7 @@ def main(
     split_seed: int = 20260529,
     active_strategy: str = "pose-novelty",
     score_path: str = "",
+    score_weight: float = 0.65,
     score_metric: str = "lpips",
     render_outputs: bool = True,
 ) -> None:
@@ -512,6 +517,7 @@ def main(
                 target_budget=target_budget,
                 strategy=active_strategy,
                 scores_path=score_path or None,
+                score_weight=score_weight,
             )
         )
     elif action == "score-candidates":
