@@ -514,3 +514,64 @@ Interpretation:
 - The pixel-level extraction path works and catches raw renderer confidence maps without saving image files.
 - Raw transmittance is a negative result across all three dozer seeds: mean Spearman is -0.051 and mean bad-pixel AUROC is 0.466.
 - The next pixel-level signal should be less naive than raw transmittance, for example local residual propagation, patch-level statistics, or ensemble RGB disagreement.
+
+## Modal Dozer Expanded Pixel-Level Renderer Signals
+
+Date: 2026-06-07
+
+Question:
+
+- Do simple local renderer-map statistics or gradients improve over raw
+  transmittance for pixel-level RGB failure prediction?
+
+Setup:
+
+- Source scenes: `dozer_available_v1`, `dozer_available_v2`, `dozer_available_v3`.
+- Seed model for each scene: the corresponding random budget-25 Splatfacto run.
+- Error target: per-pixel RGB L1 error, normalized to `0..1`.
+- Pixel sampling: deterministic sample of 10,000 valid pixels per frame, 550,000 pixels per seed.
+- Patch size: 15 pixels for local transmittance mean/std.
+- Bad-pixel threshold: report-local 80th percentile RGB L1 error.
+
+| Seed | Signal | Spearman | AUROC | AUPRC | AUSE |
+|---|---|---:|---:|---:|---:|
+| v1 | transmittance | -0.013 | 0.481 | 0.205 | 0.085 |
+| v1 | local-mean-transmittance | -0.006 | 0.483 | 0.207 | 0.086 |
+| v1 | local-std-transmittance | 0.014 | 0.491 | 0.208 | 0.083 |
+| v1 | accumulation-gradient | 0.019 | 0.492 | 0.204 | 0.082 |
+| v1 | depth-gradient | -0.039 | 0.488 | 0.199 | 0.085 |
+| v2 | transmittance | -0.108 | 0.439 | 0.179 | 0.105 |
+| v2 | local-mean-transmittance | -0.143 | 0.422 | 0.178 | 0.111 |
+| v2 | local-std-transmittance | -0.126 | 0.429 | 0.180 | 0.109 |
+| v2 | accumulation-gradient | -0.089 | 0.443 | 0.180 | 0.104 |
+| v2 | depth-gradient | -0.185 | 0.424 | 0.168 | 0.110 |
+| v3 | transmittance | -0.033 | 0.479 | 0.201 | 0.082 |
+| v3 | local-mean-transmittance | -0.037 | 0.478 | 0.204 | 0.084 |
+| v3 | local-std-transmittance | -0.019 | 0.486 | 0.206 | 0.081 |
+| v3 | accumulation-gradient | -0.004 | 0.490 | 0.203 | 0.080 |
+| v3 | depth-gradient | -0.079 | 0.467 | 0.188 | 0.085 |
+| mean | transmittance | -0.051 | 0.466 | 0.195 | 0.090 |
+| mean | local-mean-transmittance | -0.062 | 0.461 | 0.196 | 0.093 |
+| mean | local-std-transmittance | -0.044 | 0.468 | 0.198 | 0.091 |
+| mean | accumulation-gradient | -0.024 | 0.475 | 0.196 | 0.089 |
+| mean | depth-gradient | -0.101 | 0.460 | 0.185 | 0.093 |
+
+Report artifact paths in Modal:
+
+| Seed | Report path |
+|---|---|
+| v1 | `/workspace/neural-mapping/outputs/reports/render_uncertainty_maps/dozer_available_render_maps_patch_v1_budget_025_rgb-l1.json` |
+| v2 | `/workspace/neural-mapping/outputs/reports/render_uncertainty_maps/dozer_available_render_maps_patch_v2_budget_025_rgb-l1.json` |
+| v3 | `/workspace/neural-mapping/outputs/reports/render_uncertainty_maps/dozer_available_render_maps_patch_v3_budget_025_rgb-l1.json` |
+
+Modal run URLs:
+
+- v1: `ap-36ScrnOWYXR1plb5omR4JU`.
+- v2: `ap-hMUDbcwvOFkOvpcJYjgh0l`.
+- v3: `ap-zqUBGxNgZjG1u5drMaM9kG`.
+
+Interpretation:
+
+- Local transmittance statistics and simple renderer-map gradients did not fix the raw-transmittance failure.
+- `accumulation-gradient` was the best average signal, but mean AUROC was only 0.475, still below random.
+- The next credible uncertainty baseline should be model-disagreement based, for example rendering the same candidate views from multiple independently trained seed models and scoring per-pixel RGB variance.

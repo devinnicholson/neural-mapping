@@ -248,7 +248,8 @@ output volume.
 
 For a direct pixel-level uncertainty/error test, render the candidate pool and
 compare per-pixel transmittance (`1 - accumulation`) against per-pixel RGB
-error:
+error. The command also evaluates local patch transmittance statistics and
+simple renderer-map gradients in the same pass:
 
 ```bash
 modal run modal_app.py \
@@ -260,7 +261,9 @@ modal run modal_app.py \
   --budget 25 \
   --score-metric rgb-l1 \
   --bad-quantile 0.8 \
-  --max-pixels-per-frame 50000
+  --max-pixels-per-frame 50000 \
+  --render-map-signals transmittance,local-mean-transmittance,local-std-transmittance,accumulation-gradient,depth-gradient \
+  --patch-size 15
 ```
 
 The report is written under

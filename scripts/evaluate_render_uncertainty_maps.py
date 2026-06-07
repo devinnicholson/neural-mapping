@@ -18,6 +18,15 @@ if str(SRC_ROOT) not in sys.path:
 from uncertainty_3dgs.metrics import evaluate_uncertainty
 
 
+SIGNALS = (
+    "transmittance",
+    "local-mean-transmittance",
+    "local-std-transmittance",
+    "accumulation-gradient",
+    "depth-gradient",
+)
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--load-config", required=True, help="Seed run config.yml.")
@@ -42,6 +51,19 @@ def parse_args() -> argparse.Namespace:
         help="Deterministically sample at most this many valid pixels per frame.",
     )
     parser.add_argument(
+        "--signals",
+        choices=SIGNALS,
+        nargs="+",
+        default=("transmittance",),
+        help="Renderer-derived uncertainty maps to evaluate.",
+    )
+    parser.add_argument(
+        "--patch-size",
+        type=int,
+        default=15,
+        help="Odd local window size for patch transmittance statistics.",
+    )
+    parser.add_argument(
         "--cache-images",
         choices=("cpu", "gpu"),
         default="cpu",
@@ -55,6 +77,8 @@ def main() -> int:
     _validate_quantile(args.bad_error_quantile)
     if args.max_pixels_per_frame <= 0:
         raise SystemExit("--max-pixels-per-frame must be positive.")
+    if args.patch_size <= 0 or args.patch_size % 2 == 0:
+        raise SystemExit("--patch-size must be a positive odd integer.")
 
     load_config = Path(args.load_config)
     candidate_data = Path(args.candidate_data)
@@ -87,36 +111,45 @@ def main() -> int:
         )
 
     frames = []
-    all_uncertainty: list[float] = []
+    all_uncertainty: dict[str, list[float]] = {signal: [] for signal in args.signals}
     all_error: list[float] = []
     with torch.no_grad():
         for index, (camera, batch) in enumerate(data_loader):
             outputs = pipeline.model.get_outputs_for_camera(camera=camera)
-            uncertainty, error = _sample_transmittance_and_error(
+            uncertainty_maps, error = _sample_uncertainty_and_error(
                 outputs,
                 batch,
                 error_metric=args.error_metric,
+                signals=args.signals,
+                patch_size=args.patch_size,
                 max_pixels=args.max_pixels_per_frame,
             )
-            if not uncertainty:
+            if not error:
                 continue
             bad_threshold = _quantile(error, args.bad_error_quantile)
-            summary = evaluate_uncertainty(
-                uncertainty,
-                error,
-                bad_threshold=bad_threshold,
-            )
+            signal_summaries = {
+                signal: evaluate_uncertainty(
+                    uncertainty,
+                    error,
+                    bad_threshold=bad_threshold,
+                )
+                for signal, uncertainty in uncertainty_maps.items()
+            }
             frames.append(
                 {
                     "file_path": candidates[index],
                     "sampled_pixels": len(error),
-                    "mean_uncertainty": _mean(uncertainty),
+                    "mean_uncertainty": {
+                        signal: _mean(uncertainty)
+                        for signal, uncertainty in uncertainty_maps.items()
+                    },
                     "mean_error": _mean(error),
                     "bad_threshold": bad_threshold,
-                    "signals": {"transmittance": summary},
+                    "signals": signal_summaries,
                 }
             )
-            all_uncertainty.extend(uncertainty)
+            for signal, uncertainty in uncertainty_maps.items():
+                all_uncertainty[signal].extend(uncertainty)
             all_error.extend(error)
             print(
                 f"{index + 1:03d}/{len(candidates):03d} "
@@ -136,20 +169,22 @@ def main() -> int:
             "checkpoint_step": checkpoint_step,
             "method_name": getattr(config, "method_name", None),
             "error_metric": args.error_metric,
-            "uncertainty_signal": "transmittance",
+            "uncertainty_signals": list(args.signals),
             "bad_error_quantile": args.bad_error_quantile,
             "bad_threshold": global_bad_threshold,
             "candidate_count": len(frames),
             "sampled_pixels": len(all_error),
             "max_pixels_per_frame": args.max_pixels_per_frame,
+            "patch_size": args.patch_size,
             "cache_images": args.cache_images,
         },
         "signals": {
-            "transmittance": evaluate_uncertainty(
-                all_uncertainty,
+            signal: evaluate_uncertainty(
+                uncertainty,
                 all_error,
                 bad_threshold=global_bad_threshold,
             )
+            for signal, uncertainty in all_uncertainty.items()
         },
         "frames": frames,
     }
@@ -160,13 +195,15 @@ def main() -> int:
     return 0
 
 
-def _sample_transmittance_and_error(
+def _sample_uncertainty_and_error(
     outputs: dict[str, Any],
     batch: dict[str, Any],
     *,
     error_metric: str,
+    signals: Sequence[str],
+    patch_size: int,
     max_pixels: int,
-) -> tuple[list[float], list[float]]:
+) -> tuple[dict[str, list[float]], list[float]]:
     if "rgb" not in outputs:
         raise SystemExit("Model outputs are missing required key 'rgb'.")
     if "accumulation" not in outputs:
@@ -196,25 +233,100 @@ def _sample_transmittance_and_error(
     if transmittance.shape != error.shape:
         raise SystemExit(f"Accumulation and error shapes differ: {transmittance.shape} vs {error.shape}")
 
-    flat_uncertainty = transmittance.reshape(-1)
-    flat_error = error.reshape(-1)
-    valid = (
-        flat_uncertainty.isfinite()
-        & flat_error.isfinite()
-        & (flat_uncertainty >= 0.0)
-        & (flat_uncertainty <= 1.0)
+    signal_maps = _signal_maps(
+        outputs,
+        transmittance=transmittance,
+        signals=signals,
+        patch_size=patch_size,
     )
+    flat_error = error.reshape(-1)
+    flat_signals = {signal: values.reshape(-1) for signal, values in signal_maps.items()}
+    valid = flat_error.isfinite()
+    for values in flat_signals.values():
+        valid = valid & values.isfinite()
     indices = valid.nonzero(as_tuple=False).reshape(-1)
     if indices.numel() == 0:
-        return [], []
+        return {}, []
     if indices.numel() > max_pixels:
         step = max(1, indices.numel() // max_pixels)
         indices = indices[::step][:max_pixels]
 
     return (
-        flat_uncertainty[indices].detach().cpu().tolist(),
+        {
+            signal: values[indices].detach().cpu().tolist()
+            for signal, values in flat_signals.items()
+        },
         flat_error[indices].detach().cpu().tolist(),
     )
+
+
+def _signal_maps(
+    outputs: dict[str, Any],
+    *,
+    transmittance: Any,
+    signals: Sequence[str],
+    patch_size: int,
+) -> dict[str, Any]:
+    maps: dict[str, Any] = {}
+    for signal in signals:
+        if signal == "transmittance":
+            maps[signal] = transmittance
+        elif signal == "local-mean-transmittance":
+            maps[signal] = _local_mean(transmittance, patch_size)
+        elif signal == "local-std-transmittance":
+            maps[signal] = _local_std(transmittance, patch_size)
+        elif signal == "accumulation-gradient":
+            maps[signal] = _gradient_magnitude(1.0 - transmittance)
+        elif signal == "depth-gradient":
+            depth = _depth_map(outputs)
+            maps[signal] = _gradient_magnitude(depth)
+        else:
+            raise ValueError(f"Unknown signal: {signal}")
+    return maps
+
+
+def _local_mean(values: Any, patch_size: int) -> Any:
+    import torch.nn.functional as functional
+
+    image = values.unsqueeze(0).unsqueeze(0)
+    pooled = functional.avg_pool2d(
+        image,
+        kernel_size=patch_size,
+        stride=1,
+        padding=patch_size // 2,
+        count_include_pad=False,
+    )
+    return pooled.squeeze(0).squeeze(0)
+
+
+def _local_std(values: Any, patch_size: int) -> Any:
+    import torch
+
+    mean = _local_mean(values, patch_size)
+    mean_square = _local_mean(values * values, patch_size)
+    variance = torch.clamp(mean_square - mean * mean, min=0.0)
+    return torch.sqrt(variance)
+
+
+def _gradient_magnitude(values: Any) -> Any:
+    import torch
+
+    vertical = torch.zeros_like(values)
+    horizontal = torch.zeros_like(values)
+    vertical[1:, :] = torch.abs(values[1:, :] - values[:-1, :])
+    horizontal[:, 1:] = torch.abs(values[:, 1:] - values[:, :-1])
+    return torch.sqrt(vertical * vertical + horizontal * horizontal)
+
+
+def _depth_map(outputs: dict[str, Any]) -> Any:
+    for key in ("depth", "expected_depth", "median_depth"):
+        if key not in outputs:
+            continue
+        depth = outputs[key].detach().float()
+        if depth.shape[-1:] == (1,):
+            depth = depth.squeeze(-1)
+        return depth
+    raise SystemExit("Model outputs are missing a depth-like key required by depth-gradient.")
 
 
 def _normalize_rgb_tensor(value: Any) -> Any:

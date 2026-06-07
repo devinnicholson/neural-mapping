@@ -482,9 +482,12 @@ def evaluate_render_uncertainty_maps(
     error_metric: str = "rgb-l1",
     bad_error_quantile: float = 0.8,
     max_pixels_per_frame: int = 50000,
+    render_map_signals: list[str] | None = None,
+    patch_size: int = 15,
 ) -> dict[str, Any]:
     """Evaluate per-pixel renderer confidence maps against RGB error maps."""
 
+    render_map_signals = render_map_signals or ["transmittance"]
     source_dir = DATA_ROOT / "nerfstudio" / source_scene_name
     base_split_json = DATA_ROOT / "splits" / f"{base_split_scene_name}.json"
     candidate_dir = DATA_ROOT / "candidate_eval" / report_scene_name
@@ -533,6 +536,10 @@ def evaluate_render_uncertainty_maps(
             str(bad_error_quantile),
             "--max-pixels-per-frame",
             str(max_pixels_per_frame),
+            "--signals",
+            *render_map_signals,
+            "--patch-size",
+            str(patch_size),
             "--output",
             str(output_path),
         ],
@@ -553,6 +560,8 @@ def evaluate_render_uncertainty_maps(
         "error_metric": error_metric,
         "bad_error_quantile": bad_error_quantile,
         "max_pixels_per_frame": max_pixels_per_frame,
+        "render_map_signals": render_map_signals,
+        "patch_size": patch_size,
         "candidate_dir": str(candidate_dir),
         "report_path": str(output_path),
         "signals": _compact_uncertainty_signals(report.get("signals")),
@@ -691,6 +700,8 @@ def main(
     bad_quantile: float = 0.8,
     score_signal_fields: str = "",
     max_pixels_per_frame: int = 50000,
+    render_map_signals: str = "transmittance",
+    patch_size: int = 15,
     render_outputs: bool = True,
 ) -> None:
     """Run Modal workflow stages from the local CLI."""
@@ -753,6 +764,8 @@ def main(
                 error_metric=score_metric,
                 bad_error_quantile=bad_quantile,
                 max_pixels_per_frame=max_pixels_per_frame,
+                render_map_signals=_split_fields(render_map_signals),
+                patch_size=patch_size,
             )
         )
     elif action == "train":
