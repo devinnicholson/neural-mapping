@@ -789,6 +789,7 @@ def main(
     downscale_factor: int = 1,
     active_strategy: str = "pose-novelty",
     score_path: str = "",
+    score_key: str = "score",
     score_weight: float = 0.65,
     score_metric: str = "lpips",
     bad_quantile: float = 0.8,
@@ -822,6 +823,7 @@ def main(
                 target_budget=target_budget,
                 strategy=active_strategy,
                 scores_path=score_path or None,
+                score_key=score_key,
                 score_weight=score_weight,
             )
         )

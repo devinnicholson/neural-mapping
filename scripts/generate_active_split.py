@@ -217,6 +217,8 @@ def _load_scores(path: Path, score_key: str) -> dict[str, float]:
     if isinstance(payload, dict):
         if "scores" in payload and isinstance(payload["scores"], list):
             payload = payload["scores"]
+        elif "frames" in payload and isinstance(payload["frames"], list):
+            payload = payload["frames"]
         else:
             return {str(key): float(value) for key, value in payload.items()}
 
