@@ -130,8 +130,16 @@ class MetricTests(unittest.TestCase):
                 json.dumps(
                     {
                         "scores": [
-                            {"file_path": "images/frame_002.png", "lpips": 0.2},
-                            {"file_path": "images/frame_003.png", "lpips": 0.9},
+                            {
+                                "file_path": "images/frame_002.png",
+                                "lpips": 0.2,
+                                "mean_transmittance": 0.1,
+                            },
+                            {
+                                "file_path": "images/frame_003.png",
+                                "lpips": 0.9,
+                                "mean_transmittance": 0.9,
+                            },
                         ]
                     }
                 ),
@@ -154,6 +162,8 @@ class MetricTests(unittest.TestCase):
                     "nearest-train-distance",
                     "temporal-index-distance",
                     "uniform",
+                    "--score-signal-fields",
+                    "mean_transmittance",
                     "--bad-threshold",
                     "0.5",
                     "--output",
@@ -165,11 +175,14 @@ class MetricTests(unittest.TestCase):
             report = json.loads(output.read_text(encoding="utf-8"))
             nearest = report["signals"]["nearest-train-distance"]
             temporal = report["signals"]["temporal-index-distance"]
+            transmittance = report["signals"]["mean_transmittance"]
 
             self.assertEqual(report["metadata"]["count"], 2)
             self.assertAlmostEqual(nearest["spearman"], 1.0)
             self.assertAlmostEqual(nearest["auroc"], 1.0)
             self.assertAlmostEqual(temporal["spearman"], 1.0)
+            self.assertAlmostEqual(transmittance["spearman"], 1.0)
+            self.assertAlmostEqual(transmittance["auroc"], 1.0)
             self.assertTrue(math.isnan(report["signals"]["uniform"]["spearman"]))
             self.assertEqual(
                 [row["signals"]["nearest-train-distance"] for row in report["frames"]],

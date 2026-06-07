@@ -226,7 +226,9 @@ modal run modal_app.py --action metrics
 
 After scoring candidates, evaluate frame-level failure-prediction baselines
 against the candidate LPIPS errors. This compares nearest training-camera
-distance, temporal index distance, and a uniform control:
+distance, temporal index distance, a uniform control, and any requested numeric
+fields from the candidate score rows. Recent score files include
+renderer-derived accumulation summaries when Nerfstudio exposes them:
 
 ```bash
 modal run modal_app.py \
@@ -236,6 +238,7 @@ modal run modal_app.py \
   --data-scene-name poster_available_active_error \
   --budget 25 \
   --score-metric lpips \
+  --score-signal-fields mean_transmittance,low_accumulation_fraction \
   --bad-quantile 0.8
 ```
 

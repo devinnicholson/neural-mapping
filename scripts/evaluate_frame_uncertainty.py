@@ -61,6 +61,15 @@ def parse_args() -> argparse.Namespace:
         help="Frame-level uncertainty signals to evaluate.",
     )
     parser.add_argument(
+        "--score-signal-fields",
+        nargs="*",
+        default=(),
+        help=(
+            "Numeric fields from each score row to evaluate as additional "
+            "frame-level uncertainty signals, for example mean_transmittance."
+        ),
+    )
+    parser.add_argument(
         "--bad-threshold",
         type=float,
         default=None,
@@ -85,6 +94,7 @@ def main() -> int:
     positions = _normalized_positions(load_frame_positions(args.frames))
     train_frames = _load_train_frames(Path(args.split_json), args.budget)
     score_rows = _load_score_rows(Path(args.scores))
+    signal_names = _combined_signal_names(args.signals, args.score_signal_fields)
 
     normalized_train = [_normalize_path(frame) for frame in train_frames]
     missing_train = [frame for frame in normalized_train if frame not in original_order]
@@ -94,7 +104,8 @@ def main() -> int:
     rows = _frame_rows(
         score_rows,
         error_metric=args.error_metric,
-        signals=args.signals,
+        built_in_signals=args.signals,
+        score_signal_fields=args.score_signal_fields,
         original_order=original_order,
         positions=positions,
         train_frames=normalized_train,
@@ -108,7 +119,7 @@ def main() -> int:
         bad_threshold = _quantile(errors, args.bad_quantile)
 
     signal_summaries: dict[str, object] = {}
-    for signal in args.signals:
+    for signal in signal_names:
         uncertainty = [float(row["signals"][signal]) for row in rows]
         signal_summaries[signal] = evaluate_uncertainty(
             uncertainty,
@@ -123,7 +134,9 @@ def main() -> int:
             "scores": str(args.scores),
             "budget": args.budget,
             "error_metric": args.error_metric,
-            "signals": list(args.signals),
+            "signals": signal_names,
+            "built_in_signals": list(args.signals),
+            "score_signal_fields": list(args.score_signal_fields),
             "count": len(rows),
             "bad_threshold": bad_threshold,
         },
@@ -168,12 +181,13 @@ def _frame_rows(
     score_rows: Sequence[Mapping[str, Any]],
     *,
     error_metric: str,
-    signals: Sequence[str],
+    built_in_signals: Sequence[str],
+    score_signal_fields: Sequence[str],
     original_order: Mapping[str, int],
     positions: Mapping[str, Sequence[float]],
     train_frames: Sequence[str],
 ) -> list[dict[str, object]]:
-    needs_positions = any(signal in {"nearest-train-distance", "mean-train-distance"} for signal in signals)
+    needs_positions = any(signal in {"nearest-train-distance", "mean-train-distance"} for signal in built_in_signals)
     if needs_positions:
         missing_positions = [frame for frame in train_frames if frame not in positions]
         if missing_positions:
@@ -196,8 +210,12 @@ def _frame_rows(
                 original_order=original_order,
                 positions=positions,
             )
-            for signal in signals
+            for signal in built_in_signals
         }
+        score_signals = _score_signal_values(row, score_signal_fields)
+        if score_signals is None:
+            continue
+        row_signals.update(score_signals)
         rows.append(
             {
                 "file_path": file_path,
@@ -228,6 +246,24 @@ def _signal_value(
     raise ValueError(f"Unknown signal: {signal}")
 
 
+def _score_signal_values(
+    row: Mapping[str, Any],
+    fields: Sequence[str],
+) -> dict[str, float] | None:
+    values: dict[str, float] = {}
+    for field in fields:
+        if field not in row:
+            return None
+        try:
+            value = float(row[field])
+        except (TypeError, ValueError):
+            return None
+        if not math.isfinite(value):
+            return None
+        values[field] = value
+    return values
+
+
 def _row_file_path(row: Mapping[str, Any]) -> str:
     for key in ("file_path", "path", "frame_id", "name"):
         value = row.get(key)
@@ -255,6 +291,21 @@ def _normalized_order(frame_ids: Iterable[str]) -> dict[str, int]:
         if normalized in output:
             raise SystemExit(f"Duplicate normalized frame path: {normalized}")
         output[normalized] = index
+    return output
+
+
+def _combined_signal_names(
+    built_in_signals: Sequence[str],
+    score_signal_fields: Sequence[str],
+) -> list[str]:
+    names = [*built_in_signals, *score_signal_fields]
+    output: list[str] = []
+    seen: set[str] = set()
+    for name in names:
+        if name in seen:
+            raise SystemExit(f"Duplicate uncertainty signal name: {name}")
+        seen.add(name)
+        output.append(str(name))
     return output
 
 

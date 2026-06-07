@@ -127,6 +127,10 @@ def _compact_uncertainty_signals(signals: object) -> dict[str, dict[str, Any]]:
     return compact
 
 
+def _split_fields(value: str) -> list[str]:
+    return [field for field in value.replace(",", " ").split() if field]
+
+
 @app.function(image=image, gpu=DEFAULT_GPU, volumes=volumes, timeout=900)
 def env_check() -> dict[str, Any]:
     """Verify the Modal GPU image can import torch, Nerfstudio, and gsplat."""
@@ -414,9 +418,11 @@ def evaluate_frame_uncertainty_baseline(
     base_budget: int = 25,
     error_metric: str = "lpips",
     bad_quantile: float = 0.8,
+    score_signal_fields: list[str] | None = None,
 ) -> dict[str, Any]:
     """Evaluate simple frame-level uncertainty baselines against scored errors."""
 
+    score_signal_fields = score_signal_fields or []
     frames_path = DATA_ROOT / "nerfstudio" / source_scene_name / "transforms.json"
     split_json = DATA_ROOT / "splits" / f"{base_split_scene_name}.json"
     scores_path = DATA_ROOT / "scores" / f"{score_scene_name}.json"
@@ -427,26 +433,28 @@ def evaluate_frame_uncertainty_baseline(
         / f"{score_scene_name}_budget_{base_budget:03d}_{error_metric}.json"
     )
 
-    _run(
-        [
-            "python",
-            "scripts/evaluate_frame_uncertainty.py",
-            "--frames",
-            str(frames_path),
-            "--split-json",
-            str(split_json),
-            "--budget",
-            str(base_budget),
-            "--scores",
-            str(scores_path),
-            "--error-metric",
-            error_metric,
-            "--bad-quantile",
-            str(bad_quantile),
-            "--output",
-            str(output_path),
-        ]
-    )
+    command = [
+        "python",
+        "scripts/evaluate_frame_uncertainty.py",
+        "--frames",
+        str(frames_path),
+        "--split-json",
+        str(split_json),
+        "--budget",
+        str(base_budget),
+        "--scores",
+        str(scores_path),
+        "--error-metric",
+        error_metric,
+        "--bad-quantile",
+        str(bad_quantile),
+        "--output",
+        str(output_path),
+    ]
+    if score_signal_fields:
+        command.extend(["--score-signal-fields", *score_signal_fields])
+
+    _run(command)
 
     outputs_volume.commit()
     report = _read_json(output_path)
@@ -458,6 +466,7 @@ def evaluate_frame_uncertainty_baseline(
         "base_budget": base_budget,
         "error_metric": error_metric,
         "bad_quantile": bad_quantile,
+        "score_signal_fields": score_signal_fields,
         "report_path": str(output_path),
         "signals": _compact_uncertainty_signals(report.get("signals")),
     }
@@ -593,6 +602,7 @@ def main(
     score_weight: float = 0.65,
     score_metric: str = "lpips",
     bad_quantile: float = 0.8,
+    score_signal_fields: str = "",
     render_outputs: bool = True,
 ) -> None:
     """Run Modal workflow stages from the local CLI."""
@@ -641,6 +651,7 @@ def main(
                 base_budget=budget,
                 error_metric=score_metric,
                 bad_quantile=bad_quantile,
+                score_signal_fields=_split_fields(score_signal_fields),
             )
         )
     elif action == "train":

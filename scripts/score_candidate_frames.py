@@ -70,6 +70,7 @@ def main() -> int:
             outputs = pipeline.model.get_outputs_for_camera(camera=camera)
             metrics_dict, _ = pipeline.model.get_image_metrics_and_images(outputs, batch)
             row = _metrics_to_row(metrics_dict)
+            row.update(_render_signal_row(outputs))
             height = _scalar(camera.height)
             width = _scalar(camera.width)
             num_rays = height * width
@@ -86,6 +87,22 @@ def main() -> int:
             )
 
     rows.sort(key=lambda row: (-float(row["score"]), str(row["file_path"])))
+    render_signal_keys = sorted(
+        {
+            key
+            for row in rows
+            for key in row
+            if key
+            in {
+                "mean_accumulation",
+                "std_accumulation",
+                "mean_transmittance",
+                "low_accumulation_fraction",
+                "mean_depth",
+                "std_depth",
+            }
+        }
+    )
     payload = {
         "metadata": {
             "load_config": str(load_config),
@@ -97,6 +114,7 @@ def main() -> int:
             "candidate_count": len(rows),
             "cache_images": args.cache_images,
             "method_name": getattr(config, "method_name", None),
+            "render_signal_keys": render_signal_keys,
         },
         "scores": rows,
     }
@@ -128,6 +146,60 @@ def _metrics_to_row(metrics: dict[str, Any]) -> dict[str, float]:
             continue
         row[key] = _scalar(value)
     return row
+
+
+def _render_signal_row(outputs: dict[str, Any]) -> dict[str, float]:
+    """Summarize renderer outputs into frame-level uncertainty proxy fields."""
+
+    row: dict[str, float] = {}
+    accumulation = _output_tensor(outputs, ("accumulation", "alpha"))
+    if accumulation is not None:
+        mean_accumulation = _tensor_mean(accumulation)
+        row["mean_accumulation"] = mean_accumulation
+        row["std_accumulation"] = _tensor_std(accumulation)
+        row["mean_transmittance"] = 1.0 - mean_accumulation
+        row["low_accumulation_fraction"] = _tensor_fraction_less(accumulation, 0.5)
+
+    depth = _output_tensor(outputs, ("depth", "expected_depth", "median_depth"))
+    if depth is not None:
+        row["mean_depth"] = _tensor_mean(depth)
+        row["std_depth"] = _tensor_std(depth)
+
+    return row
+
+
+def _output_tensor(outputs: dict[str, Any], keys: tuple[str, ...]) -> Any | None:
+    for key in keys:
+        if key not in outputs:
+            continue
+        value = outputs[key]
+        if hasattr(value, "detach"):
+            value = value.detach()
+        if hasattr(value, "float"):
+            value = value.float()
+        if hasattr(value, "reshape"):
+            return value.reshape(-1)
+    return None
+
+
+def _tensor_mean(value: Any) -> float:
+    return _scalar(value.mean())
+
+
+def _tensor_std(value: Any) -> float:
+    try:
+        return _scalar(value.std(unbiased=False))
+    except TypeError:
+        return _scalar(value.std())
+
+
+def _tensor_fraction_less(value: Any, threshold: float) -> float:
+    comparison = value < threshold
+    if hasattr(comparison, "float"):
+        comparison = comparison.float()
+    elif hasattr(comparison, "astype"):
+        comparison = comparison.astype(float)
+    return _scalar(comparison.mean())
 
 
 def _scalar(value: Any) -> float:
