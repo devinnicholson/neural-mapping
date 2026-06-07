@@ -1031,14 +1031,15 @@ Question:
 
 Setup:
 
-- Source scenes: `redwoods2_available_v1` and `redwoods2_available_v2`, filtered from the Nerfstudio `redwoods2` sample.
-- Split seeds: `20260610` for v1 and `20260611` for v2.
+- Source scenes: `redwoods2_available_v1`, `redwoods2_available_v2`, and `redwoods2_available_v3`, filtered from the Nerfstudio `redwoods2` sample.
+- Split seeds: `20260610` for v1, `20260611` for v2, and `20260612` for v3.
 - Each filtered scene kept 100 of 346 frames.
 - Base splits: random redwoods2 budget-25 splits for each seed.
 - Each budget uses the same 10 held-out test frames and 10 validation frames.
 - Ensemble uncertainty reports:
   - `outputs/reports/ensemble_uncertainty_maps/redwoods2_available_ensemble_maps_v1_budget_025_rgb-l1.json`.
   - `outputs/reports/ensemble_uncertainty_maps/redwoods2_available_ensemble_maps_v2_budget_025_rgb-l1.json`.
+  - `outputs/reports/ensemble_uncertainty_maps/redwoods2_available_ensemble_maps_v3_budget_025_rgb-l1.json`.
 - Ensemble members: `redwoods2_modal_v1_d4_b25_10k`, `redwoods2_modal_v2_d4_b25_10k`, and `redwoods2_modal_v3_d4_b25_10k`.
 - Frame score: `top_decile_mean_uncertainty`.
 - Hybrid strategy: `score-pose-hybrid`.
@@ -1054,11 +1055,12 @@ Uncertainty report summary:
 |---|---:|---:|---:|---:|---:|---:|
 | v1, 550,000 | 0.249 | 0.572 | 0.254 | 0.1682 | 0.2744 | 0.200 |
 | v2, 550,000 | 0.288 | 0.599 | 0.272 | 0.1537 | 0.2483 | 0.200 |
+| v3, 550,000 | 0.245 | 0.568 | 0.251 | 0.1690 | 0.2750 | 0.200 |
 
 The uncertainty signal was weaker than on `dozer`, but still monotonic. On v1,
 the lowest uncertainty decile had a 0.150 bad-pixel fraction and the highest
 uncertainty decile had a 0.303 bad-pixel fraction. On v2, those values were
-0.136 and 0.330.
+0.136 and 0.330. On v3, they were 0.151 and 0.300.
 
 | Seed | Selection | Scene | Budget | Iterations | PSNR | SSIM | LPIPS | FPS |
 |---|---|---|---:|---:|---:|---:|---:|---:|
@@ -1067,6 +1069,8 @@ uncertainty decile had a 0.303 bad-pixel fraction. On v2, those values were
 | v1 | Tail-score-pose hybrid, `score_weight=0.35` | `redwoods2_modal_ensemble_tail_w035_v1_d4_b50_10k` | 50 | 10,000 | 26.098 | 0.895 | 0.082 | 7.500 |
 | v2 | Random redwoods2 d4 | `redwoods2_modal_v2_d4_b50_10k` | 50 | 10,000 | 23.388 | 0.830 | 0.102 | 10.477 |
 | v2 | Tail-score-pose hybrid, `score_weight=0.35` | `redwoods2_modal_ensemble_tail_w035_v2_d4_b50_10k` | 50 | 10,000 | 24.685 | 0.887 | 0.079 | 10.344 |
+| v3 | Random redwoods2 d4 | `redwoods2_modal_v3_d4_b50_10k` | 50 | 10,000 | 24.704 | 0.865 | 0.092 | 10.147 |
+| v3 | Tail-score-pose hybrid, `score_weight=0.35` | `redwoods2_modal_ensemble_tail_w035_v3_d4_b50_10k` | 50 | 10,000 | 24.705 | 0.867 | 0.088 | 10.011 |
 
 Metric artifact paths in Modal:
 
@@ -1077,6 +1081,8 @@ Metric artifact paths in Modal:
 | `redwoods2_modal_ensemble_tail_w035_v1_d4_b50_10k` | `/workspace/neural-mapping/outputs/runs/redwoods2_modal_ensemble_tail_w035_v1_d4_b50_10k/splatfacto/budget_050/metrics/ns_eval.json` | `/workspace/neural-mapping/outputs/runs/redwoods2_modal_ensemble_tail_w035_v1_d4_b50_10k/splatfacto/budget_050/train/unnamed/splatfacto/2026-06-07_224424/nerfstudio_models/step-000009999.ckpt` |
 | `redwoods2_modal_v2_d4_b50_10k` | `/workspace/neural-mapping/outputs/runs/redwoods2_modal_v2_d4_b50_10k/splatfacto/budget_050/metrics/ns_eval.json` | `/workspace/neural-mapping/outputs/runs/redwoods2_modal_v2_d4_b50_10k/splatfacto/budget_050/train/unnamed/splatfacto/2026-06-07_225926/nerfstudio_models/step-000009999.ckpt` |
 | `redwoods2_modal_ensemble_tail_w035_v2_d4_b50_10k` | `/workspace/neural-mapping/outputs/runs/redwoods2_modal_ensemble_tail_w035_v2_d4_b50_10k/splatfacto/budget_050/metrics/ns_eval.json` | `/workspace/neural-mapping/outputs/runs/redwoods2_modal_ensemble_tail_w035_v2_d4_b50_10k/splatfacto/budget_050/train/unnamed/splatfacto/2026-06-07_225334/nerfstudio_models/step-000009999.ckpt` |
+| `redwoods2_modal_v3_d4_b50_10k` | `/workspace/neural-mapping/outputs/runs/redwoods2_modal_v3_d4_b50_10k/splatfacto/budget_050/metrics/ns_eval.json` | `/workspace/neural-mapping/outputs/runs/redwoods2_modal_v3_d4_b50_10k/splatfacto/budget_050/train/unnamed/splatfacto/2026-06-07_231527/nerfstudio_models/step-000009999.ckpt` |
+| `redwoods2_modal_ensemble_tail_w035_v3_d4_b50_10k` | `/workspace/neural-mapping/outputs/runs/redwoods2_modal_ensemble_tail_w035_v3_d4_b50_10k/splatfacto/budget_050/metrics/ns_eval.json` | `/workspace/neural-mapping/outputs/runs/redwoods2_modal_ensemble_tail_w035_v3_d4_b50_10k/splatfacto/budget_050/train/unnamed/splatfacto/2026-06-07_230800/nerfstudio_models/step-000009999.ckpt` |
 
 Modal run URLs:
 
@@ -1099,12 +1105,19 @@ Modal run URLs:
 - v2 w0.35 active b50 eval: `ap-L4JQ1vfQjLe9oMkGrs4mbL`.
 - v2 random b50 training: `ap-IMknMou3bM1XrvsBj4Xrlg`.
 - v2 random b50 eval: `ap-w9oqGtP0JLTY26fVhoAmX9`.
+- v3 ensemble uncertainty maps: `ap-W08ruQo6JyeNyXAC0Pg4TB`.
+- v3 w0.35 active split prep: `ap-4lTxhuZFco5zGKZCfSbypS`.
+- v3 w0.35 active b50 training: `ap-Ep0CBRvP5M3IyxPRkPnD0R`.
+- v3 w0.35 active b50 eval: `ap-BGrKyv2OB4lUOCXKlDKPCC`.
+- v3 random b50 training: `ap-Qow1nEc7ibSBP6pMJH0ZDv`.
+- v3 random b50 eval: `ap-vFRtJm5SHPdjUyuSPZ1nJb`.
 
 Interpretation:
 
 - On redwoods2 v1, the w0.35 tail-score-pose hybrid beat random b50 by +0.871 PSNR, +0.035 SSIM, and -0.013 LPIPS.
 - On redwoods2 v2, the same selector beat random b50 by +1.297 PSNR, +0.057 SSIM, and -0.023 LPIPS.
-- Across v1 and v2, the active selector averages about +1.084 PSNR, +0.046 SSIM, and -0.018 LPIPS versus same-seed random b50.
-- FPS moved down on v1, from 8.986 to 7.500, but was effectively tied on v2, from 10.477 to 10.344.
-- The result is useful because the uncertainty predictor was only moderately informative, yet the active split improved all quality metrics on both checked seeds.
-- This is the first repeated positive transfer result beyond `poster` and `dozer`; it supports treating ensemble tail-risk plus pose diversity as a scene-agnostic acquisition heuristic rather than a dozer-only artifact.
+- On redwoods2 v3, the same selector essentially tied random b50 on PSNR (+0.000), while improving SSIM by +0.002 and LPIPS by -0.004.
+- Across v1/v2/v3, the active selector averages about +0.723 PSNR, +0.032 SSIM, and -0.013 LPIPS versus same-seed random b50.
+- FPS moved down on v1, from 8.986 to 7.500, was effectively tied on v2, from 10.477 to 10.344, and was effectively tied on v3, from 10.147 to 10.011.
+- The result is useful because the uncertainty predictor was only moderately informative, yet the active split improved the average quality metrics across three checked seeds.
+- This is the first repeated positive transfer result beyond `poster` and `dozer`; it supports treating ensemble tail-risk plus pose diversity as a scene-agnostic acquisition heuristic rather than a dozer-only artifact, while v3 shows the per-seed gain can collapse to a tie.
