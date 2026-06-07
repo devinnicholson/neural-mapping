@@ -130,5 +130,43 @@ Interpretation:
 - Random 50 improved over random 25 by +1.635 PSNR, +0.015 SSIM, and -0.015 LPIPS.
 - Active model error v3 improved over corrected random 50 by +0.273 PSNR, +0.006 SSIM, and -0.014 LPIPS.
 - Compared with v2, the active-error advantage is smaller in PSNR but still positive across PSNR, SSIM, and LPIPS.
-- Across the two corrected seeds so far, active-error 50 beats random 50 on the held-out test split by an average of about +0.670 PSNR, +0.010 SSIM, and -0.020 LPIPS.
-- The result is still a small-scene signal, not a robust claim. The next meaningful step is to repeat on another dataset or run a third seed before investing in heavier automation.
+- Across these two corrected seeds, active-error 50 beats random 50 on the held-out test split by an average of about +0.670 PSNR, +0.010 SSIM, and -0.020 LPIPS.
+- The result is still a small-scene signal, not a robust claim. The v4 seed repeat below tests whether the active-error advantage is stable.
+
+## Corrected Modal Poster V4 Seed Repeat
+
+Date: 2026-06-06 Pacific / 2026-06-07 UTC
+
+Dataset:
+
+- Source scene: `poster_available_v4`, filtered from the Nerfstudio `poster` sample.
+- Split seed: `20260608`.
+- Materialized datasets include explicit Nerfstudio-native `train_filenames`, `val_filenames`, and `test_filenames`.
+- Each budget uses the same 10 held-out test frames and 10 validation frames.
+- Active-error scene: `poster_available_active_error_v4`.
+- Active-error candidate scores came from the 25-frame random seed model and selected the 25 highest-LPIPS remaining candidate frames.
+- Method: Nerfstudio `splatfacto`.
+- Training length: 10,000 iterations.
+- GPU: Modal L4.
+
+| Selection | Scene | Budget | Iterations | PSNR | SSIM | LPIPS | FPS |
+|---|---|---:|---:|---:|---:|---:|---:|
+| Random v4 | `poster_modal_v4_b25_10k` | 25 | 10,000 | 24.249 | 0.895 | 0.289 | 0.777 |
+| Random v4 | `poster_modal_v4_b50_10k` | 50 | 10,000 | 28.461 | 0.936 | 0.215 | 0.826 |
+| Active model error v4 | `poster_modal_active_error_v4_b50_10k` | 50 | 10,000 | 26.615 | 0.919 | 0.253 | 0.889 |
+
+Metric artifact paths in Modal:
+
+| Scene | Metrics path | Checkpoint |
+|---|---|---|
+| `poster_modal_v4_b25_10k` | `/workspace/neural-mapping/outputs/runs/poster_modal_v4_b25_10k/splatfacto/budget_025/metrics/ns_eval.json` | `/workspace/neural-mapping/outputs/runs/poster_modal_v4_b25_10k/splatfacto/budget_025/train/unnamed/splatfacto/2026-06-07_030616/nerfstudio_models/step-000009999.ckpt` |
+| `poster_modal_v4_b50_10k` | `/workspace/neural-mapping/outputs/runs/poster_modal_v4_b50_10k/splatfacto/budget_050/metrics/ns_eval.json` | `/workspace/neural-mapping/outputs/runs/poster_modal_v4_b50_10k/splatfacto/budget_050/train/unnamed/splatfacto/2026-06-07_030602/nerfstudio_models/step-000009999.ckpt` |
+| `poster_modal_active_error_v4_b50_10k` | `/workspace/neural-mapping/outputs/runs/poster_modal_active_error_v4_b50_10k/splatfacto/budget_050/metrics/ns_eval.json` | `/workspace/neural-mapping/outputs/runs/poster_modal_active_error_v4_b50_10k/splatfacto/budget_050/train/unnamed/splatfacto/2026-06-07_031925/nerfstudio_models/step-000009999.ckpt` |
+
+Interpretation:
+
+- Random 50 improved over random 25 by +4.212 PSNR, +0.041 SSIM, and -0.074 LPIPS.
+- Active model error v4 kept the corrected random 25-frame seed set fixed, scored the remaining candidates with the seed model, and added the 25 highest-LPIPS frames.
+- Active model error v4 underperformed corrected random 50 by -1.846 PSNR, -0.017 SSIM, and +0.038 LPIPS.
+- The active-error strategy is not consistently better across seeds on this scene. Across v2, v3, and v4, active-error 50 versus random 50 averages about -0.169 PSNR, +0.001 SSIM, and -0.001 LPIPS.
+- The current evidence says active-error selection can help, but it is high variance on this small poster sample. The next step should be either another scene or a less myopic selection rule that mixes high-error frames with pose/coverage diversity.
