@@ -19,11 +19,12 @@ Nerfstudio/Splatfacto scenes:
 - Expand to budget 50 with a `score-pose-hybrid` selector that mixes
   uncertainty tail risk and camera-pose diversity.
 
-As of 2026-06-07, this rule improved held-out budget-50 quality over same-seed
-random selection on repeated `dozer` and `redwoods2` Nerfstudio sample splits,
-averaging about +0.739 PSNR, +0.023 SSIM, and -0.015 LPIPS across eight
-ensemble-tail seeds. A first `library` transfer check also improved PSNR and
-SSIM, but regressed LPIPS slightly, so it is currently a mixed boundary case.
+As of 2026-06-08 UTC, this rule improved held-out budget-50 quality over
+same-seed random selection on repeated `dozer`, `redwoods2`, and `library`
+Nerfstudio sample splits. The strongest clean replication is still `dozer` plus
+`redwoods2`, averaging about +0.739 PSNR, +0.023 SSIM, and -0.015 LPIPS across
+eight ensemble-tail seeds. On `library` v1-v3 it averaged about +0.496 PSNR,
++0.015 SSIM, and -0.003 LPIPS; LPIPS improved on v2/v3 but regressed on v1.
 See [docs/results.md](docs/results.md) for the full tables, Modal run IDs, and
 caveats.
 

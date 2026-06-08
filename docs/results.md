@@ -5,7 +5,7 @@ Checkpoints, renders, and full Modal output volumes are intentionally not tracke
 
 ## Current Evidence Snapshot
 
-Date: 2026-06-07
+Date: 2026-06-08 UTC
 
 Best-supported acquisition rule so far:
 
@@ -32,7 +32,7 @@ rule.
 | Corrected poster v2-v4 | 3 | Seed-model LPIPS candidate error | `score-pose-hybrid`, `score_weight=0.35` | +1.136 PSNR, +0.009 SSIM, -0.017 LPIPS |
 | Dozer v1-v4 | 4 | Ensemble top-decile RGB disagreement | tail-score-pose hybrid, `score_weight=0.35` | +0.779 PSNR, +0.020 SSIM, -0.018 LPIPS |
 | Redwoods2 v1-v4 | 4 | Ensemble top-decile RGB disagreement | tail-score-pose hybrid, `score_weight=0.35` | +0.699 PSNR, +0.027 SSIM, -0.012 LPIPS |
-| Library v1 | 1 | Ensemble top-decile RGB disagreement | tail-score-pose hybrid, `score_weight=0.35` | +0.715 PSNR, +0.009 SSIM, +0.006 LPIPS |
+| Library v1-v3 | 3 | Ensemble top-decile RGB disagreement | tail-score-pose hybrid, `score_weight=0.35` | +0.496 PSNR, +0.015 SSIM, -0.003 LPIPS |
 
 Across the eight dozer and redwoods2 ensemble-tail seeds, the active selector
 averages about +0.739 PSNR, +0.023 SSIM, and -0.015 LPIPS versus same-seed
@@ -46,18 +46,17 @@ Current interpretation:
   disagreement predicts failure regions, and tail-risk-plus-pose active
   selection improves budget-50 quality on two held-out Nerfstudio sample scenes
   with repeated seeds.
-- Library v1 is a mixed transfer result: the same rule improved PSNR and SSIM,
-  but regressed LPIPS. Treat it as evidence that the signal can transfer to a
-  fourth sample scene, while perceptual quality still needs either repeated
-  library seeds or a tuned acquisition weight.
+- Library v1-v3 now supports transfer to a fourth sample scene: the same rule
+  improved PSNR and SSIM on all three library seeds and improved average LPIPS.
+  The caveat is that LPIPS still regressed on v1, so perceptual robustness is
+  weaker than the PSNR/SSIM story.
 - Poster remains useful as the development scene, but its final corrected
   result used a seed-model LPIPS score rather than ensemble disagreement. Treat
   poster as evidence for the `score-pose-hybrid` acquisition shape, not as a
   direct ensemble-tail replication.
-- The next research step is to either repeat library v2/v3 active runs to see
-  whether the LPIPS regression is a one-seed artifact, or leave toy Nerfstudio
-  samples and run the same protocol on a depth-bearing indoor dataset such as
-  Replica or ScanNet-style data.
+- The next research step is to leave toy Nerfstudio samples and run the same
+  protocol on a depth-bearing indoor dataset such as Replica or ScanNet-style
+  data, where RGB, depth, and geometry uncertainty can be evaluated together.
 
 ## Modal Poster Baselines
 
@@ -1217,13 +1216,17 @@ Setup:
 - Training length: 10,000 iterations.
 - Downscale factor: 4.
 - GPU: Modal L4.
-- Ensemble uncertainty report:
+- Ensemble uncertainty reports:
   `/workspace/neural-mapping/outputs/reports/ensemble_uncertainty_maps/library_available_ensemble_maps_v1_budget_025_rgb-l1.json`.
-- Ensemble signal on v1 candidates: Spearman 0.690, AUROC 0.866, AUPRC 0.643
-  over 3,530,000 sampled pixels. The top uncertainty decile had 0.174 mean RGB
-  error and 75.4% bad pixels.
-- Active split: `library_available_ensemble_tail_w035_v1`, adding 25 frames to
-  the v1 budget-25 seed with `score-pose-hybrid`, `score_weight=0.35`, and
+  `/workspace/neural-mapping/outputs/reports/ensemble_uncertainty_maps/library_available_ensemble_maps_v2_budget_025_rgb-l1.json`.
+  `/workspace/neural-mapping/outputs/reports/ensemble_uncertainty_maps/library_available_ensemble_maps_v3_budget_025_rgb-l1.json`.
+- Ensemble signal on library candidates was stable across seeds: Spearman
+  0.689-0.692, AUROC 0.865-0.866, and AUPRC 0.640-0.643. The top uncertainty
+  decile had about 0.174-0.176 mean RGB error and about 75% bad pixels.
+- Active splits: `library_available_ensemble_tail_w035_v1`,
+  `library_available_ensemble_tail_w035_v2`, and
+  `library_available_ensemble_tail_w035_v3`, each adding 25 frames to the
+  matching budget-25 seed with `score-pose-hybrid`, `score_weight=0.35`, and
   `top_decile_mean_uncertainty`.
 
 | Seed | Selection | Scene | Budget | Iterations | PSNR | SSIM | LPIPS | FPS |
@@ -1231,8 +1234,12 @@ Setup:
 | v1 | Random library d4 | `library_modal_v1_d4_b25_10k` | 25 | 10,000 | 26.923 | 0.884 | 0.082 | 10.273 |
 | v1 | Random library d4 | `library_modal_v1_d4_b50_10k` | 50 | 10,000 | 28.155 | 0.925 | 0.045 | 9.645 |
 | v2 | Random library d4 seed model | `library_modal_v2_d4_b25_10k` | 25 | 10,000 | 28.242 | 0.890 | 0.067 | 10.327 |
+| v2 | Random library d4 | `library_modal_v2_d4_b50_10k` | 50 | 10,000 | 29.745 | 0.933 | 0.041 | 9.842 |
 | v3 | Random library d4 seed model | `library_modal_v3_d4_b25_10k` | 25 | 10,000 | 25.397 | 0.826 | 0.104 | 10.652 |
+| v3 | Random library d4 | `library_modal_v3_d4_b50_10k` | 50 | 10,000 | 27.453 | 0.882 | 0.067 | 11.107 |
 | v1 | Tail-score-pose hybrid, `score_weight=0.35` | `library_modal_ensemble_tail_w035_v1_d4_b50_10k` | 50 | 10,000 | 28.870 | 0.934 | 0.051 | 10.453 |
+| v2 | Tail-score-pose hybrid, `score_weight=0.35` | `library_modal_ensemble_tail_w035_v2_d4_b50_10k` | 50 | 10,000 | 30.012 | 0.941 | 0.036 | 10.352 |
+| v3 | Tail-score-pose hybrid, `score_weight=0.35` | `library_modal_ensemble_tail_w035_v3_d4_b50_10k` | 50 | 10,000 | 27.959 | 0.908 | 0.057 | 10.100 |
 
 Metric artifact paths in Modal:
 
@@ -1241,8 +1248,12 @@ Metric artifact paths in Modal:
 | `library_modal_v1_d4_b25_10k` | `/workspace/neural-mapping/outputs/runs/library_modal_v1_d4_b25_10k/splatfacto/budget_025/metrics/ns_eval.json` | `/workspace/neural-mapping/outputs/runs/library_modal_v1_d4_b25_10k/splatfacto/budget_025/train/unnamed/splatfacto/2026-06-07_233947/nerfstudio_models/step-000009999.ckpt` |
 | `library_modal_v1_d4_b50_10k` | `/workspace/neural-mapping/outputs/runs/library_modal_v1_d4_b50_10k/splatfacto/budget_050/metrics/ns_eval.json` | `/workspace/neural-mapping/outputs/runs/library_modal_v1_d4_b50_10k/splatfacto/budget_050/train/unnamed/splatfacto/2026-06-07_234408/nerfstudio_models/step-000009999.ckpt` |
 | `library_modal_v2_d4_b25_10k` | `/workspace/neural-mapping/outputs/runs/library_modal_v2_d4_b25_10k/splatfacto/budget_025/metrics/ns_eval.json` | `/workspace/neural-mapping/outputs/runs/library_modal_v2_d4_b25_10k/splatfacto/budget_025/train/unnamed/splatfacto/2026-06-07_235204/nerfstudio_models/step-000009999.ckpt` |
+| `library_modal_v2_d4_b50_10k` | `/workspace/neural-mapping/outputs/runs/library_modal_v2_d4_b50_10k/splatfacto/budget_050/metrics/ns_eval.json` | `/workspace/neural-mapping/outputs/runs/library_modal_v2_d4_b50_10k/splatfacto/budget_050/train/unnamed/splatfacto/2026-06-08_000821/nerfstudio_models/step-000009999.ckpt` |
 | `library_modal_v3_d4_b25_10k` | `/workspace/neural-mapping/outputs/runs/library_modal_v3_d4_b25_10k/splatfacto/budget_025/metrics/ns_eval.json` | `/workspace/neural-mapping/outputs/runs/library_modal_v3_d4_b25_10k/splatfacto/budget_025/train/unnamed/splatfacto/2026-06-07_235156/nerfstudio_models/step-000009999.ckpt` |
+| `library_modal_v3_d4_b50_10k` | `/workspace/neural-mapping/outputs/runs/library_modal_v3_d4_b50_10k/splatfacto/budget_050/metrics/ns_eval.json` | `/workspace/neural-mapping/outputs/runs/library_modal_v3_d4_b50_10k/splatfacto/budget_050/train/unnamed/splatfacto/2026-06-08_000822/nerfstudio_models/step-000009999.ckpt` |
 | `library_modal_ensemble_tail_w035_v1_d4_b50_10k` | `/workspace/neural-mapping/outputs/runs/library_modal_ensemble_tail_w035_v1_d4_b50_10k/splatfacto/budget_050/metrics/ns_eval.json` | `/workspace/neural-mapping/outputs/runs/library_modal_ensemble_tail_w035_v1_d4_b50_10k/splatfacto/budget_050/train/unnamed/splatfacto/2026-06-08_000106/nerfstudio_models/step-000009999.ckpt` |
+| `library_modal_ensemble_tail_w035_v2_d4_b50_10k` | `/workspace/neural-mapping/outputs/runs/library_modal_ensemble_tail_w035_v2_d4_b50_10k/splatfacto/budget_050/metrics/ns_eval.json` | `/workspace/neural-mapping/outputs/runs/library_modal_ensemble_tail_w035_v2_d4_b50_10k/splatfacto/budget_050/train/unnamed/splatfacto/2026-06-08_001658/nerfstudio_models/step-000009999.ckpt` |
+| `library_modal_ensemble_tail_w035_v3_d4_b50_10k` | `/workspace/neural-mapping/outputs/runs/library_modal_ensemble_tail_w035_v3_d4_b50_10k/splatfacto/budget_050/metrics/ns_eval.json` | `/workspace/neural-mapping/outputs/runs/library_modal_ensemble_tail_w035_v3_d4_b50_10k/splatfacto/budget_050/train/unnamed/splatfacto/2026-06-08_001659/nerfstudio_models/step-000009999.ckpt` |
 
 Modal run URLs:
 
@@ -1258,22 +1269,37 @@ Modal run URLs:
 - v3 random b25 training: `ap-237KlPpcZL33HCCvJavSgk`.
 - v2 random b25 eval: `ap-USaSfbNqaWy1KXcr1pDnd5`.
 - v3 random b25 eval: `ap-TYdrDAppDYCqsec2kTXSOg`.
-- Ensemble uncertainty maps: `ap-UW9n9hcQy91Uilr3OQC4HH`.
-- Active split materialization: `ap-REtcuKcyKEfoHUKDHaWqr8`.
-- Active b50 training: `ap-tiGxUShszDSMOKYhMQwcOG`.
-- Active b50 eval: `ap-MSzGSDvdY56j63FFUc7gtL`.
+- v2 random b50 training: `ap-w0Gz5lHSe8BcPh7aoeEseo`.
+- v3 random b50 training: `ap-4JgtT7G2Bbn16wmq9QK14c`.
+- v2 random b50 eval: `ap-xeZpWcHwH8gK7X5Q0pMgl3`.
+- v3 random b50 eval: `ap-xEwGFv2rlODZISMaG9NMvA`.
+- v1 ensemble uncertainty maps: `ap-UW9n9hcQy91Uilr3OQC4HH`.
+- v2 ensemble uncertainty maps: `ap-PCNh0xJr2qgnJL3LhyB9dd`.
+- v3 ensemble uncertainty maps: `ap-9TNsho2tY9gjFidRlSPAeW`.
+- v1 active split materialization: `ap-REtcuKcyKEfoHUKDHaWqr8`.
+- v2 active split materialization: `ap-NOVJWt0gOzqvklwSla3PEz`.
+- v3 active split materialization: `ap-JR1sx4ZJksAaXfluUlLdUS`.
+- v1 active b50 training: `ap-tiGxUShszDSMOKYhMQwcOG`.
+- v2 active b50 training: `ap-RSOhYP1OvQagMecG54XE4E`.
+- v3 active b50 training: `ap-EN9Jqu3g7nCi3JCKBikx36`.
+- v1 active b50 eval: `ap-MSzGSDvdY56j63FFUc7gtL`.
+- v2 active b50 eval: `ap-OK5Oa12xCNUXzttiWT1FeK`.
+- v3 active b50 eval: `ap-fLU2UM5G94MKKzrZlK0vTO`.
 
 Interpretation:
 
 - The ZIP fallback unblocked `library`, and the scene trains/evaluates cleanly
   with explicit Nerfstudio split fields.
-- Random budget 50 improved over random budget 25 by +1.232 PSNR, +0.041 SSIM,
-  and -0.037 LPIPS.
-- The ensemble disagreement signal itself is strong on library v1 candidates,
-  with the top uncertainty decile concentrating high RGB error.
+- Random budget 50 improved over random budget 25 on every checked seed.
+- The ensemble disagreement signal itself is stable on library candidates, with
+  the top uncertainty decile concentrating high RGB error across v1-v3.
 - The v1 tail-score-pose active split beat random v1 budget 50 on PSNR by
-  +0.715 and SSIM by +0.009, but LPIPS regressed by +0.006. This makes library
-  a mixed transfer result rather than a clean all-metric replication.
-- The next `library` step should repeat active b50 on v2/v3 seeds or sweep
-  `score_weight` before treating library as positive evidence for perceptual
-  quality.
+  +0.715 and SSIM by +0.009, but LPIPS regressed by +0.006.
+- The v2 tail-score-pose active split beat random v2 budget 50 by +0.268 PSNR,
+  +0.009 SSIM, and -0.005 LPIPS.
+- The v3 tail-score-pose active split beat random v3 budget 50 by +0.505 PSNR,
+  +0.026 SSIM, and -0.009 LPIPS.
+- Across v1-v3, the selector averages about +0.496 PSNR, +0.015 SSIM, and
+  -0.003 LPIPS versus same-seed random b50. This upgrades library from a
+  one-seed boundary case to positive transfer evidence, with the remaining
+  caveat that LPIPS was not uniformly improved per seed.
