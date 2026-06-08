@@ -22,8 +22,10 @@ Nerfstudio/Splatfacto scenes:
 As of 2026-06-07, this rule improved held-out budget-50 quality over same-seed
 random selection on repeated `dozer` and `redwoods2` Nerfstudio sample splits,
 averaging about +0.739 PSNR, +0.023 SSIM, and -0.015 LPIPS across eight
-ensemble-tail seeds. See [docs/results.md](docs/results.md) for the full
-tables, Modal run IDs, and caveats.
+ensemble-tail seeds. A first `library` transfer check also improved PSNR and
+SSIM, but regressed LPIPS slightly, so it is currently a mixed boundary case.
+See [docs/results.md](docs/results.md) for the full tables, Modal run IDs, and
+caveats.
 
 ## Current Build Target
 

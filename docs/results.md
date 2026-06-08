@@ -32,6 +32,7 @@ rule.
 | Corrected poster v2-v4 | 3 | Seed-model LPIPS candidate error | `score-pose-hybrid`, `score_weight=0.35` | +1.136 PSNR, +0.009 SSIM, -0.017 LPIPS |
 | Dozer v1-v4 | 4 | Ensemble top-decile RGB disagreement | tail-score-pose hybrid, `score_weight=0.35` | +0.779 PSNR, +0.020 SSIM, -0.018 LPIPS |
 | Redwoods2 v1-v4 | 4 | Ensemble top-decile RGB disagreement | tail-score-pose hybrid, `score_weight=0.35` | +0.699 PSNR, +0.027 SSIM, -0.012 LPIPS |
+| Library v1 | 1 | Ensemble top-decile RGB disagreement | tail-score-pose hybrid, `score_weight=0.35` | +0.715 PSNR, +0.009 SSIM, +0.006 LPIPS |
 
 Across the eight dozer and redwoods2 ensemble-tail seeds, the active selector
 averages about +0.739 PSNR, +0.023 SSIM, and -0.015 LPIPS versus same-seed
@@ -45,15 +46,18 @@ Current interpretation:
   disagreement predicts failure regions, and tail-risk-plus-pose active
   selection improves budget-50 quality on two held-out Nerfstudio sample scenes
   with repeated seeds.
+- Library v1 is a mixed transfer result: the same rule improved PSNR and SSIM,
+  but regressed LPIPS. Treat it as evidence that the signal can transfer to a
+  fourth sample scene, while perceptual quality still needs either repeated
+  library seeds or a tuned acquisition weight.
 - Poster remains useful as the development scene, but its final corrected
   result used a seed-model LPIPS score rather than ensemble disagreement. Treat
   poster as evidence for the `score-pose-hybrid` acquisition shape, not as a
   direct ensemble-tail replication.
-- The next research step is to leave toy Nerfstudio samples and run the same
-  protocol on a depth-bearing indoor dataset such as Replica or ScanNet-style
-  data. If that setup blocks progress, the fallback is one additional
-  Nerfstudio sample scene with the same budget-25 ensemble, budget-50 random,
-  and budget-50 active comparison.
+- The next research step is to either repeat library v2/v3 active runs to see
+  whether the LPIPS regression is a one-seed artifact, or leave toy Nerfstudio
+  samples and run the same protocol on a depth-bearing indoor dataset such as
+  Replica or ScanNet-style data.
 
 ## Modal Poster Baselines
 
@@ -1189,14 +1193,14 @@ Interpretation:
 - The result is useful because the active split improved average quality metrics across four checked seeds; v3 shows the per-seed gain can collapse to a tie, but no redwoods2 seed has regressed on PSNR, SSIM, or LPIPS.
 - This is the first repeated positive transfer result beyond `poster` and `dozer`; it supports treating ensemble tail-risk plus pose diversity as a scene-agnostic acquisition heuristic rather than a dozer-only artifact.
 
-## Modal Library Baseline Start
+## Modal Library Baseline And Active v1
 
-Date: 2026-06-07
+Date: 2026-06-07 Pacific / 2026-06-08 UTC
 
 Question:
 
-- Can the workflow start transferring to another indoor Nerfstudio sample scene
-  after adding ZIP-mirror download support?
+- Can the ensemble tail-score-pose acquisition rule transfer to another indoor
+  Nerfstudio sample scene after adding ZIP-mirror download support?
 
 Setup:
 
@@ -1204,19 +1208,31 @@ Setup:
 - Download source: `nerfbaselines/nerfbaselines-data` Nerfstudio ZIP mirror,
   used as a fallback because `nerfstudioteam/datasets` returned no files for
   this capture layout.
-- Source scene: `library_available_v1`.
-- Split seed: `20260614`.
+- Source scenes: `library_available_v1`, `library_available_v2`, and
+  `library_available_v3`.
+- Split seeds: `20260614`, `20260615`, and `20260616`.
 - Filtered scene kept 398 of 398 frames.
 - Each budget uses 10 held-out test frames and 10 validation frames.
 - Method: Nerfstudio `splatfacto`.
 - Training length: 10,000 iterations.
 - Downscale factor: 4.
 - GPU: Modal L4.
+- Ensemble uncertainty report:
+  `/workspace/neural-mapping/outputs/reports/ensemble_uncertainty_maps/library_available_ensemble_maps_v1_budget_025_rgb-l1.json`.
+- Ensemble signal on v1 candidates: Spearman 0.690, AUROC 0.866, AUPRC 0.643
+  over 3,530,000 sampled pixels. The top uncertainty decile had 0.174 mean RGB
+  error and 75.4% bad pixels.
+- Active split: `library_available_ensemble_tail_w035_v1`, adding 25 frames to
+  the v1 budget-25 seed with `score-pose-hybrid`, `score_weight=0.35`, and
+  `top_decile_mean_uncertainty`.
 
 | Seed | Selection | Scene | Budget | Iterations | PSNR | SSIM | LPIPS | FPS |
 |---|---|---|---:|---:|---:|---:|---:|---:|
 | v1 | Random library d4 | `library_modal_v1_d4_b25_10k` | 25 | 10,000 | 26.923 | 0.884 | 0.082 | 10.273 |
 | v1 | Random library d4 | `library_modal_v1_d4_b50_10k` | 50 | 10,000 | 28.155 | 0.925 | 0.045 | 9.645 |
+| v2 | Random library d4 seed model | `library_modal_v2_d4_b25_10k` | 25 | 10,000 | 28.242 | 0.890 | 0.067 | 10.327 |
+| v3 | Random library d4 seed model | `library_modal_v3_d4_b25_10k` | 25 | 10,000 | 25.397 | 0.826 | 0.104 | 10.652 |
+| v1 | Tail-score-pose hybrid, `score_weight=0.35` | `library_modal_ensemble_tail_w035_v1_d4_b50_10k` | 50 | 10,000 | 28.870 | 0.934 | 0.051 | 10.453 |
 
 Metric artifact paths in Modal:
 
@@ -1224,6 +1240,9 @@ Metric artifact paths in Modal:
 |---|---|---|
 | `library_modal_v1_d4_b25_10k` | `/workspace/neural-mapping/outputs/runs/library_modal_v1_d4_b25_10k/splatfacto/budget_025/metrics/ns_eval.json` | `/workspace/neural-mapping/outputs/runs/library_modal_v1_d4_b25_10k/splatfacto/budget_025/train/unnamed/splatfacto/2026-06-07_233947/nerfstudio_models/step-000009999.ckpt` |
 | `library_modal_v1_d4_b50_10k` | `/workspace/neural-mapping/outputs/runs/library_modal_v1_d4_b50_10k/splatfacto/budget_050/metrics/ns_eval.json` | `/workspace/neural-mapping/outputs/runs/library_modal_v1_d4_b50_10k/splatfacto/budget_050/train/unnamed/splatfacto/2026-06-07_234408/nerfstudio_models/step-000009999.ckpt` |
+| `library_modal_v2_d4_b25_10k` | `/workspace/neural-mapping/outputs/runs/library_modal_v2_d4_b25_10k/splatfacto/budget_025/metrics/ns_eval.json` | `/workspace/neural-mapping/outputs/runs/library_modal_v2_d4_b25_10k/splatfacto/budget_025/train/unnamed/splatfacto/2026-06-07_235204/nerfstudio_models/step-000009999.ckpt` |
+| `library_modal_v3_d4_b25_10k` | `/workspace/neural-mapping/outputs/runs/library_modal_v3_d4_b25_10k/splatfacto/budget_025/metrics/ns_eval.json` | `/workspace/neural-mapping/outputs/runs/library_modal_v3_d4_b25_10k/splatfacto/budget_025/train/unnamed/splatfacto/2026-06-07_235156/nerfstudio_models/step-000009999.ckpt` |
+| `library_modal_ensemble_tail_w035_v1_d4_b50_10k` | `/workspace/neural-mapping/outputs/runs/library_modal_ensemble_tail_w035_v1_d4_b50_10k/splatfacto/budget_050/metrics/ns_eval.json` | `/workspace/neural-mapping/outputs/runs/library_modal_ensemble_tail_w035_v1_d4_b50_10k/splatfacto/budget_050/train/unnamed/splatfacto/2026-06-08_000106/nerfstudio_models/step-000009999.ckpt` |
 
 Modal run URLs:
 
@@ -1233,6 +1252,16 @@ Modal run URLs:
 - v1 random b50 training: `ap-4SIzSLRlycO3JrdQIlMwG3`.
 - v1 random b25 eval: `ap-xFQbYhiFjmJxgvTehgyXpK`.
 - v1 random b50 eval: `ap-ShvMLKztaRiu92tIWDmdnw`.
+- v2 prepare: `ap-FjXWqa7diEgwS6xHFZkp3p`.
+- v3 prepare: `ap-ov5nhTlCC7bLcVZ7UjkuvR`.
+- v2 random b25 training: `ap-JYD59q95IUv9NAaatqK3nS`.
+- v3 random b25 training: `ap-237KlPpcZL33HCCvJavSgk`.
+- v2 random b25 eval: `ap-USaSfbNqaWy1KXcr1pDnd5`.
+- v3 random b25 eval: `ap-TYdrDAppDYCqsec2kTXSOg`.
+- Ensemble uncertainty maps: `ap-UW9n9hcQy91Uilr3OQC4HH`.
+- Active split materialization: `ap-REtcuKcyKEfoHUKDHaWqr8`.
+- Active b50 training: `ap-tiGxUShszDSMOKYhMQwcOG`.
+- Active b50 eval: `ap-MSzGSDvdY56j63FFUc7gtL`.
 
 Interpretation:
 
@@ -1240,7 +1269,11 @@ Interpretation:
   with explicit Nerfstudio split fields.
 - Random budget 50 improved over random budget 25 by +1.232 PSNR, +0.041 SSIM,
   and -0.037 LPIPS.
-- This is only a baseline start, not an active-selection result. The next
-  `library` step should prepare v2/v3 split seeds, train the budget-25 seed
-  ensemble, generate ensemble uncertainty maps for v1, then compare random
-  budget 50 against the tail-score-pose active budget-50 split.
+- The ensemble disagreement signal itself is strong on library v1 candidates,
+  with the top uncertainty decile concentrating high RGB error.
+- The v1 tail-score-pose active split beat random v1 budget 50 on PSNR by
+  +0.715 and SSIM by +0.009, but LPIPS regressed by +0.006. This makes library
+  a mixed transfer result rather than a clean all-metric replication.
+- The next `library` step should repeat active b50 on v2/v3 seeds or sweep
+  `score_weight` before treating library as positive evidence for perceptual
+  quality.
