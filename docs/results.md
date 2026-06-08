@@ -33,6 +33,7 @@ rule.
 | Dozer v1-v4 | 4 | Ensemble top-decile RGB disagreement | tail-score-pose hybrid, `score_weight=0.35` | +0.779 PSNR, +0.020 SSIM, -0.018 LPIPS |
 | Redwoods2 v1-v4 | 4 | Ensemble top-decile RGB disagreement | tail-score-pose hybrid, `score_weight=0.35` | +0.699 PSNR, +0.027 SSIM, -0.012 LPIPS |
 | Library v1-v3 | 3 | Ensemble top-decile RGB disagreement | tail-score-pose hybrid, `score_weight=0.35` | +0.496 PSNR, +0.015 SSIM, -0.003 LPIPS |
+| Kitchen v1-v3 | 3 | Ensemble top-decile RGB disagreement | tail-score-pose hybrid, `score_weight=0.35` | Mixed: +0.800 PSNR, +0.001 SSIM, -0.027 LPIPS |
 
 Across the eight dozer and redwoods2 ensemble-tail seeds, the active selector
 averages about +0.739 PSNR, +0.023 SSIM, and -0.015 LPIPS versus same-seed
@@ -50,6 +51,10 @@ Current interpretation:
   improved PSNR and SSIM on all three library seeds and improved average LPIPS.
   The caveat is that LPIPS still regressed on v1, so perceptual robustness is
   weaker than the PSNR/SSIM story.
+- Kitchen v1-v3 is the current hard-scene stress test. The same rule improved
+  the average PSNR and LPIPS, but the gains came from v2/v3 while v1 regressed
+  badly. Treat it as evidence that the signal can rescue difficult splits, not
+  as a uniformly robust acquisition rule.
 - Poster remains useful as the development scene, but its final corrected
   result used a seed-model LPIPS score rather than ensemble disagreement. Treat
   poster as evidence for the `score-pose-hybrid` acquisition shape, not as a
@@ -1303,3 +1308,116 @@ Interpretation:
   -0.003 LPIPS versus same-seed random b50. This upgrades library from a
   one-seed boundary case to positive transfer evidence, with the remaining
   caveat that LPIPS was not uniformly improved per seed.
+
+## Modal Kitchen Hard-Scene Transfer, Ensemble Tail-Pose Hybrid
+
+Date: 2026-06-08 UTC
+
+Question:
+
+- Does the same ensemble tail-score-pose acquisition rule still help on a much
+  harder Nerfstudio sample scene?
+
+Setup:
+
+- Source capture: `kitchen`.
+- Download source: `nerfbaselines/nerfbaselines-data` Nerfstudio ZIP mirror,
+  used as a fallback because the primary Nerfstudio mirror did not provide this
+  capture layout.
+- Source scenes: `kitchen_available_v1`, `kitchen_available_v2`, and
+  `kitchen_available_v3`.
+- Split seeds: `20260617`, `20260618`, and `20260619`.
+- Filtered scene kept 617 of 617 frames.
+- Each budget uses 10 held-out test frames and 10 validation frames.
+- Method: Nerfstudio `splatfacto`.
+- Training length: 10,000 iterations.
+- Downscale factor: 4.
+- GPU: Modal L4.
+- Ensemble uncertainty reports:
+  `/workspace/neural-mapping/outputs/reports/ensemble_uncertainty_maps/kitchen_available_ensemble_maps_v1_budget_025_rgb-l1.json`.
+  `/workspace/neural-mapping/outputs/reports/ensemble_uncertainty_maps/kitchen_available_ensemble_maps_v2_budget_025_rgb-l1.json`.
+  `/workspace/neural-mapping/outputs/reports/ensemble_uncertainty_maps/kitchen_available_ensemble_maps_v3_budget_025_rgb-l1.json`.
+- Ensemble signal on kitchen candidates was weaker than on library but still
+  coherent: Spearman 0.373-0.376, AUROC 0.666-0.668, and AUPRC 0.335-0.337.
+  The top uncertainty decile had about 0.230-0.232 mean RGB error and about
+  41% bad pixels.
+- Active splits: `kitchen_available_ensemble_tail_w035_v1`,
+  `kitchen_available_ensemble_tail_w035_v2`, and
+  `kitchen_available_ensemble_tail_w035_v3`, each adding 25 frames to the
+  matching budget-25 seed with `score-pose-hybrid`, `score_weight=0.35`, and
+  `top_decile_mean_uncertainty`.
+
+| Seed | Selection | Scene | Budget | Iterations | PSNR | SSIM | LPIPS | FPS |
+|---|---|---|---:|---:|---:|---:|---:|---:|
+| v1 | Random kitchen d4 seed model | `kitchen_modal_v1_d4_b25_10k` | 25 | 10,000 | 14.468 | 0.405 | 0.430 | 24.433 |
+| v1 | Random kitchen d4 | `kitchen_modal_v1_d4_b50_10k` | 50 | 10,000 | 16.257 | 0.560 | 0.303 | 23.736 |
+| v2 | Random kitchen d4 seed model | `kitchen_modal_v2_d4_b25_10k` | 25 | 10,000 | 13.047 | 0.390 | 0.489 | 24.349 |
+| v2 | Random kitchen d4 | `kitchen_modal_v2_d4_b50_10k` | 50 | 10,000 | 14.671 | 0.472 | 0.397 | 23.902 |
+| v3 | Random kitchen d4 seed model | `kitchen_modal_v3_d4_b25_10k` | 25 | 10,000 | 13.243 | 0.398 | 0.512 | 24.830 |
+| v3 | Random kitchen d4 | `kitchen_modal_v3_d4_b50_10k` | 50 | 10,000 | 14.539 | 0.497 | 0.426 | 22.744 |
+| v1 | Tail-score-pose hybrid, `score_weight=0.35` | `kitchen_modal_ensemble_tail_w035_v1_d4_b50_10k` | 50 | 10,000 | 14.990 | 0.455 | 0.378 | 24.133 |
+| v2 | Tail-score-pose hybrid, `score_weight=0.35` | `kitchen_modal_ensemble_tail_w035_v2_d4_b50_10k` | 50 | 10,000 | 16.752 | 0.568 | 0.324 | 24.126 |
+| v3 | Tail-score-pose hybrid, `score_weight=0.35` | `kitchen_modal_ensemble_tail_w035_v3_d4_b50_10k` | 50 | 10,000 | 16.124 | 0.511 | 0.344 | 26.665 |
+
+Metric artifact paths in Modal:
+
+| Scene | Metrics path | Checkpoint |
+|---|---|---|
+| `kitchen_modal_v1_d4_b25_10k` | `/workspace/neural-mapping/outputs/runs/kitchen_modal_v1_d4_b25_10k/splatfacto/budget_025/metrics/ns_eval.json` | `/workspace/neural-mapping/outputs/runs/kitchen_modal_v1_d4_b25_10k/splatfacto/budget_025/train/unnamed/splatfacto/2026-06-08_002844/nerfstudio_models/step-000009999.ckpt` |
+| `kitchen_modal_v1_d4_b50_10k` | `/workspace/neural-mapping/outputs/runs/kitchen_modal_v1_d4_b50_10k/splatfacto/budget_050/metrics/ns_eval.json` | `/workspace/neural-mapping/outputs/runs/kitchen_modal_v1_d4_b50_10k/splatfacto/budget_050/train/unnamed/splatfacto/2026-06-08_002842/nerfstudio_models/step-000009999.ckpt` |
+| `kitchen_modal_v2_d4_b25_10k` | `/workspace/neural-mapping/outputs/runs/kitchen_modal_v2_d4_b25_10k/splatfacto/budget_025/metrics/ns_eval.json` | `/workspace/neural-mapping/outputs/runs/kitchen_modal_v2_d4_b25_10k/splatfacto/budget_025/train/unnamed/splatfacto/2026-06-08_002848/nerfstudio_models/step-000009999.ckpt` |
+| `kitchen_modal_v2_d4_b50_10k` | `/workspace/neural-mapping/outputs/runs/kitchen_modal_v2_d4_b50_10k/splatfacto/budget_050/metrics/ns_eval.json` | `/workspace/neural-mapping/outputs/runs/kitchen_modal_v2_d4_b50_10k/splatfacto/budget_050/train/unnamed/splatfacto/2026-06-08_002847/nerfstudio_models/step-000009999.ckpt` |
+| `kitchen_modal_v3_d4_b25_10k` | `/workspace/neural-mapping/outputs/runs/kitchen_modal_v3_d4_b25_10k/splatfacto/budget_025/metrics/ns_eval.json` | `/workspace/neural-mapping/outputs/runs/kitchen_modal_v3_d4_b25_10k/splatfacto/budget_025/train/unnamed/splatfacto/2026-06-08_002844/nerfstudio_models/step-000009999.ckpt` |
+| `kitchen_modal_v3_d4_b50_10k` | `/workspace/neural-mapping/outputs/runs/kitchen_modal_v3_d4_b50_10k/splatfacto/budget_050/metrics/ns_eval.json` | `/workspace/neural-mapping/outputs/runs/kitchen_modal_v3_d4_b50_10k/splatfacto/budget_050/train/unnamed/splatfacto/2026-06-08_002847/nerfstudio_models/step-000009999.ckpt` |
+| `kitchen_modal_ensemble_tail_w035_v1_d4_b50_10k` | `/workspace/neural-mapping/outputs/runs/kitchen_modal_ensemble_tail_w035_v1_d4_b50_10k/splatfacto/budget_050/metrics/ns_eval.json` | `/workspace/neural-mapping/outputs/runs/kitchen_modal_ensemble_tail_w035_v1_d4_b50_10k/splatfacto/budget_050/train/unnamed/splatfacto/2026-06-08_004231/nerfstudio_models/step-000009999.ckpt` |
+| `kitchen_modal_ensemble_tail_w035_v2_d4_b50_10k` | `/workspace/neural-mapping/outputs/runs/kitchen_modal_ensemble_tail_w035_v2_d4_b50_10k/splatfacto/budget_050/metrics/ns_eval.json` | `/workspace/neural-mapping/outputs/runs/kitchen_modal_ensemble_tail_w035_v2_d4_b50_10k/splatfacto/budget_050/train/unnamed/splatfacto/2026-06-08_004237/nerfstudio_models/step-000009999.ckpt` |
+| `kitchen_modal_ensemble_tail_w035_v3_d4_b50_10k` | `/workspace/neural-mapping/outputs/runs/kitchen_modal_ensemble_tail_w035_v3_d4_b50_10k/splatfacto/budget_050/metrics/ns_eval.json` | `/workspace/neural-mapping/outputs/runs/kitchen_modal_ensemble_tail_w035_v3_d4_b50_10k/splatfacto/budget_050/train/unnamed/splatfacto/2026-06-08_004228/nerfstudio_models/step-000009999.ckpt` |
+
+Modal run URLs:
+
+- v1 prepare: `ap-QdJtAOFkKkJLS8Qz3sJ1uf`.
+- v2 prepare: `ap-Ho4o5XbMwWdqxRycdD1xJm`.
+- v3 prepare: `ap-ISixwHadQpWXv9f86Es8ET`.
+- v1 random b25 training: `ap-pSJ1VKhrt4gfDZoZMegw6U`.
+- v2 random b25 training: `ap-0LLMwJRSiaugod6xLh1gWB`.
+- v3 random b25 training: `ap-RgFvI4wuDPip1begS1NVzN`.
+- v1 random b50 training: `ap-p1qXxV2MJv2ixKcE7KfB2y`.
+- v2 random b50 training: `ap-rFwLaVegUQa0x3NVUwDKJ4`.
+- v3 random b50 training: `ap-HV1Zc1tXOSIMPTAxEGyfqw`.
+- v1 random b25 eval: `ap-oT2hgVR21clWlG7iB5W62L`.
+- v2 random b25 eval: `ap-nEV3xWCsuv2hMYGvhcvQN8`.
+- v3 random b25 eval: `ap-HkIe4um39h1k1jIn2Ob7j9`.
+- v1 random b50 eval: `ap-QPqncvqpyoCurOctzI6dWW`.
+- v2 random b50 eval: `ap-qJ9ZiOKuxUhA4bfy2nnQeQ`.
+- v3 random b50 eval: `ap-1zpjmFRu10CvUJJvRYv3jW`.
+- v1 ensemble uncertainty maps: `ap-C1ipwRdhsJSAdLqeGzHYHb`.
+- v2 ensemble uncertainty maps: `ap-Q8euwW9lXhRisXdjBJTgBO`.
+- v3 ensemble uncertainty maps: `ap-2SYUE96c7KP1hzTDjoitdw`.
+- v1 active split materialization: `ap-XYvNdLnkcq1O93tCqrsXP4`.
+- v2 active split materialization: `ap-hkKKOrCHngslWIJBJeMBRM`.
+- v3 active split materialization: `ap-8gmJYtRoGLCCdqbpg6GPs5`.
+- v1 active b50 training: `ap-exBCojsXdCXqKBu90MkhV8`.
+- v2 active b50 training: `ap-1ULhqJ38YhIWhAyF4JjFQJ`.
+- v3 active b50 training: `ap-EYdyslHbd1J2mitn5qJe9C`.
+- v1 active b50 eval: `ap-2ThyEMEPLzQHaxulmeMsDg`.
+- v2 active b50 eval: `ap-VnotWY3j6HB6MZBiyju5yZ`.
+- v3 active b50 eval: `ap-rDbKPu4IPIKDD55W9QamRe`.
+
+Interpretation:
+
+- Kitchen is substantially harder than dozer, redwoods2, or library at the
+  same downscale and iteration budget. Random b50 PSNR was only 14.539-16.257,
+  with LPIPS 0.303-0.426.
+- The ensemble disagreement signal is real but much weaker than on library:
+  the top uncertainty decile is enriched for bad pixels, but only to about 41%
+  bad-pixel fraction.
+- The v1 tail-score-pose active split regressed against random b50 by -1.267
+  PSNR, -0.105 SSIM, and +0.075 LPIPS.
+- The v2 tail-score-pose active split beat random b50 by +2.080 PSNR, +0.096
+  SSIM, and -0.073 LPIPS.
+- The v3 tail-score-pose active split beat random b50 by +1.585 PSNR, +0.014
+  SSIM, and -0.082 LPIPS.
+- Across v1-v3, the selector averages about +0.800 PSNR, +0.001 SSIM, and
+  -0.027 LPIPS versus same-seed random b50. This is a mixed hard-scene result:
+  the average improves because v2/v3 are strong, but the v1 regression means
+  the acquisition rule is not yet robust enough for an unqualified claim.
