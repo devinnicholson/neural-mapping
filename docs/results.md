@@ -1356,6 +1356,9 @@ Setup:
 | v3 | Random kitchen d4 seed model | `kitchen_modal_v3_d4_b25_10k` | 25 | 10,000 | 13.243 | 0.398 | 0.512 | 24.830 |
 | v3 | Random kitchen d4 | `kitchen_modal_v3_d4_b50_10k` | 50 | 10,000 | 14.539 | 0.497 | 0.426 | 22.744 |
 | v1 | Tail-score-pose hybrid, `score_weight=0.35` | `kitchen_modal_ensemble_tail_w035_v1_d4_b50_10k` | 50 | 10,000 | 14.990 | 0.455 | 0.378 | 24.133 |
+| v1 | Tail-score-pose hybrid, `score_weight=0.25` | `kitchen_modal_ensemble_tail_w025_v1_d4_b50_10k` | 50 | 10,000 | 15.314 | 0.458 | 0.376 | 25.072 |
+| v1 | Tail-score-pose hybrid, `score_weight=0.15` | `kitchen_modal_ensemble_tail_w015_v1_d4_b50_10k` | 50 | 10,000 | 15.357 | 0.462 | 0.388 | 24.985 |
+| v1 | Pose novelty only | `kitchen_modal_pose_v1_d4_b50_10k` | 50 | 10,000 | 15.427 | 0.451 | 0.387 | 19.006 |
 | v2 | Tail-score-pose hybrid, `score_weight=0.35` | `kitchen_modal_ensemble_tail_w035_v2_d4_b50_10k` | 50 | 10,000 | 16.752 | 0.568 | 0.324 | 24.126 |
 | v3 | Tail-score-pose hybrid, `score_weight=0.35` | `kitchen_modal_ensemble_tail_w035_v3_d4_b50_10k` | 50 | 10,000 | 16.124 | 0.511 | 0.344 | 26.665 |
 
@@ -1370,6 +1373,9 @@ Metric artifact paths in Modal:
 | `kitchen_modal_v3_d4_b25_10k` | `/workspace/neural-mapping/outputs/runs/kitchen_modal_v3_d4_b25_10k/splatfacto/budget_025/metrics/ns_eval.json` | `/workspace/neural-mapping/outputs/runs/kitchen_modal_v3_d4_b25_10k/splatfacto/budget_025/train/unnamed/splatfacto/2026-06-08_002844/nerfstudio_models/step-000009999.ckpt` |
 | `kitchen_modal_v3_d4_b50_10k` | `/workspace/neural-mapping/outputs/runs/kitchen_modal_v3_d4_b50_10k/splatfacto/budget_050/metrics/ns_eval.json` | `/workspace/neural-mapping/outputs/runs/kitchen_modal_v3_d4_b50_10k/splatfacto/budget_050/train/unnamed/splatfacto/2026-06-08_002847/nerfstudio_models/step-000009999.ckpt` |
 | `kitchen_modal_ensemble_tail_w035_v1_d4_b50_10k` | `/workspace/neural-mapping/outputs/runs/kitchen_modal_ensemble_tail_w035_v1_d4_b50_10k/splatfacto/budget_050/metrics/ns_eval.json` | `/workspace/neural-mapping/outputs/runs/kitchen_modal_ensemble_tail_w035_v1_d4_b50_10k/splatfacto/budget_050/train/unnamed/splatfacto/2026-06-08_004231/nerfstudio_models/step-000009999.ckpt` |
+| `kitchen_modal_ensemble_tail_w025_v1_d4_b50_10k` | `/workspace/neural-mapping/outputs/runs/kitchen_modal_ensemble_tail_w025_v1_d4_b50_10k/splatfacto/budget_050/metrics/ns_eval.json` | `/workspace/neural-mapping/outputs/runs/kitchen_modal_ensemble_tail_w025_v1_d4_b50_10k/splatfacto/budget_050/train/unnamed/splatfacto/2026-06-08_005425/nerfstudio_models/step-000009999.ckpt` |
+| `kitchen_modal_ensemble_tail_w015_v1_d4_b50_10k` | `/workspace/neural-mapping/outputs/runs/kitchen_modal_ensemble_tail_w015_v1_d4_b50_10k/splatfacto/budget_050/metrics/ns_eval.json` | `/workspace/neural-mapping/outputs/runs/kitchen_modal_ensemble_tail_w015_v1_d4_b50_10k/splatfacto/budget_050/train/unnamed/splatfacto/2026-06-08_005410/nerfstudio_models/step-000009999.ckpt` |
+| `kitchen_modal_pose_v1_d4_b50_10k` | `/workspace/neural-mapping/outputs/runs/kitchen_modal_pose_v1_d4_b50_10k/splatfacto/budget_050/metrics/ns_eval.json` | `/workspace/neural-mapping/outputs/runs/kitchen_modal_pose_v1_d4_b50_10k/splatfacto/budget_050/train/unnamed/splatfacto/2026-06-08_010227/nerfstudio_models/step-000009999.ckpt` |
 | `kitchen_modal_ensemble_tail_w035_v2_d4_b50_10k` | `/workspace/neural-mapping/outputs/runs/kitchen_modal_ensemble_tail_w035_v2_d4_b50_10k/splatfacto/budget_050/metrics/ns_eval.json` | `/workspace/neural-mapping/outputs/runs/kitchen_modal_ensemble_tail_w035_v2_d4_b50_10k/splatfacto/budget_050/train/unnamed/splatfacto/2026-06-08_004237/nerfstudio_models/step-000009999.ckpt` |
 | `kitchen_modal_ensemble_tail_w035_v3_d4_b50_10k` | `/workspace/neural-mapping/outputs/runs/kitchen_modal_ensemble_tail_w035_v3_d4_b50_10k/splatfacto/budget_050/metrics/ns_eval.json` | `/workspace/neural-mapping/outputs/runs/kitchen_modal_ensemble_tail_w035_v3_d4_b50_10k/splatfacto/budget_050/train/unnamed/splatfacto/2026-06-08_004228/nerfstudio_models/step-000009999.ckpt` |
 
@@ -1402,6 +1408,15 @@ Modal run URLs:
 - v1 active b50 eval: `ap-2ThyEMEPLzQHaxulmeMsDg`.
 - v2 active b50 eval: `ap-VnotWY3j6HB6MZBiyju5yZ`.
 - v3 active b50 eval: `ap-rDbKPu4IPIKDD55W9QamRe`.
+- v1 w0.25 active split materialization: `ap-QykaSktPUy9sjO4THgFCSt`.
+- v1 w0.15 active split materialization: `ap-wfPVmEmTMSeJ8mA7FB2O0v`.
+- v1 pose-only split materialization: `ap-STXf5zcUf7Az0qtAfrHZfJ`.
+- v1 w0.25 active b50 training: `ap-MTdpckGjBnMmxr2EfRfmif`.
+- v1 w0.15 active b50 training: `ap-OfzVRxRNuPJT2JWIUeKZYj`.
+- v1 pose-only b50 training: `ap-qJ8AgdRpIZxAL8mqwyRZYo`.
+- v1 w0.25 active b50 eval: `ap-Be41X2wloHNKAsKwtS7T00`.
+- v1 w0.15 active b50 eval: `ap-ZFqUiAbx7KoURa0nk9qgrE`.
+- v1 pose-only b50 eval: `ap-GbNgMbXhCfSSR9Mi7CDeKP`.
 
 Interpretation:
 
@@ -1413,6 +1428,12 @@ Interpretation:
   bad-pixel fraction.
 - The v1 tail-score-pose active split regressed against random b50 by -1.267
   PSNR, -0.105 SSIM, and +0.075 LPIPS.
+- A v1 follow-up sweep toward stronger pose diversity did not recover the
+  random baseline. `score_weight=0.25` was still -0.944 PSNR, -0.102 SSIM, and
+  +0.073 LPIPS versus random b50; `score_weight=0.15` was -0.901 PSNR, -0.098
+  SSIM, and +0.084 LPIPS; pose-novelty-only was -0.830 PSNR, -0.109 SSIM, and
+  +0.083 LPIPS. This suggests the v1 failure is not just too much uncertainty
+  weighting.
 - The v2 tail-score-pose active split beat random b50 by +2.080 PSNR, +0.096
   SSIM, and -0.073 LPIPS.
 - The v3 tail-score-pose active split beat random b50 by +1.585 PSNR, +0.014
