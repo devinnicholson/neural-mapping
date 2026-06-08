@@ -25,10 +25,10 @@ Nerfstudio sample splits. The strongest clean replication is still `dozer` plus
 `redwoods2`, averaging about +0.739 PSNR, +0.023 SSIM, and -0.015 LPIPS across
 eight ensemble-tail seeds. On `library` v1-v3 it averaged about +0.496 PSNR,
 +0.015 SSIM, and -0.003 LPIPS. On the harder `kitchen` scene, the same rule
-averaged about +0.800 PSNR, +0.001 SSIM, and -0.027 LPIPS across v1-v3, but
-one seed regressed sharply, so this is a mixed hard-scene result rather than a
-clean replication. See [docs/results.md](docs/results.md) for the full tables,
-Modal run IDs, and caveats.
+averaged about +0.687 PSNR, +0.002 SSIM, and -0.028 LPIPS across v1-v4, but
+one seed regressed sharply, so this remains a mixed hard-scene result rather
+than a clean replication. See [docs/results.md](docs/results.md) for the full
+tables, Modal run IDs, and caveats.
 
 ## Current Build Target
 
