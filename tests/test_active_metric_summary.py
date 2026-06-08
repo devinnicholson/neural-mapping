@@ -92,6 +92,48 @@ class ActiveMetricSummaryTests(unittest.TestCase):
             self.assertEqual(summary["pairs"][0]["delta"]["psnr"], 1.0)
             self.assertEqual(summary["pairs"][0]["budget"], "050")
 
+    def test_accepts_pairs_file(self) -> None:
+        rows = [
+            _row("random_v1", "050", 20.0, 0.70, 0.30, 10.0),
+            _row("active_v1", "050", 21.0, 0.75, 0.25, 9.0),
+        ]
+        pairs = {
+            "budget": "50",
+            "pairs": [
+                {
+                    "group": "demo",
+                    "seed": "v1",
+                    "baseline_scene": "random_v1",
+                    "active_scene": "active_v1",
+                }
+            ],
+        }
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            input_path = root / "metrics.json"
+            pairs_path = root / "pairs.json"
+            input_path.write_text(json.dumps(rows), encoding="utf-8")
+            pairs_path.write_text(json.dumps(pairs), encoding="utf-8")
+
+            completed = subprocess.run(
+                [
+                    sys.executable,
+                    str(ROOT / "scripts" / "summarize_active_metrics.py"),
+                    "--input",
+                    str(input_path),
+                    "--pairs-file",
+                    str(pairs_path),
+                ],
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+
+            summary = json.loads(completed.stdout)
+            self.assertEqual(summary["budget"], "050")
+            self.assertEqual(summary["groups"][0]["count"], 1)
+            self.assertAlmostEqual(summary["groups"][0]["mean_delta"]["lpips"], -0.05)
+
 
 def _row(scene: str, budget: str, psnr: float, ssim: float, lpips: float, fps: float) -> dict[str, object]:
     return {

@@ -32,9 +32,17 @@ def parse_args() -> argparse.Namespace:
         help="Metric pair to compare. May be repeated.",
     )
     parser.add_argument(
+        "--pairs-file",
+        default=None,
+        help=(
+            "Optional JSON file containing a 'pairs' list with group, seed, "
+            "baseline_scene, and active_scene fields. May also contain 'budget'."
+        ),
+    )
+    parser.add_argument(
         "--budget",
-        default="050",
-        help="Budget to compare, normalized to three digits. Default: 050.",
+        default=None,
+        help="Budget to compare, normalized to three digits. Defaults to pairs-file budget or 050.",
     )
     parser.add_argument("--output", default=None, help="Optional JSON output path.")
     parser.add_argument(
@@ -48,10 +56,15 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> int:
     args = parse_args()
-    budget = _normalize_budget(args.budget)
+    pairs_payload = _read_pairs_file(args.pairs_file) if args.pairs_file else {}
+    budget = _normalize_budget(args.budget or pairs_payload.get("budget", "050"))
     pair_specs = [_parse_pair_spec(spec) for spec in args.pair]
+    pair_specs.extend(_parse_pairs_payload(pairs_payload))
     if not pair_specs:
-        raise SystemExit("At least one --pair GROUP:SEED:BASELINE_SCENE:ACTIVE_SCENE is required.")
+        raise SystemExit(
+            "At least one --pair GROUP:SEED:BASELINE_SCENE:ACTIVE_SCENE "
+            "or --pairs-file entry is required."
+        )
 
     rows = load_metric_rows(_read_input(args.input))
     summary = summarize_pairs(rows, pair_specs, budget=budget)
@@ -184,6 +197,15 @@ def _read_input(path: str) -> str:
     return Path(path).read_text(encoding="utf-8")
 
 
+def _read_pairs_file(path: str) -> dict[str, Any]:
+    payload = json.loads(Path(path).read_text(encoding="utf-8"))
+    if isinstance(payload, list):
+        return {"pairs": payload}
+    if not isinstance(payload, dict):
+        raise SystemExit(f"Pairs file must contain an object or list, got {type(payload).__name__}.")
+    return payload
+
+
 def _parse_pair_spec(spec: str) -> dict[str, str]:
     parts = spec.split(":")
     if len(parts) != 4 or any(not part for part in parts):
@@ -198,6 +220,32 @@ def _parse_pair_spec(spec: str) -> dict[str, str]:
         "baseline_scene": baseline_scene,
         "active_scene": active_scene,
     }
+
+
+def _parse_pairs_payload(payload: dict[str, Any]) -> list[dict[str, str]]:
+    raw_pairs = payload.get("pairs", [])
+    if not isinstance(raw_pairs, list):
+        raise SystemExit("Pairs file field 'pairs' must be a list.")
+    pairs = []
+    for index, item in enumerate(raw_pairs):
+        if not isinstance(item, dict):
+            raise SystemExit(f"Pairs file entry {index} must be an object.")
+        try:
+            group = str(item["group"])
+            seed = str(item["seed"])
+            baseline_scene = str(item["baseline_scene"])
+            active_scene = str(item["active_scene"])
+        except KeyError as exc:
+            raise SystemExit(f"Pairs file entry {index} is missing field {exc.args[0]!r}.") from exc
+        pairs.append(
+            {
+                "group": group,
+                "seed": seed,
+                "baseline_scene": baseline_scene,
+                "active_scene": active_scene,
+            }
+        )
+    return pairs
 
 
 def _normalize_metric_row(row: Any) -> dict[str, Any]:

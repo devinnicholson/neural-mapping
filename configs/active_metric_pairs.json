@@ -1,0 +1,95 @@
+{
+  "budget": "050",
+  "pairs": [
+    {
+      "group": "dozer",
+      "seed": "v1",
+      "baseline_scene": "dozer_modal_v1_d4_fixed_b50_10k",
+      "active_scene": "dozer_modal_ensemble_tail_w035_v1_d4_b50_10k"
+    },
+    {
+      "group": "dozer",
+      "seed": "v2",
+      "baseline_scene": "dozer_modal_v2_d4_b50_10k",
+      "active_scene": "dozer_modal_ensemble_tail_w035_v2_d4_b50_10k"
+    },
+    {
+      "group": "dozer",
+      "seed": "v3",
+      "baseline_scene": "dozer_modal_v3_d4_b50_10k",
+      "active_scene": "dozer_modal_ensemble_tail_w035_v3_d4_b50_10k"
+    },
+    {
+      "group": "dozer",
+      "seed": "v4",
+      "baseline_scene": "dozer_modal_v4_d4_b50_10k",
+      "active_scene": "dozer_modal_ensemble_tail_w035_v4_d4_b50_10k"
+    },
+    {
+      "group": "redwoods2",
+      "seed": "v1",
+      "baseline_scene": "redwoods2_modal_v1_d4_b50_10k",
+      "active_scene": "redwoods2_modal_ensemble_tail_w035_v1_d4_b50_10k"
+    },
+    {
+      "group": "redwoods2",
+      "seed": "v2",
+      "baseline_scene": "redwoods2_modal_v2_d4_b50_10k",
+      "active_scene": "redwoods2_modal_ensemble_tail_w035_v2_d4_b50_10k"
+    },
+    {
+      "group": "redwoods2",
+      "seed": "v3",
+      "baseline_scene": "redwoods2_modal_v3_d4_b50_10k",
+      "active_scene": "redwoods2_modal_ensemble_tail_w035_v3_d4_b50_10k"
+    },
+    {
+      "group": "redwoods2",
+      "seed": "v4",
+      "baseline_scene": "redwoods2_modal_v4_d4_b50_10k",
+      "active_scene": "redwoods2_modal_ensemble_tail_w035_v4_d4_b50_10k"
+    },
+    {
+      "group": "library",
+      "seed": "v1",
+      "baseline_scene": "library_modal_v1_d4_b50_10k",
+      "active_scene": "library_modal_ensemble_tail_w035_v1_d4_b50_10k"
+    },
+    {
+      "group": "library",
+      "seed": "v2",
+      "baseline_scene": "library_modal_v2_d4_b50_10k",
+      "active_scene": "library_modal_ensemble_tail_w035_v2_d4_b50_10k"
+    },
+    {
+      "group": "library",
+      "seed": "v3",
+      "baseline_scene": "library_modal_v3_d4_b50_10k",
+      "active_scene": "library_modal_ensemble_tail_w035_v3_d4_b50_10k"
+    },
+    {
+      "group": "kitchen",
+      "seed": "v1",
+      "baseline_scene": "kitchen_modal_v1_d4_b50_10k",
+      "active_scene": "kitchen_modal_ensemble_tail_w035_v1_d4_b50_10k"
+    },
+    {
+      "group": "kitchen",
+      "seed": "v2",
+      "baseline_scene": "kitchen_modal_v2_d4_b50_10k",
+      "active_scene": "kitchen_modal_ensemble_tail_w035_v2_d4_b50_10k"
+    },
+    {
+      "group": "kitchen",
+      "seed": "v3",
+      "baseline_scene": "kitchen_modal_v3_d4_b50_10k",
+      "active_scene": "kitchen_modal_ensemble_tail_w035_v3_d4_b50_10k"
+    },
+    {
+      "group": "kitchen",
+      "seed": "v4",
+      "baseline_scene": "kitchen_modal_v4_d4_b50_10k",
+      "active_scene": "kitchen_modal_ensemble_tail_w035_v4_d4_b50_10k"
+    }
+  ]
+}

@@ -160,13 +160,13 @@ Summarize active-vs-random metric deltas from saved Modal metric rows:
 ```bash
 python scripts/summarize_active_metrics.py \
   --input outputs/modal_metrics.log \
-  --budget 50 \
-  --pair kitchen:v1:kitchen_modal_v1_d4_b50_10k:kitchen_modal_ensemble_tail_w035_v1_d4_b50_10k \
+  --pairs-file configs/active_metric_pairs.json \
   --format markdown
 ```
 
 The input may be a JSON array of metric rows or the noisy output from
-`modal run modal_app.py --action metrics`.
+`modal run modal_app.py --action metrics`. The checked-in pair manifest covers
+the current dozer, redwoods2, library, and kitchen active-selection comparisons.
 
 On a Nerfstudio/Splatfacto runtime, evaluate per-pixel renderer confidence maps
 directly against RGB error maps:
