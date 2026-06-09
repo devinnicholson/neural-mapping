@@ -32,6 +32,18 @@ class EnsembleUncertaintyMapTests(unittest.TestCase):
         self.assertAlmostEqual(summary["p95_uncertainty"], 3.0)
         self.assertAlmostEqual(summary["top_decile_mean_uncertainty"], 3.0)
 
+    def test_sample_parallel_lists_caps_and_preserves_pairs(self) -> None:
+        module = _load_script_module()
+
+        uncertainty, error = module._sample_parallel_lists(
+            list(range(10)),
+            [value + 100 for value in range(10)],
+            max_items=4,
+        )
+
+        self.assertEqual(uncertainty, [0, 2, 4, 6])
+        self.assertEqual(error, [100, 102, 104, 106])
+
 
 if __name__ == "__main__":
     unittest.main()

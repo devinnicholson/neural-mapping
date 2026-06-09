@@ -47,6 +47,15 @@ def parse_args() -> argparse.Namespace:
         help="Deterministically sample at most this many valid pixels per frame.",
     )
     parser.add_argument(
+        "--global-max-pixels",
+        type=int,
+        default=500000,
+        help=(
+            "Deterministically sample at most this many pixels for global uncertainty metrics. "
+            "Per-frame scores still use --max-pixels-per-frame."
+        ),
+    )
+    parser.add_argument(
         "--cache-images",
         choices=("cpu", "gpu"),
         default="cpu",
@@ -62,6 +71,8 @@ def main() -> int:
         raise SystemExit("--load-config requires at least two configs for an ensemble.")
     if args.max_pixels_per_frame <= 0:
         raise SystemExit("--max-pixels-per-frame must be positive.")
+    if args.global_max_pixels <= 0:
+        raise SystemExit("--global-max-pixels must be positive.")
 
     load_configs = [Path(path) for path in args.load_config]
     candidate_data = Path(args.candidate_data)
@@ -97,6 +108,8 @@ def main() -> int:
     frames = []
     all_uncertainty: list[float] = []
     all_error: list[float] = []
+    total_frame_sampled_pixels = 0
+    global_pixels_per_frame = max(1, math.ceil(args.global_max_pixels / len(candidates)))
     with torch.no_grad():
         for index, (camera, batch) in enumerate(data_loader):
             predictions = []
@@ -122,6 +135,7 @@ def main() -> int:
             )
             if not error_values:
                 continue
+            total_frame_sampled_pixels += len(error_values)
 
             bad_threshold = _quantile(error_values, args.bad_error_quantile)
             summary = evaluate_uncertainty(
@@ -139,8 +153,13 @@ def main() -> int:
                     "signals": {"ensemble-rgb-variance": summary},
                 }
             )
-            all_uncertainty.extend(uncertainty_values)
-            all_error.extend(error_values)
+            global_uncertainty, global_error = _sample_parallel_lists(
+                uncertainty_values,
+                error_values,
+                max_items=global_pixels_per_frame,
+            )
+            all_uncertainty.extend(global_uncertainty)
+            all_error.extend(global_error)
             print(
                 f"{index + 1:03d}/{len(candidates):03d} "
                 f"{candidates[index]} pixels={len(error_values)}",
@@ -164,7 +183,9 @@ def main() -> int:
             "bad_threshold": global_bad_threshold,
             "candidate_count": len(frames),
             "sampled_pixels": len(all_error),
+            "candidate_sampled_pixels": total_frame_sampled_pixels,
             "max_pixels_per_frame": args.max_pixels_per_frame,
+            "global_max_pixels": args.global_max_pixels,
             "cache_images": args.cache_images,
         },
         "signals": {
@@ -225,6 +246,26 @@ def _sample_map_and_error(
     return (
         flat_uncertainty[indices].detach().cpu().tolist(),
         flat_error[indices].detach().cpu().tolist(),
+    )
+
+
+def _sample_parallel_lists(
+    uncertainty: Sequence[float],
+    error: Sequence[float],
+    *,
+    max_items: int,
+) -> tuple[list[float], list[float]]:
+    if len(uncertainty) != len(error):
+        raise SystemExit(f"Uncertainty and error lengths differ: {len(uncertainty)} vs {len(error)}")
+    if len(error) <= max_items:
+        return list(uncertainty), list(error)
+
+    step = max(1, len(error) // max_items)
+    indices = range(0, len(error), step)
+    selected = list(indices)[:max_items]
+    return (
+        [uncertainty[index] for index in selected],
+        [error[index] for index in selected],
     )
 
 

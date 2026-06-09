@@ -90,6 +90,30 @@
       "seed": "v4",
       "baseline_scene": "kitchen_modal_v4_d4_b50_10k",
       "active_scene": "kitchen_modal_ensemble_tail_w035_v4_d4_b50_10k"
+    },
+    {
+      "group": "bww_entrance",
+      "seed": "v1",
+      "baseline_scene": "bww_entrance_modal_v1_d4_b50_10k",
+      "active_scene": "bww_entrance_modal_ensemble_tail_w035_v1_d4_b50_10k"
+    },
+    {
+      "group": "bww_entrance",
+      "seed": "v2",
+      "baseline_scene": "bww_entrance_modal_v2_d4_b50_10k",
+      "active_scene": "bww_entrance_modal_ensemble_tail_w035_v2_d4_b50_10k"
+    },
+    {
+      "group": "bww_entrance",
+      "seed": "v3",
+      "baseline_scene": "bww_entrance_modal_v3_d4_b50_10k",
+      "active_scene": "bww_entrance_modal_ensemble_tail_w035_v3_d4_b50_10k"
+    },
+    {
+      "group": "bww_entrance",
+      "seed": "v4",
+      "baseline_scene": "bww_entrance_modal_v4_d4_b50_10k",
+      "active_scene": "bww_entrance_modal_ensemble_tail_w035_v4_d4_b50_10k"
     }
   ]
 }
