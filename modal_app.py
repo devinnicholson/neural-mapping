@@ -4,8 +4,10 @@ Run examples:
 
     modal run modal_app.py --action env
     modal run modal_app.py --action prepare
+    modal run modal_app.py --action prepare-tum --data-scene-name tum_fr1_desk_v1
     modal run modal_app.py --action smoke --budget 25 --iterations 3000
     modal run modal_app.py --action eval --scene-name poster_modal_smoke --budget 25
+    modal run modal_app.py --action depth-eval --data-scene-name tum_fr1_desk_v1 --scene-name tum_fr1_desk_v1_b25_7k --budget 25
 
 The Modal workflow mirrors the SLURM smoke path:
 
@@ -359,6 +361,104 @@ def prepare_poster_sample(
         "selection_method": selection_method,
         "split_json": str(split_json),
         "materialized_root": str(materialized_root),
+        "summary": _read_json(materialized_root / "materialization_summary.json"),
+    }
+
+
+@app.function(image=image, gpu=DEFAULT_GPU, volumes=volumes, timeout=1800)
+def prepare_tum_rgbd_sequence(
+    sequence_name: str = "freiburg1_desk",
+    scene_name: str = "tum_fr1_desk_v1",
+    budgets: list[int] | None = None,
+    val_count: int = 10,
+    test_count: int = 20,
+    seed: int = 20260610,
+    selection_method: str = "random",
+    max_frames: int = 180,
+    frame_stride: int = 3,
+) -> dict[str, Any]:
+    """Download, convert, split, and materialize a TUM RGB-D sequence."""
+
+    budgets = budgets or [25, 50]
+    raw_root = DATA_ROOT / "tum_rgbd" / sequence_name
+    source_dir = DATA_ROOT / "nerfstudio" / scene_name
+    split_json = DATA_ROOT / "splits" / f"{scene_name}.json"
+    materialized_root = DATA_ROOT / "nerfstudio_splits" / scene_name
+
+    DATA_ROOT.mkdir(parents=True, exist_ok=True)
+    (DATA_ROOT / "tum_rgbd").mkdir(parents=True, exist_ok=True)
+    (DATA_ROOT / "nerfstudio").mkdir(parents=True, exist_ok=True)
+    (DATA_ROOT / "splits").mkdir(parents=True, exist_ok=True)
+    (DATA_ROOT / "nerfstudio_splits").mkdir(parents=True, exist_ok=True)
+
+    _run(
+        [
+            "python",
+            "scripts/prepare_tum_rgbd.py",
+            "--sequence",
+            sequence_name,
+            "--raw-root",
+            str(raw_root),
+            "--output-dir",
+            str(source_dir),
+            "--scene-name",
+            scene_name,
+            "--max-frames",
+            str(max_frames),
+            "--frame-stride",
+            str(frame_stride),
+        ]
+    )
+    _run(
+        [
+            "python",
+            "scripts/generate_splits.py",
+            "--frames",
+            str(source_dir / "transforms.json"),
+            "--budgets",
+            *[str(budget) for budget in budgets],
+            "--val-count",
+            str(val_count),
+            "--test-count",
+            str(test_count),
+            "--scene",
+            scene_name,
+            "--seed",
+            str(seed),
+            "--selection-method",
+            selection_method,
+            "--output",
+            str(split_json),
+        ]
+    )
+    _run(
+        [
+            "python",
+            "scripts/materialize_nerfstudio_split.py",
+            "--source-dir",
+            str(source_dir),
+            "--split-json",
+            str(split_json),
+            "--output-root",
+            str(materialized_root),
+            "--budgets",
+            *[str(budget) for budget in budgets],
+        ]
+    )
+
+    data_volume.commit()
+    return {
+        "status": "ok",
+        "dataset": "tum_rgbd",
+        "sequence_name": sequence_name,
+        "scene_name": scene_name,
+        "selection_method": selection_method,
+        "max_frames": max_frames,
+        "frame_stride": frame_stride,
+        "source_dir": str(source_dir),
+        "split_json": str(split_json),
+        "materialized_root": str(materialized_root),
+        "association_summary": _read_json(source_dir / "association_summary.json"),
         "summary": _read_json(materialized_root / "materialization_summary.json"),
     }
 
@@ -853,6 +953,71 @@ def eval_latest_run(
     return {"status": "ok", "metrics_path": str(output_path), "metrics": metrics}
 
 
+@app.function(image=image, gpu=DEFAULT_GPU, volumes=volumes, timeout=EVAL_TIMEOUT_SECONDS)
+def depth_eval_latest_run(
+    scene_name: str,
+    data_scene_name: str,
+    budget: int,
+    config_path: str | None = None,
+    target_source: str = "auto",
+    cache_images: str = "cpu",
+    min_depth: float = 0.05,
+    max_depth: float = 10.0,
+    min_accumulation: float = 0.0,
+    max_pixels_per_frame: int = 200000,
+    max_frames: int | None = None,
+) -> dict[str, Any]:
+    """Evaluate rendered depth against held-out depth images."""
+
+    run_root = OUTPUT_ROOT / "runs" / scene_name / "splatfacto" / _budget_dir_name(budget)
+    data_dir = DATA_ROOT / "nerfstudio_splits" / data_scene_name / _budget_dir_name(budget)
+    (run_root / "metrics").mkdir(parents=True, exist_ok=True)
+
+    if not data_dir.exists():
+        raise FileNotFoundError(f"Missing materialized dataset: {data_dir}")
+    if config_path is None:
+        configs = sorted((run_root / "train").glob("**/config.yml"))
+        if not configs:
+            raise FileNotFoundError(f"No config.yml found under {run_root / 'train'}")
+        config_path = str(configs[-1])
+
+    output_path = run_root / "metrics" / "depth_eval.json"
+    command = [
+        "python",
+        "scripts/evaluate_depth_metrics.py",
+        "--load-config",
+        config_path,
+        "--data",
+        str(data_dir),
+        "--output",
+        str(output_path),
+        "--target-source",
+        target_source,
+        "--cache-images",
+        cache_images,
+        "--min-depth",
+        str(min_depth),
+        "--max-depth",
+        str(max_depth),
+        "--min-accumulation",
+        str(min_accumulation),
+        "--max-pixels-per-frame",
+        str(max_pixels_per_frame),
+    ]
+    if max_frames is not None:
+        command.extend(["--max-frames", str(max_frames)])
+
+    _run(command, env={"TORCH_FORCE_NO_WEIGHTS_ONLY_LOAD": "1"})
+    outputs_volume.commit()
+    report = _read_json(output_path)
+    return {
+        "status": "ok",
+        "metrics_path": str(output_path),
+        "summary": report.get("summary"),
+        "metadata": report.get("metadata"),
+    }
+
+
 @app.function(image=image, volumes=volumes, timeout=300)
 def summarize_report(report_path: str) -> dict[str, Any]:
     """Read a report JSON from the Modal output volume and compact key metrics."""
@@ -950,10 +1115,15 @@ def main(
     scene_name: str = "poster_modal_smoke",
     data_scene_name: str = "poster_available",
     capture_name: str = "poster",
+    tum_sequence: str = "freiburg1_desk",
     source_data_scene_name: str = "poster_available",
     base_split_scene_name: str = "poster_available",
     selection_method: str = "random",
     split_seed: int = 20260529,
+    val_count: int = 10,
+    test_count: int = 20,
+    max_frames: int = 180,
+    frame_stride: int = 3,
     downscale_factor: int = 1,
     active_strategy: str = "pose-novelty",
     score_path: str = "",
@@ -963,6 +1133,13 @@ def main(
     bad_quantile: float = 0.8,
     score_signal_fields: str = "",
     max_pixels_per_frame: int = 50000,
+    depth_max_pixels_per_frame: int = 200000,
+    depth_target_source: str = "auto",
+    depth_cache_images: str = "cpu",
+    min_depth: float = 0.05,
+    max_depth: float = 10.0,
+    min_accumulation: float = 0.0,
+    depth_max_frames: int = 0,
     render_map_signals: str = "transmittance",
     patch_size: int = 15,
     ensemble_scene_names: str = "",
@@ -980,6 +1157,19 @@ def main(
                 scene_name=data_scene_name,
                 selection_method=selection_method,
                 seed=split_seed,
+            )
+        )
+    elif action == "prepare-tum":
+        print(
+            prepare_tum_rgbd_sequence.remote(
+                sequence_name=tum_sequence,
+                scene_name=data_scene_name,
+                val_count=val_count,
+                test_count=test_count,
+                seed=split_seed,
+                selection_method=selection_method,
+                max_frames=max_frames,
+                frame_stride=frame_stride,
             )
         )
     elif action == "prepare-active":
@@ -1060,6 +1250,24 @@ def main(
         )
     elif action == "eval":
         print(eval_latest_run.remote(scene_name=scene_name, budget=budget, render_outputs=render_outputs))
+    elif action == "depth-eval":
+        print(
+            json.dumps(
+                depth_eval_latest_run.remote(
+                    scene_name=scene_name,
+                    data_scene_name=data_scene_name,
+                    budget=budget,
+                    target_source=depth_target_source,
+                    cache_images=depth_cache_images,
+                    min_depth=min_depth,
+                    max_depth=max_depth,
+                    min_accumulation=min_accumulation,
+                    max_pixels_per_frame=depth_max_pixels_per_frame,
+                    max_frames=depth_max_frames or None,
+                ),
+                indent=2,
+            )
+        )
     elif action == "metrics":
         for row in collect_metric_rows.remote():
             print(json.dumps(row, indent=2))
@@ -1097,7 +1305,8 @@ def main(
     else:
         raise ValueError(
             f"Unknown action {action!r}. "
-            "Use env, prepare, score-candidates, frame-uncertainty, "
+            "Use env, prepare, prepare-tum, score-candidates, frame-uncertainty, "
             "render-uncertainty-maps, ensemble-uncertainty-maps, "
-            "prepare-active, train, eval, metrics, split-summary, report-summary, or smoke."
+            "prepare-active, train, eval, depth-eval, metrics, split-summary, "
+            "report-summary, or smoke."
         )

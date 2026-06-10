@@ -19,16 +19,32 @@ Nerfstudio/Splatfacto scenes:
 - Expand to budget 50 with a `score-pose-hybrid` selector that mixes
   uncertainty tail risk and camera-pose diversity.
 
-As of 2026-06-08 UTC, this rule improved held-out budget-50 quality over
-same-seed random selection on repeated `dozer`, `redwoods2`, and `library`
-Nerfstudio sample splits. The strongest clean replication is still `dozer` plus
-`redwoods2`, averaging about +0.739 PSNR, +0.023 SSIM, and -0.015 LPIPS across
-eight ensemble-tail seeds. On `library` v1-v3 it averaged about +0.496 PSNR,
-+0.015 SSIM, and -0.003 LPIPS. On the harder `kitchen` scene, the same rule
-averaged about +0.687 PSNR, +0.002 SSIM, and -0.028 LPIPS across v1-v4, but
-one seed regressed sharply, so this remains a mixed hard-scene result rather
-than a clean replication. See [docs/results.md](docs/results.md) for the full
-tables, Modal run IDs, and caveats.
+As of 2026-06-09 UTC, this rule improved held-out budget-50 quality over
+same-seed random selection on repeated `dozer`, `redwoods2`, `library`, and
+`bww_entrance` Nerfstudio-style splits. The strongest fresh replication is
+`bww_entrance` v1-v4, averaging about +2.016 PSNR, +0.031 SSIM, and -0.021
+LPIPS. Across `dozer`, `redwoods2`, and `bww_entrance`, the same rule averages
+about +1.165 PSNR, +0.026 SSIM, and -0.017 LPIPS across twelve ensemble-tail
+seeds. On `library` v1-v3 it averaged about +0.496 PSNR, +0.015 SSIM, and an
+LPIPS change of -0.003. On the harder `kitchen` scene, the same rule averaged
+about +0.687 PSNR, +0.002 SSIM, and -0.028 LPIPS across v1-v4, but one seed
+regressed sharply, so this remains a mixed hard-scene result rather than a
+clean replication. See [docs/results.md](docs/results.md) for the full tables,
+Modal run IDs, and caveats.
+
+As of 2026-06-10 UTC, the first depth-bearing active loop also runs on
+TUM RGB-D `freiburg1_desk`. Across three locked RGB-D split seeds, random
+budget-50 training improves over budget 25 on both RGB and held-out depth, and
+transmittance-tail active expansion improves over the same-seed random
+budget-50 baseline. On v3, the random baseline moved from 15.432 PSNR /
+0.576 SSIM / 0.420 LPIPS at budget 25 to 17.676 PSNR / 0.664 SSIM /
+0.343 LPIPS at budget 50; transmittance-tail active selection then improved the
+budget-50 result to 18.362 PSNR / 0.684 SSIM / 0.319 LPIPS. The same v3 active
+run reduced raw depth AbsRel from 0.358 to 0.347 and median-aligned AbsRel
+from 0.351 to 0.315 versus random budget 50. This is now a three-seed RGB-D
+pilot, though still limited to one TUM sequence.
+
+The current static dashboard is available at [docs/dashboard.html](docs/dashboard.html).
 
 ## Current Build Target
 
@@ -166,7 +182,8 @@ python scripts/summarize_active_metrics.py \
 
 The input may be a JSON array of metric rows or the noisy output from
 `modal run modal_app.py --action metrics`. The checked-in pair manifest covers
-the current dozer, redwoods2, library, and kitchen active-selection comparisons.
+the current dozer, redwoods2, library, kitchen, and bww_entrance
+active-selection comparisons.
 
 On a Nerfstudio/Splatfacto runtime, evaluate per-pixel renderer confidence maps
 directly against RGB error maps:

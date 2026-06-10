@@ -479,6 +479,84 @@ class SplitGenerationTests(unittest.TestCase):
             self.assertIn("frame_005.png", payload["splits"]["3"]["train"])
             self.assertNotIn("frame_004.png", payload["splits"]["3"]["train"])
 
+    def test_generate_active_split_cli_accepts_nested_frame_report_scores(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            transforms = root / "transforms.json"
+            transforms.write_text(
+                json.dumps(
+                    {
+                        "frames": [
+                            {"file_path": f"frame_{index:03d}.png"}
+                            for index in range(6)
+                        ]
+                    }
+                ),
+                encoding="utf-8",
+            )
+            base_split = root / "base.json"
+            base_split.write_text(
+                json.dumps(
+                    {
+                        "splits": {
+                            "2": {
+                                "train": ["frame_000.png", "frame_001.png"],
+                                "val": ["frame_002.png"],
+                                "test": ["frame_003.png"],
+                            }
+                        }
+                    }
+                ),
+                encoding="utf-8",
+            )
+            scores = root / "render_report.json"
+            scores.write_text(
+                json.dumps(
+                    {
+                        "frames": [
+                            {
+                                "file_path": "frame_004.png",
+                                "top_decile_mean_uncertainty": {"transmittance": 0.2},
+                            },
+                            {
+                                "file_path": "frame_005.png",
+                                "top_decile_mean_uncertainty": {"transmittance": 0.8},
+                            },
+                        ],
+                    }
+                ),
+                encoding="utf-8",
+            )
+            output = root / "active.json"
+
+            subprocess.run(
+                [
+                    sys.executable,
+                    str(ROOT / "scripts" / "generate_active_split.py"),
+                    "--frames",
+                    str(transforms),
+                    "--base-split",
+                    str(base_split),
+                    "--base-budget",
+                    "2",
+                    "--target-budget",
+                    "3",
+                    "--strategy",
+                    "score-desc",
+                    "--scores",
+                    str(scores),
+                    "--score-key",
+                    "top_decile_mean_uncertainty.transmittance",
+                    "--output",
+                    str(output),
+                ],
+                check=True,
+            )
+
+            payload = json.loads(output.read_text(encoding="utf-8"))
+            self.assertIn("frame_005.png", payload["splits"]["3"]["train"])
+            self.assertNotIn("frame_004.png", payload["splits"]["3"]["train"])
+
     def test_generate_active_split_cli_accepts_score_pose_hybrid(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

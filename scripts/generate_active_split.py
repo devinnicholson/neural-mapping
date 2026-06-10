@@ -228,14 +228,24 @@ def _load_scores(path: Path, score_key: str) -> dict[str, float]:
             if not isinstance(item, dict):
                 raise SystemExit("Score list entries must be objects.")
             frame = item.get("file_path") or item.get("frame") or item.get("frame_id")
-            if frame is None or score_key not in item:
+            score_value = _nested_score_value(item, score_key)
+            if frame is None or score_value is None:
                 raise SystemExit(
                     "Score entries must contain a frame id and the requested score key."
                 )
-            scores[str(frame)] = float(item[score_key])
+            scores[str(frame)] = float(score_value)
         return scores
 
     raise SystemExit("Score file must be a JSON object, JSON list, or CSV file.")
+
+
+def _nested_score_value(item: dict[str, object], score_key: str) -> object | None:
+    value: object = item
+    for part in score_key.split("."):
+        if not isinstance(value, dict) or part not in value:
+            return None
+        value = value[part]
+    return value
 
 
 if __name__ == "__main__":

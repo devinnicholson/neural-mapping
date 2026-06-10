@@ -1,0 +1,1172 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Neural Mapping Results Dashboard</title>
+  <style>
+    :root {
+      --page: #f4f5f3;
+      --surface: #ffffff;
+      --surface-soft: #f8f9f7;
+      --surface-pressed: #eef1ee;
+      --ink: #171b18;
+      --muted: #5d665f;
+      --subtle: #87908a;
+      --line: #dfe4df;
+      --line-strong: #bcc7bf;
+      --green: #1f684e;
+      --green-soft: #e7f0eb;
+      --blue: #2f5f86;
+      --blue-soft: #e7eef4;
+      --coral: #97523f;
+      --coral-soft: #f2e7e2;
+      --gold: #7a662d;
+      --gold-soft: #f0ead7;
+      --bad: #9b3f3b;
+      --shadow: 0 1px 2px rgba(23, 27, 24, 0.05), 0 8px 24px rgba(23, 27, 24, 0.04);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html {
+      background: var(--page);
+      color: var(--ink);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.45;
+    }
+
+    body {
+      margin: 0;
+      min-width: 320px;
+    }
+
+    main {
+      width: min(1180px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 18px 0 44px;
+    }
+
+    .app-bar {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      align-items: center;
+      min-height: 36px;
+      margin-bottom: 16px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .brand {
+      display: inline-flex;
+      gap: 10px;
+      align-items: center;
+      color: var(--ink);
+      font-weight: 750;
+    }
+
+    .nav-links {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      justify-content: flex-end;
+    }
+
+    header {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(260px, auto);
+      gap: 20px;
+      align-items: center;
+      padding: 0 0 16px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    h1,
+    h2,
+    h3,
+    p {
+      margin: 0;
+    }
+
+    h1 {
+      max-width: 760px;
+      font-size: 23px;
+      font-weight: 720;
+      letter-spacing: 0;
+      line-height: 1.2;
+    }
+
+    h2 {
+      font-size: 15px;
+      font-weight: 760;
+      letter-spacing: 0;
+    }
+
+    h3 {
+      font-size: 14px;
+      font-weight: 720;
+      letter-spacing: 0;
+    }
+
+    .eyebrow {
+      margin-bottom: 8px;
+      color: var(--green);
+      font-size: 11px;
+      font-weight: 780;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+
+    .lede {
+      max-width: 720px;
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .meta {
+      display: grid;
+      gap: 7px;
+      justify-items: end;
+      color: var(--muted);
+      font-size: 12px;
+      text-align: right;
+      white-space: nowrap;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      min-height: 26px;
+      padding: 4px 9px;
+      border: 1px solid var(--line);
+      border-radius: 4px;
+      background: var(--surface-soft);
+      color: var(--ink);
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .pill.primary {
+      border-color: #b8d4c8;
+      background: var(--green-soft);
+      color: var(--green);
+    }
+
+    section {
+      margin-top: 18px;
+    }
+
+    .section-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      align-items: end;
+      margin-bottom: 10px;
+      padding: 0 2px;
+    }
+
+    .section-note {
+      max-width: 560px;
+      color: var(--muted);
+      font-size: 12px;
+      text-align: right;
+    }
+
+    .stat-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .stat,
+    .panel,
+    .group-card {
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      background: var(--surface);
+      box-shadow: var(--shadow);
+    }
+
+    .stat {
+      min-height: 104px;
+      padding: 14px;
+      display: grid;
+      align-content: space-between;
+      gap: 14px;
+      border-top: 3px solid var(--line-strong);
+    }
+
+    .stat:nth-child(1) {
+      border-top-color: var(--green);
+    }
+
+    .stat:nth-child(2) {
+      border-top-color: var(--blue);
+    }
+
+    .stat:nth-child(3) {
+      border-top-color: var(--coral);
+    }
+
+    .stat-label {
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 780;
+      text-transform: uppercase;
+      letter-spacing: 0.055em;
+    }
+
+    .stat-value {
+      font-size: 29px;
+      font-weight: 760;
+      line-height: 1;
+      letter-spacing: 0;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .stat-caption {
+      color: var(--subtle);
+      font-size: 12px;
+    }
+
+    .dashboard-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.4fr) minmax(330px, 0.85fr);
+      gap: 14px;
+      align-items: start;
+    }
+
+    .panel {
+      overflow: hidden;
+    }
+
+    .stack-panel {
+      margin-top: 12px;
+    }
+
+    .panel-header {
+      display: flex;
+      justify-content: space-between;
+      gap: 14px;
+      align-items: center;
+      padding: 13px 14px;
+      border-bottom: 1px solid var(--line);
+      background: var(--surface-soft);
+    }
+
+    .panel-kicker {
+      color: var(--muted);
+      font-size: 11px;
+    }
+
+    .group-list {
+      display: grid;
+      gap: 8px;
+      padding: 10px;
+    }
+
+    .group-card {
+      padding: 12px;
+      box-shadow: none;
+    }
+
+    .group-top {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 12px;
+      align-items: start;
+      margin-bottom: 10px;
+    }
+
+    .group-title {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .seed-count {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .status {
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 760;
+    }
+
+    .status.strong {
+      background: var(--green-soft);
+      color: var(--green);
+    }
+
+    .status.clean {
+      background: var(--blue-soft);
+      color: var(--blue);
+    }
+
+    .status.mixed {
+      background: var(--gold-soft);
+      color: var(--gold);
+    }
+
+    .metric-row {
+      display: grid;
+      grid-template-columns: 80px minmax(120px, 1fr) 86px;
+      gap: 10px;
+      align-items: center;
+      margin-top: 9px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .bar-track {
+      position: relative;
+      height: 7px;
+      overflow: hidden;
+      border-radius: 999px;
+      background: var(--surface-pressed);
+    }
+
+    .bar {
+      height: 100%;
+      min-width: 2px;
+      border-radius: inherit;
+      background: var(--green);
+    }
+
+    .bar.blue {
+      background: var(--blue);
+    }
+
+    .bar.coral {
+      background: var(--coral);
+    }
+
+    .delta {
+      font-variant-numeric: tabular-nums;
+      color: var(--ink);
+      font-weight: 700;
+      text-align: right;
+    }
+
+    .delta.good {
+      color: var(--green);
+    }
+
+    .delta.bad {
+      color: var(--bad);
+    }
+
+    .note {
+      margin-top: 11px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .table-wrap {
+      overflow-x: auto;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 620px;
+    }
+
+    th,
+    td {
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      vertical-align: top;
+      font-size: 12px;
+    }
+
+    th {
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 750;
+      letter-spacing: 0.055em;
+      text-transform: uppercase;
+      white-space: nowrap;
+      background: var(--surface-soft);
+    }
+
+    td.num,
+    th.num {
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+    }
+
+    tr:last-child td {
+      border-bottom: 0;
+    }
+
+    .mini-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+      padding: 10px;
+    }
+
+    .signal {
+      min-height: 142px;
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      background: var(--surface);
+    }
+
+    .signal-title {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 650;
+    }
+
+    .signal-value {
+      margin: 12px 0;
+      font-size: 28px;
+      font-weight: 760;
+      line-height: 1;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .seed-dots {
+      display: flex;
+      gap: 5px;
+      align-items: end;
+      height: 34px;
+    }
+
+    .seed-dot {
+      flex: 1 1 0;
+      border-radius: 4px 4px 0 0;
+      background: var(--blue);
+      min-width: 12px;
+    }
+
+    .method-strip {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .method-step {
+      min-height: 118px;
+      padding: 14px;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      background: var(--surface);
+      box-shadow: var(--shadow);
+    }
+
+    .step-index {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 28px;
+      height: 28px;
+      margin-bottom: 18px;
+      border-radius: 999px;
+      background: var(--surface-soft);
+      color: var(--green);
+      font-size: 12px;
+      font-weight: 800;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .step-text {
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .footer {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      gap: 12px;
+      margin-top: 22px;
+      padding-top: 18px;
+      border-top: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    a {
+      color: var(--blue);
+      text-decoration: none;
+    }
+
+    a:hover {
+      text-decoration: underline;
+    }
+
+    @media (max-width: 980px) {
+      header,
+      .dashboard-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .meta {
+        justify-items: start;
+        text-align: left;
+      }
+
+      .stat-grid,
+      .method-strip {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .mini-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .section-head {
+        align-items: start;
+        flex-direction: column;
+      }
+
+      .section-note {
+        text-align: left;
+      }
+    }
+
+    @media (max-width: 620px) {
+      main {
+        width: min(100% - 20px, 1180px);
+        padding-top: 12px;
+      }
+
+      .app-bar {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 8px;
+        margin-bottom: 12px;
+      }
+
+      h1 {
+        font-size: 23px;
+      }
+
+      .stat-grid,
+      .method-strip {
+        grid-template-columns: 1fr;
+      }
+
+      .group-top {
+        grid-template-columns: 1fr;
+      }
+
+      .metric-row {
+        grid-template-columns: 68px minmax(90px, 1fr) 74px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <div class="app-bar" aria-label="Project navigation">
+      <div class="brand">
+        <span>Neural mapping</span>
+      </div>
+      <div class="nav-links">
+        <a href="results.md">Results</a>
+        <a href="../configs/active_metric_pairs.json">Pairs</a>
+      </div>
+    </div>
+
+    <header>
+      <div>
+        <div class="eyebrow">Active selection results</div>
+        <h1>Budget-50 comparisons for the current frame-selection rule.</h1>
+        <p class="lede">Same-seed Splatfacto runs. Active splits start from the budget-25 seed set and add frames using ensemble RGB disagreement plus camera-pose diversity.</p>
+      </div>
+      <div class="meta">
+        <span class="pill primary">Updated 2026-06-10</span>
+        <span>19 paired seeds</span>
+        <span>1 RGB-D baseline</span>
+      </div>
+    </header>
+
+    <section aria-labelledby="summary-heading">
+      <div class="section-head">
+        <h2 id="summary-heading">Summary</h2>
+        <p class="section-note">Weighted by seed count across active-vs-random pairs.</p>
+      </div>
+      <div class="stat-grid" id="stat-grid"></div>
+    </section>
+
+    <section aria-labelledby="scene-heading">
+      <div class="section-head">
+        <h2 id="scene-heading">Scene groups</h2>
+        <p class="section-note">BWW is the strongest current repeat. Kitchen is the stress case.</p>
+      </div>
+      <div class="dashboard-grid">
+        <div class="panel">
+          <div class="panel-header">
+            <div>
+              <h3>Mean active-vs-random deltas</h3>
+              <div class="panel-kicker">Active budget 50 minus random budget 50</div>
+            </div>
+            <span class="pill">hybrid w=0.35</span>
+          </div>
+          <div class="group-list" id="group-list"></div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-header">
+            <div>
+              <h3>BWW seed deltas</h3>
+              <div class="panel-kicker">Active minus random</div>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table id="bww-table">
+              <thead>
+                <tr>
+                  <th>Seed</th>
+                  <th class="num">Delta PSNR</th>
+                  <th class="num">Delta SSIM</th>
+                  <th class="num">Delta LPIPS</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section aria-labelledby="matrix-heading">
+      <div class="section-head">
+        <h2 id="matrix-heading">Evidence matrix</h2>
+        <p class="section-note">Mean values from the paired runs used in the results note.</p>
+      </div>
+      <div class="panel">
+        <div class="table-wrap">
+          <table id="matrix-table">
+            <thead>
+              <tr>
+                <th>Scene group</th>
+                <th>Seeds</th>
+                <th>Status</th>
+                <th class="num">Random PSNR</th>
+                <th class="num">Active PSNR</th>
+                <th class="num">Delta PSNR</th>
+                <th class="num">Delta SSIM</th>
+                <th class="num">Delta LPIPS</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section aria-labelledby="tum-heading">
+      <div class="section-head">
+        <h2 id="tum-heading">RGB-D depth and active selection</h2>
+        <p class="section-note">TUM RGB-D FR1 desk, random and depth-risk active splits, 7k Splatfacto iterations.</p>
+      </div>
+      <div class="panel">
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Scene</th>
+                <th class="num">Budget</th>
+                <th class="num">PSNR</th>
+                <th class="num">SSIM</th>
+                <th class="num">LPIPS</th>
+                <th class="num">Raw AbsRel</th>
+                <th class="num">Raw RMSE</th>
+                <th class="num">Aligned AbsRel</th>
+                <th class="num">Aligned delta1</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>tum_fr1_desk_v1_b25_7k</td>
+                <td class="num">25</td>
+                <td class="num">15.705</td>
+                <td class="num">0.578</td>
+                <td class="num">0.405</td>
+                <td class="num">0.572</td>
+                <td class="num">0.982m</td>
+                <td class="num">0.643</td>
+                <td class="num">0.381</td>
+              </tr>
+              <tr>
+                <td>tum_fr1_desk_v1_b50_7k</td>
+                <td class="num">50</td>
+                <td class="num">17.740</td>
+                <td class="num">0.663</td>
+                <td class="num">0.330</td>
+                <td class="num">0.371</td>
+                <td class="num">0.674m</td>
+                <td class="num">0.362</td>
+                <td class="num">0.661</td>
+              </tr>
+              <tr>
+                <td>tum_fr1_desk_v1_active_depth_trans_b50_7k</td>
+                <td class="num">50</td>
+                <td class="num">18.016</td>
+                <td class="num">0.677</td>
+                <td class="num">0.323</td>
+                <td class="num">0.359</td>
+                <td class="num">0.643m</td>
+                <td class="num">0.330</td>
+                <td class="num">0.683</td>
+              </tr>
+              <tr>
+                <td>tum_fr1_desk_v1_active_depth_grad_b50_7k</td>
+                <td class="num">50</td>
+                <td class="num">17.946</td>
+                <td class="num">0.676</td>
+                <td class="num">0.322</td>
+                <td class="num">0.347</td>
+                <td class="num">0.601m</td>
+                <td class="num">0.323</td>
+                <td class="num">0.689</td>
+              </tr>
+              <tr>
+                <td>tum_fr1_desk_v2_b25_7k</td>
+                <td class="num">25</td>
+                <td class="num">14.926</td>
+                <td class="num">0.565</td>
+                <td class="num">0.413</td>
+                <td class="num">0.520</td>
+                <td class="num">0.934m</td>
+                <td class="num">0.598</td>
+                <td class="num">0.417</td>
+              </tr>
+              <tr>
+                <td>tum_fr1_desk_v2_b50_7k</td>
+                <td class="num">50</td>
+                <td class="num">17.149</td>
+                <td class="num">0.647</td>
+                <td class="num">0.335</td>
+                <td class="num">0.399</td>
+                <td class="num">0.733m</td>
+                <td class="num">0.378</td>
+                <td class="num">0.634</td>
+              </tr>
+              <tr>
+                <td>tum_fr1_desk_v2_active_depth_trans_b50_7k</td>
+                <td class="num">50</td>
+                <td class="num">17.914</td>
+                <td class="num">0.675</td>
+                <td class="num">0.317</td>
+                <td class="num">0.357</td>
+                <td class="num">0.629m</td>
+                <td class="num">0.314</td>
+                <td class="num">0.707</td>
+              </tr>
+              <tr>
+                <td>tum_fr1_desk_v3_b25_7k</td>
+                <td class="num">25</td>
+                <td class="num">15.432</td>
+                <td class="num">0.576</td>
+                <td class="num">0.420</td>
+                <td class="num">0.511</td>
+                <td class="num">0.827m</td>
+                <td class="num">0.577</td>
+                <td class="num">0.458</td>
+              </tr>
+              <tr>
+                <td>tum_fr1_desk_v3_b50_7k</td>
+                <td class="num">50</td>
+                <td class="num">17.676</td>
+                <td class="num">0.664</td>
+                <td class="num">0.343</td>
+                <td class="num">0.358</td>
+                <td class="num">0.644m</td>
+                <td class="num">0.351</td>
+                <td class="num">0.656</td>
+              </tr>
+              <tr>
+                <td>tum_fr1_desk_v3_active_depth_trans_b50_7k</td>
+                <td class="num">50</td>
+                <td class="num">18.362</td>
+                <td class="num">0.684</td>
+                <td class="num">0.319</td>
+                <td class="num">0.347</td>
+                <td class="num">0.595m</td>
+                <td class="num">0.315</td>
+                <td class="num">0.671</td>
+              </tr>
+              <tr>
+                <td>tum_fr1_desk_v3_active_depth_grad_b50_7k</td>
+                <td class="num">50</td>
+                <td class="num">18.169</td>
+                <td class="num">0.687</td>
+                <td class="num">0.318</td>
+                <td class="num">0.366</td>
+                <td class="num">0.606m</td>
+                <td class="num">0.341</td>
+                <td class="num">0.654</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="panel stack-panel">
+        <div class="panel-header">
+          <div>
+            <h3>Depth-error uncertainty alignment</h3>
+            <div class="panel-kicker">Budget-25 seed model, 125 candidate views, target depth AbsRel</div>
+          </div>
+          <span class="pill">post-hoc signal</span>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Signal</th>
+                <th class="num">Spearman</th>
+                <th class="num">AUROC</th>
+                <th class="num">AUPRC</th>
+                <th class="num">Top decile error</th>
+                <th class="num">Top decile bad</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>v1 transmittance</td>
+                <td class="num">0.203</td>
+                <td class="num">0.710</td>
+                <td class="num">0.472</td>
+                <td class="num">1.433</td>
+                <td class="num">0.615</td>
+              </tr>
+              <tr>
+                <td>v1 local mean transmittance</td>
+                <td class="num">0.197</td>
+                <td class="num">0.728</td>
+                <td class="num">0.468</td>
+                <td class="num">1.402</td>
+                <td class="num">0.586</td>
+              </tr>
+              <tr>
+                <td>v1 depth gradient</td>
+                <td class="num">0.183</td>
+                <td class="num">0.753</td>
+                <td class="num">0.467</td>
+                <td class="num">1.192</td>
+                <td class="num">0.576</td>
+              </tr>
+              <tr>
+                <td>v2 transmittance</td>
+                <td class="num">0.148</td>
+                <td class="num">0.656</td>
+                <td class="num">0.408</td>
+                <td class="num">1.324</td>
+                <td class="num">0.546</td>
+              </tr>
+              <tr>
+                <td>v2 accumulation gradient</td>
+                <td class="num">0.126</td>
+                <td class="num">0.635</td>
+                <td class="num">0.383</td>
+                <td class="num">1.253</td>
+                <td class="num">0.517</td>
+              </tr>
+              <tr>
+                <td>v2 depth gradient</td>
+                <td class="num">0.088</td>
+                <td class="num">0.616</td>
+                <td class="num">0.360</td>
+                <td class="num">1.066</td>
+                <td class="num">0.482</td>
+              </tr>
+              <tr>
+                <td>v3 transmittance</td>
+                <td class="num">0.077</td>
+                <td class="num">0.628</td>
+                <td class="num">0.371</td>
+                <td class="num">1.015</td>
+                <td class="num">0.510</td>
+              </tr>
+              <tr>
+                <td>v3 depth gradient</td>
+                <td class="num">-0.016</td>
+                <td class="num">0.647</td>
+                <td class="num">0.381</td>
+                <td class="num">0.976</td>
+                <td class="num">0.514</td>
+              </tr>
+              <tr>
+                <td>v3 accumulation gradient</td>
+                <td class="num">0.064</td>
+                <td class="num">0.619</td>
+                <td class="num">0.353</td>
+                <td class="num">0.962</td>
+                <td class="num">0.479</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section aria-labelledby="signal-heading">
+      <div class="section-head">
+        <h2 id="signal-heading">BWW uncertainty signal</h2>
+        <p class="section-note">Per-seed alignment between ensemble disagreement and RGB error.</p>
+      </div>
+      <div class="panel">
+        <div class="mini-grid" id="signal-grid"></div>
+      </div>
+    </section>
+
+    <section aria-labelledby="method-heading">
+      <div class="section-head">
+        <h2 id="method-heading">Protocol</h2>
+        <p class="section-note">Fixed held-out frames; 10k training iterations for the tracked rows.</p>
+      </div>
+      <div class="method-strip" id="method-strip"></div>
+    </section>
+
+    <div class="footer">
+      <span><a href="results.md">docs/results.md</a></span>
+      <span><a href="../configs/active_metric_pairs.json">configs/active_metric_pairs.json</a></span>
+    </div>
+  </main>
+
+  <script>
+    const data = {
+      groups: [
+        {
+          name: "BWW entrance",
+          slug: "bww_entrance",
+          seeds: 4,
+          status: "strong",
+          statusLabel: "all seeds up",
+          meanBaseline: { psnr: 26.833797, ssim: 0.884579, lpips: 0.070550 },
+          meanActive: { psnr: 28.849949, ssim: 0.915640, lpips: 0.049260 },
+          delta: { psnr: 2.016152, ssim: 0.031061, lpips: -0.021290 },
+          note: "All four seeds improve PSNR, SSIM, and LPIPS."
+        },
+        {
+          name: "Dozer",
+          slug: "dozer",
+          seeds: 4,
+          status: "clean",
+          statusLabel: "all seeds up",
+          meanBaseline: { psnr: 23.210635, ssim: 0.770776, lpips: 0.169156 },
+          meanActive: { psnr: 23.989402, ssim: 0.790885, lpips: 0.150683 },
+          delta: { psnr: 0.778767, ssim: 0.020108, lpips: -0.018472 },
+          note: "All tracked seeds improve the core quality metrics."
+        },
+        {
+          name: "Redwoods2",
+          slug: "redwoods2",
+          seeds: 4,
+          status: "clean",
+          statusLabel: "no metric regressions",
+          meanBaseline: { psnr: 24.618871, ssim: 0.859138, lpips: 0.095742 },
+          meanActive: { psnr: 25.318297, ssim: 0.885819, lpips: 0.083277 },
+          delta: { psnr: 0.699426, ssim: 0.026681, lpips: -0.012465 },
+          note: "v3 nearly ties on PSNR; SSIM and LPIPS still improve."
+        },
+        {
+          name: "Library",
+          slug: "library",
+          seeds: 3,
+          status: "clean",
+          statusLabel: "PSNR/SSIM up",
+          meanBaseline: { psnr: 28.451148, ssim: 0.913075, lpips: 0.050888 },
+          meanActive: { psnr: 28.946909, ssim: 0.927683, lpips: 0.048111 },
+          delta: { psnr: 0.495761, ssim: 0.014608, lpips: -0.002777 },
+          note: "PSNR and SSIM improve on all three seeds; LPIPS misses on v1."
+        },
+        {
+          name: "Kitchen",
+          slug: "kitchen",
+          seeds: 4,
+          status: "mixed",
+          statusLabel: "mixed",
+          meanBaseline: { psnr: 15.226532, ssim: 0.500514, lpips: 0.374086 },
+          meanActive: { psnr: 15.913351, ssim: 0.502815, lpips: 0.345641 },
+          delta: { psnr: 0.686819, ssim: 0.002301, lpips: -0.028445 },
+          note: "Average improves, but v1 regresses. Keep this separate from the clean repeats."
+        }
+      ],
+      bwwSeeds: [
+        { seed: "v1", random: { psnr: 27.640579, ssim: 0.899556, lpips: 0.060898 }, active: { psnr: 28.913723, ssim: 0.913486, lpips: 0.047792 }, delta: { psnr: 1.273144, ssim: 0.013930, lpips: -0.013106 } },
+        { seed: "v2", random: { psnr: 25.373598, ssim: 0.857715, lpips: 0.089883 }, active: { psnr: 28.367418, ssim: 0.907160, lpips: 0.052855 }, delta: { psnr: 2.993820, ssim: 0.049444, lpips: -0.037028 } },
+        { seed: "v3", random: { psnr: 27.335316, ssim: 0.902766, lpips: 0.053568 }, active: { psnr: 28.253309, ssim: 0.906581, lpips: 0.053219 }, delta: { psnr: 0.917994, ssim: 0.003815, lpips: -0.000350 } },
+        { seed: "v4", random: { psnr: 26.985693, ssim: 0.878278, lpips: 0.077850 }, active: { psnr: 29.865345, ssim: 0.935332, lpips: 0.043175 }, delta: { psnr: 2.879652, ssim: 0.057054, lpips: -0.034675 } }
+      ],
+      signals: [
+        { name: "Spearman", values: [0.598686, 0.593861, 0.592605, 0.592635], note: "Rank correlation with RGB error." },
+        { name: "AUROC", values: [0.770091, 0.765321, 0.764924, 0.763970], note: "Bad-pixel separation." },
+        { name: "AUPRC", values: [0.455828, 0.438813, 0.439585, 0.436397], note: "Precision-recall under imbalance." }
+      ],
+      method: [
+        "Lock the budget-25 seed split and held-out frames.",
+        "Train independent Splatfacto seed models.",
+        "Render remaining candidate views from the ensemble.",
+        "Rank frames by top-decile RGB disagreement.",
+        "Add 25 frames with score and pose diversity."
+      ]
+    };
+
+    const metrics = {
+      psnr: { label: "PSNR", decimals: 3, better: "higher", color: "green" },
+      ssim: { label: "SSIM", decimals: 3, better: "higher", color: "blue" },
+      lpips: { label: "LPIPS", decimals: 3, better: "lower", color: "coral" }
+    };
+
+    function signed(value, decimals = 3) {
+      const rounded = Number(value.toFixed(decimals));
+      const prefix = rounded > 0 ? "+" : "";
+      return `${prefix}${rounded.toFixed(decimals)}`;
+    }
+
+    function plain(value, decimals = 3) {
+      return value.toFixed(decimals);
+    }
+
+    function deltaClass(metric, value) {
+      const lowerIsBetter = metric === "lpips";
+      const good = lowerIsBetter ? value < 0 : value > 0;
+      const bad = lowerIsBetter ? value > 0 : value < 0;
+      return good ? "good" : bad ? "bad" : "";
+    }
+
+    function weightedMean(metric) {
+      const total = data.groups.reduce((acc, group) => acc + group.seeds, 0);
+      return data.groups.reduce((acc, group) => acc + group.seeds * group.delta[metric], 0) / total;
+    }
+
+    function cleanGroupCount() {
+      return data.groups.filter((group) => group.status !== "mixed").length;
+    }
+
+    function renderStats() {
+      const stats = [
+        { label: "Mean delta PSNR", value: signed(weightedMean("psnr")), caption: "19 paired seeds" },
+        { label: "Mean delta SSIM", value: signed(weightedMean("ssim")), caption: "Active b50 vs random b50" },
+        { label: "Mean delta LPIPS", value: signed(weightedMean("lpips")), caption: "Lower is better" },
+        { label: "Clean groups", value: `${cleanGroupCount()} / ${data.groups.length}`, caption: "Kitchen excluded" }
+      ];
+      document.getElementById("stat-grid").innerHTML = stats.map((stat) => `
+        <article class="stat">
+          <div class="stat-label">${stat.label}</div>
+          <div>
+            <div class="stat-value">${stat.value}</div>
+            <div class="stat-caption">${stat.caption}</div>
+          </div>
+        </article>
+      `).join("");
+    }
+
+    function renderGroups() {
+      const maxPsnr = Math.max(...data.groups.map((group) => Math.abs(group.delta.psnr)));
+      document.getElementById("group-list").innerHTML = data.groups.map((group) => {
+        const rows = Object.keys(metrics).map((metric) => {
+          const config = metrics[metric];
+          const magnitude = metric === "psnr" ? Math.abs(group.delta.psnr) / maxPsnr : Math.min(Math.abs(group.delta[metric]) / (metric === "ssim" ? 0.06 : 0.04), 1);
+          return `
+            <div class="metric-row">
+              <span>${config.label}</span>
+              <span class="bar-track"><span class="bar ${config.color}" style="width: ${Math.max(3, magnitude * 100)}%"></span></span>
+              <span class="delta ${deltaClass(metric, group.delta[metric])}">${signed(group.delta[metric])}</span>
+            </div>
+          `;
+        }).join("");
+        return `
+          <article class="group-card">
+            <div class="group-top">
+              <div>
+                <div class="group-title">
+                  <h3>${group.name}</h3>
+                  <span class="seed-count">${group.seeds} seeds</span>
+                </div>
+              </div>
+              <span class="status ${group.status}">${group.statusLabel}</span>
+            </div>
+            ${rows}
+            <p class="note">${group.note}</p>
+          </article>
+        `;
+      }).join("");
+    }
+
+    function renderBwwTable() {
+      const tbody = document.querySelector("#bww-table tbody");
+      tbody.innerHTML = data.bwwSeeds.map((row) => `
+        <tr>
+          <td>${row.seed}</td>
+          <td class="num delta ${deltaClass("psnr", row.delta.psnr)}">${signed(row.delta.psnr)}</td>
+          <td class="num delta ${deltaClass("ssim", row.delta.ssim)}">${signed(row.delta.ssim)}</td>
+          <td class="num delta ${deltaClass("lpips", row.delta.lpips)}">${signed(row.delta.lpips)}</td>
+        </tr>
+      `).join("");
+    }
+
+    function renderMatrix() {
+      const tbody = document.querySelector("#matrix-table tbody");
+      tbody.innerHTML = data.groups.map((group) => `
+        <tr>
+          <td>${group.name}</td>
+          <td>${group.seeds}</td>
+          <td><span class="status ${group.status}">${group.statusLabel}</span></td>
+          <td class="num">${plain(group.meanBaseline.psnr)}</td>
+          <td class="num">${plain(group.meanActive.psnr)}</td>
+          <td class="num delta ${deltaClass("psnr", group.delta.psnr)}">${signed(group.delta.psnr)}</td>
+          <td class="num delta ${deltaClass("ssim", group.delta.ssim)}">${signed(group.delta.ssim)}</td>
+          <td class="num delta ${deltaClass("lpips", group.delta.lpips)}">${signed(group.delta.lpips)}</td>
+        </tr>
+      `).join("");
+    }
+
+    function renderSignals() {
+      document.getElementById("signal-grid").innerHTML = data.signals.map((signal) => {
+        const mean = signal.values.reduce((acc, value) => acc + value, 0) / signal.values.length;
+        const dots = signal.values.map((value) => {
+          const height = Math.max(8, Math.min(34, value * 42));
+          return `<span class="seed-dot" style="height: ${height}px" title="${plain(value)}"></span>`;
+        }).join("");
+        return `
+          <article class="signal">
+            <div class="signal-title"><span>${signal.name}</span><span>mean</span></div>
+            <div class="signal-value">${plain(mean)}</div>
+            <div class="seed-dots">${dots}</div>
+            <p class="note">${signal.note}</p>
+          </article>
+        `;
+      }).join("");
+    }
+
+    function renderMethod() {
+      document.getElementById("method-strip").innerHTML = data.method.map((step, index) => `
+        <article class="method-step">
+          <span class="step-index">${index + 1}</span>
+          <p class="step-text">${step}</p>
+        </article>
+      `).join("");
+    }
+
+    renderStats();
+    renderGroups();
+    renderBwwTable();
+    renderMatrix();
+    renderSignals();
+    renderMethod();
+  </script>
+</body>
+</html>
