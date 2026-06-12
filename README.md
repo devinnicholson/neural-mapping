@@ -32,7 +32,7 @@ regressed sharply, so this remains a mixed hard-scene result rather than a
 clean replication. See [docs/results.md](docs/results.md) for the full tables,
 Modal run IDs, and caveats.
 
-As of 2026-06-10 UTC, the first depth-bearing active loop also runs on
+As of 2026-06-11 UTC, the first depth-bearing active loop also runs on
 TUM RGB-D `freiburg1_desk`. Across three locked RGB-D split seeds, random
 budget-50 training improves over budget 25 on both RGB and held-out depth, and
 transmittance-tail active expansion improves over the same-seed random
@@ -42,7 +42,28 @@ budget-50 baseline. On v3, the random baseline moved from 15.432 PSNR /
 budget-50 result to 18.362 PSNR / 0.684 SSIM / 0.319 LPIPS. The same v3 active
 run reduced raw depth AbsRel from 0.358 to 0.347 and median-aligned AbsRel
 from 0.351 to 0.315 versus random budget 50. This is now a three-seed RGB-D
-pilot, though still limited to one TUM sequence.
+pilot on `freiburg1_desk`.
+
+The same depth-bearing loop now has a second-sequence check on TUM RGB-D
+`freiburg1_room`. On room v1, transmittance-tail active expansion improved
+random budget 50 from 17.343 PSNR / 0.635 SSIM / 0.344 LPIPS to 17.844 PSNR /
+0.643 SSIM / 0.345 LPIPS and reduced raw depth RMSE from 0.957m to 0.919m. On
+room v2, local-mean-transmittance active selection traded RGB quality for depth:
+PSNR moved from 16.886 to 16.621, but raw AbsRel improved from 0.507 to 0.490
+and raw RMSE improved from 1.046m to 1.003m versus random budget 50. On room
+v3, accumulation-gradient active selection was a small all-around win over
+random budget 50: 17.571 to 17.590 PSNR, 0.647 to 0.650 SSIM, raw AbsRel 0.461
+to 0.458, and median-aligned AbsRel 0.410 to 0.390. Across three room seeds,
+adaptive active selection improves depth consistently, while RGB is positive on
+two of three seeds and mixed on average. A fixed transmittance-only room control
+was less robust: it improved room v2 depth versus random budget 50, but
+regressed room v3 RGB and depth. A fixed accumulation-gradient room control was
+also mixed: it was strong on room v1 and modestly useful on room v3, but
+regressed room v2. A room v2/v3 rank ensemble of transmittance and
+local-mean-transmittance was also only diagnostic: v2 improved depth versus
+random budget 50 but still regressed RGB, while v3 regressed both RGB and depth
+versus random. `freiburg1_room` currently needs signal-specific selection
+rather than a one-size-fits-all RGB-D rule.
 
 The current static dashboard is available at [docs/dashboard.html](docs/dashboard.html).
 
@@ -113,7 +134,9 @@ python scripts/generate_active_split.py \
 `--strategy pose-novelty` keeps the seed train/val/test split fixed and adds
 frames that are farthest from the current seed set in camera-center space.
 `--strategy score-desc --scores scores.json` can be used later for real
-model-error or uncertainty scores.
+model-error or uncertainty scores. For render-uncertainty reports, `--score-key`
+also accepts comma-separated nested fields; each field is rank-normalized over
+the candidate pool and averaged into a composite score before selection.
 
 Prepare a candidate-eval dataset for model-error scoring:
 

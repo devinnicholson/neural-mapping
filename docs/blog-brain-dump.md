@@ -430,7 +430,8 @@ than random sampling.
 ## First Depth-Bearing Bringup
 
 After the sample-scene active-selection work, we started moving into RGB-D data
-with TUM RGB-D `freiburg1_desk`.
+with TUM RGB-D `freiburg1_desk`, then added an initial second-sequence check on
+`freiburg1_room`.
 
 What changed:
 
@@ -450,6 +451,16 @@ What changed:
   tail risk.
 - Trained and evaluated those active splits against the same held-out test set.
 - Repeated the transmittance-tail active result on three TUM split seeds.
+- Repeated the depth-bearing loop three times on `freiburg1_room` to check
+  whether the result transfers beyond the desk sequence.
+- Reran plain transmittance on room v2/v3 as a fixed-policy control, separate
+  from choosing the best uncertainty signal per split seed.
+- Reran accumulation-gradient on room v1/v2 to complete a fixed-accumulation
+  policy check, because room v3 had already used accumulation-gradient.
+- Added comma-separated score-key support for active split generation, using a
+  rank average across multiple nested uncertainty fields.
+- Ran a room v2 rank-ensemble control that averaged transmittance and
+  local-mean-transmittance before score/pose hybrid selection.
 
 Initial RGB reconstruction results:
 
@@ -466,6 +477,21 @@ Initial RGB reconstruction results:
 | `tum_fr1_desk_v3_b50_7k` | 50 | 17.676 | 0.664 | 0.343 |
 | `tum_fr1_desk_v3_active_depth_trans_b50_7k` | 50 | 18.362 | 0.684 | 0.319 |
 | `tum_fr1_desk_v3_active_depth_grad_b50_7k` | 50 | 18.169 | 0.687 | 0.318 |
+| `tum_fr1_room_v1_b25_7k` | 25 | 14.971 | 0.545 | 0.425 |
+| `tum_fr1_room_v1_b50_7k` | 50 | 17.343 | 0.635 | 0.344 |
+| `tum_fr1_room_v1_active_depth_trans_b50_7k` | 50 | 17.844 | 0.643 | 0.345 |
+| `tum_fr1_room_v1_active_depth_accum_b50_7k` | 50 | 18.049 | 0.651 | 0.338 |
+| `tum_fr1_room_v2_b25_7k` | 25 | 14.968 | 0.571 | 0.407 |
+| `tum_fr1_room_v2_b50_7k` | 50 | 16.886 | 0.647 | 0.361 |
+| `tum_fr1_room_v2_active_depth_lmean_b50_7k` | 50 | 16.621 | 0.638 | 0.363 |
+| `tum_fr1_room_v2_active_depth_trans_b50_7k` | 50 | 16.829 | 0.642 | 0.357 |
+| `tum_fr1_room_v2_active_depth_txlmean_b50_7k` | 50 | 16.655 | 0.635 | 0.366 |
+| `tum_fr1_room_v2_active_depth_accum_b50_7k` | 50 | 16.295 | 0.623 | 0.372 |
+| `tum_fr1_room_v3_b25_7k` | 25 | 16.251 | 0.586 | 0.375 |
+| `tum_fr1_room_v3_b50_7k` | 50 | 17.571 | 0.647 | 0.327 |
+| `tum_fr1_room_v3_active_depth_accum_b50_7k` | 50 | 17.590 | 0.650 | 0.329 |
+| `tum_fr1_room_v3_active_depth_trans_b50_7k` | 50 | 17.281 | 0.639 | 0.348 |
+| `tum_fr1_room_v3_active_depth_txlmean_b50_7k` | 50 | 17.395 | 0.644 | 0.338 |
 
 Initial depth results:
 
@@ -482,6 +508,21 @@ Initial depth results:
 | `tum_fr1_desk_v3_b50_7k` | 50 | 0.358 | 0.644m | 0.351 | 0.656 |
 | `tum_fr1_desk_v3_active_depth_trans_b50_7k` | 50 | 0.347 | 0.595m | 0.315 | 0.671 |
 | `tum_fr1_desk_v3_active_depth_grad_b50_7k` | 50 | 0.366 | 0.606m | 0.341 | 0.654 |
+| `tum_fr1_room_v1_b25_7k` | 25 | 0.623 | 1.342m | 1.033 | 0.328 |
+| `tum_fr1_room_v1_b50_7k` | 50 | 0.437 | 0.957m | 0.453 | 0.384 |
+| `tum_fr1_room_v1_active_depth_trans_b50_7k` | 50 | 0.432 | 0.919m | 0.409 | 0.439 |
+| `tum_fr1_room_v1_active_depth_accum_b50_7k` | 50 | 0.421 | 0.886m | 0.385 | 0.465 |
+| `tum_fr1_room_v2_b25_7k` | 25 | 0.573 | 1.156m | 0.569 | 0.299 |
+| `tum_fr1_room_v2_b50_7k` | 50 | 0.507 | 1.046m | 0.531 | 0.388 |
+| `tum_fr1_room_v2_active_depth_lmean_b50_7k` | 50 | 0.490 | 1.003m | 0.529 | 0.402 |
+| `tum_fr1_room_v2_active_depth_trans_b50_7k` | 50 | 0.464 | 0.936m | 0.505 | 0.394 |
+| `tum_fr1_room_v2_active_depth_txlmean_b50_7k` | 50 | 0.481 | 0.967m | 0.512 | 0.360 |
+| `tum_fr1_room_v2_active_depth_accum_b50_7k` | 50 | 0.533 | 1.074m | 0.563 | 0.324 |
+| `tum_fr1_room_v3_b25_7k` | 25 | 0.610 | 1.220m | 0.461 | 0.372 |
+| `tum_fr1_room_v3_b50_7k` | 50 | 0.461 | 0.970m | 0.410 | 0.416 |
+| `tum_fr1_room_v3_active_depth_accum_b50_7k` | 50 | 0.458 | 0.967m | 0.390 | 0.439 |
+| `tum_fr1_room_v3_active_depth_trans_b50_7k` | 50 | 0.500 | 1.032m | 0.467 | 0.401 |
+| `tum_fr1_room_v3_active_depth_txlmean_b50_7k` | 50 | 0.483 | 1.020m | 0.427 | 0.423 |
 
 Initial depth-error uncertainty alignment from the budget-25 model:
 
@@ -501,6 +542,51 @@ Spearman, but the uncertainty tails still concentrated geometry failures:
 transmittance reached 0.077 Spearman / 0.628 AUROC, and its highest decile had
 mean depth AbsRel 1.015 versus a global mean of 0.465. Depth-gradient had the
 best v3 AUROC/AUPRC, so we trained both v3 active variants.
+
+Room v1 moved the same protocol to TUM `freiburg1_room`. The signal was weaker
+than the best desk reports but still useful: transmittance reached
+0.085 Spearman / 0.596 AUROC / 0.311 AUPRC, and its highest uncertainty decile
+had mean depth AbsRel 1.066 versus a global mean of 0.660.
+
+Room v2 repeated `freiburg1_room` with a different split seed. The best
+bad-pixel classifier was local mean transmittance: 0.198 Spearman /
+0.790 AUROC / 0.504 AUPRC, with highest-uncertainty pixels averaging
+1.607 AbsRel versus a global mean of 0.674. We used that signal for the active
+split.
+
+Room v3 repeated `freiburg1_room` again. Accumulation gradient was the best
+selection signal by Spearman, AUPRC, and top-decile error concentration:
+0.140 Spearman / 0.640 AUROC / 0.348 AUPRC, with highest-uncertainty pixels
+averaging 1.092 AbsRel versus a global mean of 0.559. We used that signal for
+the active split.
+
+We also ran a fixed transmittance control on room v2 and room v3. It improved
+room v2 depth more strongly than the local-mean run, but it failed on room v3:
+PSNR dropped from 17.571 to 17.281, LPIPS worsened from 0.327 to 0.348, raw
+AbsRel worsened from 0.461 to 0.500, and median-aligned AbsRel worsened from
+0.410 to 0.467. That makes the room result an adaptive-signal result, not yet a
+stable transmittance-only policy.
+
+We also completed the fixed accumulation-gradient check. It was excellent on
+room v1, moving PSNR from 17.343 to 18.049 and median-aligned AbsRel from 0.453
+to 0.385, and room v3 already had a small positive accumulation-gradient result.
+But it failed on room v2: PSNR dropped from 16.886 to 16.295 and raw AbsRel
+worsened from 0.507 to 0.533. So accumulation-gradient is not the universal
+room policy either.
+
+We then tried a rank ensemble on room v2, averaging transmittance and
+local-mean-transmittance before the same score/pose hybrid selection step. It
+improved depth versus random budget 50, with raw AbsRel moving from 0.507 to
+0.481 and median-aligned AbsRel from 0.531 to 0.512, but RGB still regressed:
+PSNR moved from 16.886 to 16.655 and LPIPS from 0.361 to 0.366. It also did not
+beat fixed transmittance on raw AbsRel/RMSE, so simple rank averaging is not
+the missing room policy.
+
+We repeated that same rank ensemble on room v3. It did not generalize: PSNR
+moved from 17.571 to 17.395, LPIPS worsened from 0.327 to 0.338, raw AbsRel
+worsened from 0.461 to 0.483, and median-aligned AbsRel worsened from 0.410 to
+0.427 versus random budget 50. That makes the rank ensemble a useful negative
+control rather than the next selection rule.
 
 Why this matters:
 
@@ -530,6 +616,36 @@ Why this matters:
   AbsRel, and -0.036 median-aligned AbsRel. The v3 depth-gradient active run
   was good for RGB but weaker on depth, so transmittance is the more stable
   current RGB-D selector.
+- The first room seed repeated the broad shape on a different TUM sequence.
+  Transmittance tail risk beat random budget 50 by +0.501 PSNR, +0.008 SSIM,
+  -0.005 raw AbsRel, -0.037m raw RMSE, -0.044 median-aligned AbsRel, and
+  -0.208m median-aligned RMSE. LPIPS was effectively flat.
+- The second room seed made the transfer story more nuanced. Local mean
+  transmittance improved depth versus random budget 50, with raw AbsRel moving
+  from 0.507 to 0.490 and raw RMSE from 1.046m to 1.003m, but it gave back RGB:
+  PSNR moved from 16.886 to 16.621, SSIM from 0.647 to 0.638, and LPIPS from
+  0.361 to 0.363. This is a useful depth signal, not a clean all-metric win.
+- The third room seed was a small all-metric-ish recovery. Accumulation-gradient
+  active selection moved PSNR from 17.571 to 17.590, SSIM from 0.647 to 0.650,
+  raw AbsRel from 0.461 to 0.458, and median-aligned AbsRel from 0.410 to
+  0.390. LPIPS was slightly worse, 0.327 to 0.329, and raw delta1 dropped, so it
+  is not a dramatic win, but it supports the depth-selection signal.
+- The fixed transmittance room control is mixed. It improved room v2 raw AbsRel
+  from 0.507 to 0.464 and raw RMSE from 1.046m to 0.936m, while only slightly
+  regressing PSNR/SSIM and improving LPIPS. But the same fixed policy failed on
+  room v3, so the current room claim should be about using uncertainty maps to
+  choose plausible missing views, not about one universal signal.
+- The fixed accumulation-gradient room control is also mixed. It was the best
+  v1 room run so far, improving PSNR by +0.706 and median-aligned AbsRel by
+  -0.068 versus random budget 50, but it regressed v2 RGB and raw depth. That
+  reinforces the same conclusion: room needs a stronger policy, not just a
+  fixed signal name.
+- The room v2 transmittance plus local-mean-transmittance rank ensemble is a
+  useful negative result. It improved raw AbsRel by -0.026 and aligned AbsRel
+  by -0.019 versus random budget 50, but RGB regressed and fixed
+  transmittance remained better on raw depth. The same rank ensemble failed on
+  room v3, regressing RGB, raw depth, and aligned depth versus random budget
+  50.
 
 ## What Not To Overclaim
 
@@ -538,8 +654,10 @@ Do not claim:
 - This is a complete active SLAM system.
 - This is real-time.
 - Active selection is robust on RGB-D scenes. The transmittance active variant
-  improved three TUM split seeds, but robustness still needs another sequence
-  or dataset.
+  improved three desk split seeds; adaptive room selection is depth-positive
+  across three seeds but RGB-mixed; fixed room transmittance fails on v3, and
+  fixed room accumulation fails on v2. The room rank ensemble also fails on v3.
+  Robustness still needs another dataset or a stronger room policy.
 - This is robust on all indoor scenes.
 - Single-model uncertainty maps are enough.
 - Pure uncertainty score selection is enough.

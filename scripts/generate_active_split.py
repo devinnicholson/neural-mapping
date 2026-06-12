@@ -54,7 +54,10 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--score-key",
         default="score",
-        help="Score field for JSON/CSV files used by score-based strategies.",
+        help=(
+            "Score field for JSON/CSV files used by score-based strategies. "
+            "Comma-separated nested keys are rank-averaged into a composite score."
+        ),
     )
     parser.add_argument(
         "--score-weight",
@@ -105,7 +108,7 @@ def main() -> int:
     elif args.strategy == "score-desc":
         if args.scores is None:
             raise SystemExit("--strategy score-desc requires --scores.")
-        scores = _load_scores(Path(args.scores), args.score_key)
+        scores = _load_scores_for_keys(Path(args.scores), args.score_key, candidates)
         missing = [frame for frame in candidates if frame not in scores]
         if missing:
             raise SystemExit(f"Score file is missing candidate frames: {missing[:10]}")
@@ -119,7 +122,7 @@ def main() -> int:
         positions = load_frame_positions(args.frames)
         if not positions:
             raise SystemExit("--strategy score-pose-hybrid requires transform_matrix camera poses.")
-        scores = _load_scores(Path(args.scores), args.score_key)
+        scores = _load_scores_for_keys(Path(args.scores), args.score_key, candidates)
         try:
             extra_order = active_score_pose_hybrid_order(
                 candidates,
@@ -237,6 +240,58 @@ def _load_scores(path: Path, score_key: str) -> dict[str, float]:
         return scores
 
     raise SystemExit("Score file must be a JSON object, JSON list, or CSV file.")
+
+
+def _load_scores_for_keys(path: Path, score_key: str, candidates: list[str]) -> dict[str, float]:
+    score_keys = [key.strip() for key in score_key.split(",") if key.strip()]
+    if not score_keys:
+        raise SystemExit("--score-key must contain at least one field.")
+    if len(score_keys) == 1:
+        return _load_scores(path, score_keys[0])
+
+    per_key_scores = [_load_scores(path, key) for key in score_keys]
+    missing_by_key: dict[str, list[str]] = {}
+    for key, scores in zip(score_keys, per_key_scores):
+        missing = [frame for frame in candidates if frame not in scores]
+        if missing:
+            missing_by_key[key] = missing[:10]
+    if missing_by_key:
+        formatted = "; ".join(
+            f"{key}: {missing}" for key, missing in missing_by_key.items()
+        )
+        raise SystemExit(f"Score file is missing candidate frames for score keys: {formatted}")
+
+    normalized_by_key = [
+        _rank_normalized_scores({frame: scores[frame] for frame in candidates})
+        for scores in per_key_scores
+    ]
+    return {
+        frame: sum(scores[frame] for scores in normalized_by_key) / len(normalized_by_key)
+        for frame in candidates
+    }
+
+
+def _rank_normalized_scores(scores: dict[str, float]) -> dict[str, float]:
+    if not scores:
+        return {}
+    if len(scores) == 1:
+        frame = next(iter(scores))
+        return {frame: 1.0}
+
+    ordered = sorted(scores, key=lambda frame: (float(scores[frame]), frame))
+    denominator = len(ordered) - 1
+    ranks: dict[str, float] = {}
+    index = 0
+    while index < len(ordered):
+        value = float(scores[ordered[index]])
+        end = index + 1
+        while end < len(ordered) and float(scores[ordered[end]]) == value:
+            end += 1
+        average_rank = (index + end - 1) / 2.0
+        for frame in ordered[index:end]:
+            ranks[frame] = average_rank / denominator
+        index = end
+    return ranks
 
 
 def _nested_score_value(item: dict[str, object], score_key: str) -> object | None:

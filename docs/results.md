@@ -5,7 +5,7 @@ Checkpoints, renders, and full Modal output volumes are intentionally not tracke
 
 ## Current Evidence Snapshot
 
-Date: 2026-06-10 UTC
+Date: 2026-06-11 UTC
 
 Best-supported acquisition rule so far:
 
@@ -38,6 +38,10 @@ rule.
 | TUM FR1 desk v1-v3 | 3 | Random RGB-D frame split | random budget 25/50 baseline | +2.167 PSNR, +0.085 SSIM, -0.077 LPIPS from 25 to 50 frames |
 | TUM FR1 desk v1-v3 | 3 | Depth-error transmittance tail risk | `score-pose-hybrid`, `score_weight=0.35` | +0.576 PSNR, +0.021 SSIM, -0.016 LPIPS, -0.022 raw AbsRel vs random 50 |
 | TUM FR1 desk v1/v3 | 2 | Depth-error depth-gradient tail risk | `score-pose-hybrid`, `score_weight=0.35` | Mixed geometry: RGB improves, raw AbsRel improves on v1 but regresses on v3 |
+| TUM FR1 room v1-v3 | 3 | Depth-error transmittance/local-mean/accumulation tail risk | `score-pose-hybrid`, `score_weight=0.35` | Depth-positive but RGB-mixed: depth improves on all three seeds; RGB improves on v1/v3 and regresses on v2 |
+| TUM FR1 room fixed transmittance v1-v3 | 3 | Depth-error transmittance tail risk | `score-pose-hybrid`, `score_weight=0.35` | Mixed control: depth improves on v1/v2 but regresses on v3; average RGB is roughly flat |
+| TUM FR1 room fixed accumulation v1-v3 | 3 | Depth-error accumulation-gradient tail risk | `score-pose-hybrid`, `score_weight=0.35` | Mixed control: strong on v1, small positive on v3, but RGB/raw-depth regression on v2 |
+| TUM FR1 room v2-v3 rank ensemble | 2 | Rank-averaged transmittance + local-mean-transmittance tail risk | `score-pose-hybrid`, `score_weight=0.35` | Diagnostic: v2 improves depth versus random but regresses RGB; v3 regresses RGB and depth versus random |
 
 Across the twelve dozer, redwoods2, and BWW entrance ensemble-tail seeds, the
 active selector averages about +1.165 PSNR, +0.026 SSIM, and -0.017 LPIPS
@@ -73,24 +77,44 @@ Current interpretation:
   depth-gradient active expansion improved v1 geometry but was weaker than
   transmittance on v3 depth, so transmittance is the more stable current RGB-D
   acquisition signal.
+- TUM RGB-D `freiburg1_room` is now a transfer check with three split seeds.
+  Room v1 improved both RGB and depth with transmittance-tail active selection,
+  room v2 improved depth but regressed RGB with local-mean-transmittance active
+  selection, and room v3 produced a small RGB/depth win with
+  accumulation-gradient active selection. A fixed transmittance-only control on
+  room v2/v3 was weaker: it helped v2 depth but hurt v3 RGB and geometry. A
+  fixed accumulation-gradient control was also not stable: strong on v1, weakly
+  positive on v3, and negative on v2. A room v2/v3 rank ensemble of
+  transmittance and local-mean-transmittance did not rescue the fixed-policy
+  story: v2 was depth-positive but RGB-negative, while v3 regressed RGB and
+  depth. The room evidence is depth-positive for adaptive signal selection, but
+  still RGB-mixed and not yet a stable fixed-policy result.
 
 ## TUM RGB-D Depth-Bearing Bringup And Replication
 
-Date: 2026-06-10 UTC
+Date: 2026-06-11 UTC
 
 Dataset and protocol:
 
-- Source sequence: TUM RGB-D `freiburg1_desk`.
+- Source sequences: TUM RGB-D `freiburg1_desk` and `freiburg1_room`.
 - Prepared scenes: `tum_fr1_desk_v1`, `tum_fr1_desk_v2`, and
-  `tum_fr1_desk_v3`.
+  `tum_fr1_desk_v3`; `tum_fr1_room_v1`, `tum_fr1_room_v2`, and
+  `tum_fr1_room_v3`.
 - Source frames: 180 RGB-D frames, sampled with `frame_stride=3`.
-- Split seeds: `20260610` for v1, `20260611` for v2, and `20260612` for v3.
+- Split seeds: `20260610` for desk v1, `20260611` for desk v2, `20260612`
+  for desk v3, `20260613` for room v2, and `20260614` for room v3.
 - Baseline selection method: random.
 - Active selection method: start from the same 25-frame seed set, score 125
   candidate views with the budget-25 depth-error uncertainty report, and add 25
   views using `score-pose-hybrid`, `score_weight=0.35`, and score key
   `top_decile_mean_uncertainty.transmittance` or
-  `top_decile_mean_uncertainty.depth-gradient`.
+  `top_decile_mean_uncertainty.depth-gradient`. Room v2 used
+  `top_decile_mean_uncertainty.local-mean-transmittance`; room v3 used
+  `top_decile_mean_uncertainty.accumulation-gradient`. Plain transmittance was
+  also rerun on room v2 and room v3 as a fixed-policy control, and
+  accumulation-gradient was rerun on room v1 and room v2 to complete a
+  fixed-accumulation room control. Room v2 and room v3 were also rerun with a
+  comma-separated rank ensemble of transmittance and local-mean-transmittance.
 - Each budget uses 20 held-out test frames and 10 validation frames.
 - Method: Nerfstudio `splatfacto`.
 - Training length: 7,000 iterations.
@@ -110,6 +134,21 @@ Dataset and protocol:
 | Random RGB-D bringup v3 | `tum_fr1_desk_v3_b50_7k` | 50 | 7,000 | 17.676 | 0.664 | 0.343 | 4.137 |
 | Active transmittance expansion v3 | `tum_fr1_desk_v3_active_depth_trans_b50_7k` | 50 | 7,000 | 18.362 | 0.684 | 0.319 | 4.128 |
 | Active depth-gradient expansion v3 | `tum_fr1_desk_v3_active_depth_grad_b50_7k` | 50 | 7,000 | 18.169 | 0.687 | 0.318 | 3.707 |
+| Random RGB-D room v1 | `tum_fr1_room_v1_b25_7k` | 25 | 7,000 | 14.971 | 0.545 | 0.425 | 3.450 |
+| Random RGB-D room v1 | `tum_fr1_room_v1_b50_7k` | 50 | 7,000 | 17.343 | 0.635 | 0.344 | 4.052 |
+| Active transmittance room v1 | `tum_fr1_room_v1_active_depth_trans_b50_7k` | 50 | 7,000 | 17.844 | 0.643 | 0.345 | 3.968 |
+| Fixed accumulation-gradient room v1 | `tum_fr1_room_v1_active_depth_accum_b50_7k` | 50 | 7,000 | 18.049 | 0.651 | 0.338 | 3.875 |
+| Random RGB-D room v2 | `tum_fr1_room_v2_b25_7k` | 25 | 7,000 | 14.968 | 0.571 | 0.407 | 3.109 |
+| Random RGB-D room v2 | `tum_fr1_room_v2_b50_7k` | 50 | 7,000 | 16.886 | 0.647 | 0.361 | 4.036 |
+| Active local-mean-transmittance room v2 | `tum_fr1_room_v2_active_depth_lmean_b50_7k` | 50 | 7,000 | 16.621 | 0.638 | 0.363 | 4.058 |
+| Fixed transmittance room v2 | `tum_fr1_room_v2_active_depth_trans_b50_7k` | 50 | 7,000 | 16.829 | 0.642 | 0.357 | 3.989 |
+| Rank-ensemble trans+lmean room v2 | `tum_fr1_room_v2_active_depth_txlmean_b50_7k` | 50 | 7,000 | 16.655 | 0.635 | 0.366 | 3.570 |
+| Fixed accumulation-gradient room v2 | `tum_fr1_room_v2_active_depth_accum_b50_7k` | 50 | 7,000 | 16.295 | 0.623 | 0.372 | 4.079 |
+| Random RGB-D room v3 | `tum_fr1_room_v3_b25_7k` | 25 | 7,000 | 16.251 | 0.586 | 0.375 | 3.105 |
+| Random RGB-D room v3 | `tum_fr1_room_v3_b50_7k` | 50 | 7,000 | 17.571 | 0.647 | 0.327 | 2.796 |
+| Active accumulation-gradient room v3 | `tum_fr1_room_v3_active_depth_accum_b50_7k` | 50 | 7,000 | 17.590 | 0.650 | 0.329 | 3.773 |
+| Fixed transmittance room v3 | `tum_fr1_room_v3_active_depth_trans_b50_7k` | 50 | 7,000 | 17.281 | 0.639 | 0.348 | 4.187 |
+| Rank-ensemble trans+lmean room v3 | `tum_fr1_room_v3_active_depth_txlmean_b50_7k` | 50 | 7,000 | 17.395 | 0.644 | 0.338 | 3.994 |
 
 Held-out depth metrics:
 
@@ -134,6 +173,21 @@ Held-out depth metrics:
 | `tum_fr1_desk_v3_b50_7k` | 50 | 0.358 | 0.644 | 0.303 | 0.351 | 0.778 | 0.656 |
 | `tum_fr1_desk_v3_active_depth_trans_b50_7k` | 50 | 0.347 | 0.595 | 0.272 | 0.315 | 0.700 | 0.671 |
 | `tum_fr1_desk_v3_active_depth_grad_b50_7k` | 50 | 0.366 | 0.606 | 0.254 | 0.341 | 0.713 | 0.654 |
+| `tum_fr1_room_v1_b25_7k` | 25 | 0.623 | 1.342 | 0.230 | 1.033 | 6.958 | 0.328 |
+| `tum_fr1_room_v1_b50_7k` | 50 | 0.437 | 0.957 | 0.275 | 0.453 | 1.223 | 0.384 |
+| `tum_fr1_room_v1_active_depth_trans_b50_7k` | 50 | 0.432 | 0.919 | 0.254 | 0.409 | 1.015 | 0.439 |
+| `tum_fr1_room_v1_active_depth_accum_b50_7k` | 50 | 0.421 | 0.886 | 0.264 | 0.385 | 0.950 | 0.465 |
+| `tum_fr1_room_v2_b25_7k` | 25 | 0.573 | 1.156 | 0.238 | 0.569 | 1.250 | 0.299 |
+| `tum_fr1_room_v2_b50_7k` | 50 | 0.507 | 1.046 | 0.255 | 0.531 | 1.260 | 0.388 |
+| `tum_fr1_room_v2_active_depth_lmean_b50_7k` | 50 | 0.490 | 1.003 | 0.245 | 0.529 | 1.314 | 0.402 |
+| `tum_fr1_room_v2_active_depth_trans_b50_7k` | 50 | 0.464 | 0.936 | 0.226 | 0.505 | 1.271 | 0.394 |
+| `tum_fr1_room_v2_active_depth_txlmean_b50_7k` | 50 | 0.481 | 0.967 | 0.242 | 0.512 | 1.212 | 0.360 |
+| `tum_fr1_room_v2_active_depth_accum_b50_7k` | 50 | 0.533 | 1.074 | 0.229 | 0.563 | 1.254 | 0.324 |
+| `tum_fr1_room_v3_b25_7k` | 25 | 0.610 | 1.220 | 0.329 | 0.461 | 1.046 | 0.372 |
+| `tum_fr1_room_v3_b50_7k` | 50 | 0.461 | 0.970 | 0.375 | 0.410 | 0.979 | 0.416 |
+| `tum_fr1_room_v3_active_depth_accum_b50_7k` | 50 | 0.458 | 0.967 | 0.302 | 0.390 | 0.945 | 0.439 |
+| `tum_fr1_room_v3_active_depth_trans_b50_7k` | 50 | 0.500 | 1.032 | 0.295 | 0.467 | 1.084 | 0.401 |
+| `tum_fr1_room_v3_active_depth_txlmean_b50_7k` | 50 | 0.483 | 1.020 | 0.301 | 0.427 | 1.038 | 0.423 |
 
 Depth-error uncertainty alignment:
 
@@ -205,6 +259,79 @@ depth-gradient decile reaches 0.976. Because v1/v2 favored transmittance but
 v3 had a slightly better depth-gradient AUROC/AUPRC, both v3 active expansions
 were trained.
 
+Room v1 depth-error uncertainty alignment:
+
+- Seed model: `tum_fr1_room_v1_b25_7k`.
+- Candidate views: 125 frames not in the budget-25 train/val/test split.
+- Error target: per-pixel `depth-abs-rel`.
+- Bad-pixel threshold: 80th percentile, AbsRel `0.951`.
+- Per-frame sample: 10,000 valid pixels.
+- Global report sample: 500,000 pixels.
+
+| Signal | Spearman | AUROC | AUPRC | Top-decile mean AbsRel | Top-decile bad fraction |
+|---|---:|---:|---:|---:|---:|
+| `transmittance` | 0.085 | 0.596 | 0.311 | 1.066 | 0.408 |
+| `local-mean-transmittance` | 0.039 | 0.592 | 0.299 | 1.033 | 0.391 |
+| `local-std-transmittance` | 0.026 | 0.579 | 0.289 | 1.002 | 0.376 |
+| `accumulation-gradient` | 0.062 | 0.577 | 0.296 | 1.036 | 0.393 |
+| `depth-gradient` | -0.037 | 0.564 | 0.284 | 0.982 | 0.386 |
+
+The room v1 uncertainty report is weaker than the desk reports by AUROC/AUPRC,
+but its high-uncertainty tails are still enriched for geometry failures: the
+global mean depth AbsRel is 0.660, while the highest-transmittance decile
+reaches 1.066 and a 0.408 bad-pixel fraction. Transmittance had the best rank
+correlation and AUPRC, so the first room active expansion used
+`top_decile_mean_uncertainty.transmittance`.
+
+Room v2 depth-error uncertainty alignment:
+
+- Seed model: `tum_fr1_room_v2_b25_7k`.
+- Candidate views: 125 frames not in the budget-25 train/val/test split.
+- Error target: per-pixel `depth-abs-rel`.
+- Bad-pixel threshold: 80th percentile, AbsRel `0.808`.
+- Per-frame sample: 10,000 valid pixels.
+- Global report sample: 500,000 pixels.
+
+| Signal | Spearman | AUROC | AUPRC | Top-decile mean AbsRel | Top-decile bad fraction |
+|---|---:|---:|---:|---:|---:|
+| `local-mean-transmittance` | 0.198 | 0.790 | 0.504 | 1.607 | 0.606 |
+| `transmittance` | 0.209 | 0.755 | 0.497 | 1.602 | 0.621 |
+| `local-std-transmittance` | 0.192 | 0.773 | 0.477 | 1.526 | 0.567 |
+| `accumulation-gradient` | 0.201 | 0.738 | 0.468 | 1.536 | 0.592 |
+| `depth-gradient` | 0.096 | 0.744 | 0.390 | 1.099 | 0.466 |
+
+The room v2 report is stronger than room v1 as a bad-pixel classifier. The
+global mean depth AbsRel is 0.674, while the highest local-mean-transmittance
+decile reaches 1.607 and a 0.606 bad-pixel fraction. Plain transmittance has
+the strongest rank correlation and top-decile bad fraction, but local mean
+transmittance has the best AUROC/AUPRC, so the room v2 active expansion used
+`top_decile_mean_uncertainty.local-mean-transmittance`.
+
+Room v3 depth-error uncertainty alignment:
+
+- Seed model: `tum_fr1_room_v3_b25_7k`.
+- Candidate views: 125 frames not in the budget-25 train/val/test split.
+- Error target: per-pixel `depth-abs-rel`.
+- Bad-pixel threshold: 80th percentile, AbsRel `0.778`.
+- Per-frame sample: 10,000 valid pixels.
+- Global report sample: 500,000 pixels.
+
+| Signal | Spearman | AUROC | AUPRC | Top-decile mean AbsRel | Top-decile bad fraction |
+|---|---:|---:|---:|---:|---:|
+| `accumulation-gradient` | 0.140 | 0.640 | 0.348 | 1.092 | 0.462 |
+| `depth-gradient` | 0.134 | 0.652 | 0.343 | 0.988 | 0.440 |
+| `transmittance` | 0.125 | 0.645 | 0.334 | 1.065 | 0.446 |
+| `local-std-transmittance` | 0.117 | 0.648 | 0.336 | 1.053 | 0.443 |
+| `local-mean-transmittance` | 0.108 | 0.653 | 0.329 | 1.060 | 0.440 |
+
+The room v3 report is less clean than room v2 but still useful for selection.
+The global mean depth AbsRel is 0.559, while the highest accumulation-gradient
+decile reaches 1.092 and a 0.462 bad-pixel fraction. Local mean transmittance
+has the narrow AUROC edge and depth-gradient is close on AUPRC, but
+accumulation-gradient has the best rank correlation, best AUPRC, and strongest
+top-decile error concentration, so the room v3 active expansion used
+`top_decile_mean_uncertainty.accumulation-gradient`.
+
 Active RGB-D results:
 
 - Seed set: same budget-25 train/val/test split as the random baseline.
@@ -224,6 +351,42 @@ Active RGB-D results:
   `tum_fr1_desk_v3_active_depth_grad_b50`.
 - V3 depth-gradient active run scene:
   `tum_fr1_desk_v3_active_depth_grad_b50_7k`.
+- Room v1 transmittance active split scene:
+  `tum_fr1_room_v1_active_depth_trans_b50`.
+- Room v1 transmittance active run scene:
+  `tum_fr1_room_v1_active_depth_trans_b50_7k`.
+- Room v1 fixed-accumulation active split scene:
+  `tum_fr1_room_v1_active_depth_accum_b50`.
+- Room v1 fixed-accumulation active run scene:
+  `tum_fr1_room_v1_active_depth_accum_b50_7k`.
+- Room v2 local-mean-transmittance active split scene:
+  `tum_fr1_room_v2_active_depth_lmean_b50`.
+- Room v2 local-mean-transmittance active run scene:
+  `tum_fr1_room_v2_active_depth_lmean_b50_7k`.
+- Room v2 fixed-transmittance active split scene:
+  `tum_fr1_room_v2_active_depth_trans_b50`.
+- Room v2 fixed-transmittance active run scene:
+  `tum_fr1_room_v2_active_depth_trans_b50_7k`.
+- Room v2 fixed-accumulation active split scene:
+  `tum_fr1_room_v2_active_depth_accum_b50`.
+- Room v2 fixed-accumulation active run scene:
+  `tum_fr1_room_v2_active_depth_accum_b50_7k`.
+- Room v2 rank-ensemble trans+lmean active split scene:
+  `tum_fr1_room_v2_active_depth_txlmean_b50`.
+- Room v2 rank-ensemble trans+lmean active run scene:
+  `tum_fr1_room_v2_active_depth_txlmean_b50_7k`.
+- Room v3 accumulation-gradient active split scene:
+  `tum_fr1_room_v3_active_depth_accum_b50`.
+- Room v3 accumulation-gradient active run scene:
+  `tum_fr1_room_v3_active_depth_accum_b50_7k`.
+- Room v3 fixed-transmittance active split scene:
+  `tum_fr1_room_v3_active_depth_trans_b50`.
+- Room v3 fixed-transmittance active run scene:
+  `tum_fr1_room_v3_active_depth_trans_b50_7k`.
+- Room v3 rank-ensemble trans+lmean active split scene:
+  `tum_fr1_room_v3_active_depth_txlmean_b50`.
+- Room v3 rank-ensemble trans+lmean active run scene:
+  `tum_fr1_room_v3_active_depth_txlmean_b50_7k`.
 - Added frames: 25 candidate views chosen by `score-pose-hybrid` from the
   depth-error uncertainty report, using the named tail-risk score with
   `score_weight=0.35`.
@@ -249,6 +412,64 @@ Active RGB-D results:
   50 by about +0.576 PSNR, +0.021 SSIM, -0.016 LPIPS, -0.022 raw AbsRel, and
   -0.044 aligned AbsRel on average. This is now a three-seed RGB-D pilot on one
   TUM sequence, not a fully robust RGB-D conclusion.
+- On `freiburg1_room` v1, transmittance-tail active selection improved random
+  budget 50 by +0.501 PSNR, +0.008 SSIM, +0.001 LPIPS, -0.005 raw AbsRel,
+  -0.037m raw RMSE, -0.044 aligned AbsRel, and -0.208m aligned RMSE. This is a
+  useful second-sequence signal.
+- On `freiburg1_room` v1, the fixed accumulation-gradient control was stronger
+  than transmittance: +0.706 PSNR, +0.016 SSIM, -0.006 LPIPS, -0.016 raw
+  AbsRel, -0.071m raw RMSE, -0.068 aligned AbsRel, and -0.273m aligned RMSE
+  versus random budget 50.
+- On `freiburg1_room` v2, local-mean-transmittance active selection regressed
+  RGB slightly versus random budget 50 by -0.264 PSNR, -0.009 SSIM, and +0.003
+  LPIPS, but improved geometry by -0.017 raw AbsRel, -0.044m raw RMSE, and
+  -0.003 aligned AbsRel. Aligned RMSE worsened by +0.054m while aligned delta1
+  improved from 0.388 to 0.402, so this is a depth-leaning but mixed result.
+- On `freiburg1_room` v2, the fixed transmittance control was stronger than
+  local-mean on depth and less costly on RGB: -0.056 PSNR, -0.005 SSIM,
+  -0.004 LPIPS, -0.043 raw AbsRel, -0.111m raw RMSE, and -0.026 aligned
+  AbsRel versus random budget 50. Aligned RMSE was effectively flat, worsening
+  by +0.011m.
+- On `freiburg1_room` v2, the transmittance plus local-mean-transmittance rank
+  ensemble was a diagnostic middle case: -0.231 PSNR, -0.012 SSIM, +0.005
+  LPIPS, -0.026 raw AbsRel, -0.079m raw RMSE, -0.019 aligned AbsRel, and
+  -0.048m aligned RMSE versus random budget 50. It improved depth over random
+  and over the local-mean run, but did not beat fixed transmittance on raw
+  AbsRel/RMSE.
+- On `freiburg1_room` v2, the fixed accumulation-gradient control failed:
+  -0.591 PSNR, -0.024 SSIM, +0.011 LPIPS, +0.027 raw AbsRel, +0.027m raw
+  RMSE, and +0.031 aligned AbsRel versus random budget 50. Aligned RMSE was
+  essentially flat, improving by -0.006m.
+- On `freiburg1_room` v3, accumulation-gradient active selection was a small
+  but useful win versus random budget 50: +0.019 PSNR, +0.003 SSIM, +0.002
+  LPIPS, -0.004 raw AbsRel, -0.003m raw RMSE, -0.020 aligned AbsRel, and
+  -0.034m aligned RMSE. LPIPS and raw delta1 were weaker, but the depth metrics
+  that track magnitude improved.
+- On `freiburg1_room` v3, the fixed transmittance control failed: -0.290 PSNR,
+  -0.009 SSIM, +0.020 LPIPS, +0.038 raw AbsRel, +0.063m raw RMSE, +0.057
+  aligned AbsRel, and +0.105m aligned RMSE versus random budget 50.
+- On `freiburg1_room` v3, the transmittance plus local-mean-transmittance rank
+  ensemble also failed as a fixed policy: -0.176 PSNR, -0.004 SSIM, +0.011
+  LPIPS, +0.022 raw AbsRel, +0.050m raw RMSE, +0.017 aligned AbsRel, and
+  +0.059m aligned RMSE versus random budget 50.
+- Across the first three `freiburg1_room` splits, depth-risk active selection
+  improves raw AbsRel on all three seeds and aligned AbsRel on all three seeds.
+  RGB is less clean: v1 and v3 improve PSNR/SSIM, while v2 regresses. The
+  average room effect is roughly +0.085 PSNR, flat SSIM, +0.002 LPIPS,
+  -0.009 raw AbsRel, and -0.022 aligned AbsRel versus random budget 50.
+- Across the fixed transmittance room controls, the average effect is roughly
+  +0.052 PSNR, -0.002 SSIM, +0.006 LPIPS, -0.003 raw AbsRel, and -0.004 aligned
+  AbsRel versus random budget 50. That average hides the failure mode: v1/v2
+  are depth-positive, while v3 regresses on both RGB and geometry.
+- Across the fixed accumulation-gradient room controls, the average effect is
+  roughly +0.045 PSNR, -0.002 SSIM, +0.002 LPIPS, +0.002 raw AbsRel, and -0.019
+  aligned AbsRel versus random budget 50. That average is also not robust: v1
+  is strong, v3 is modestly positive on depth, and v2 regresses.
+- Across the room v2/v3 transmittance plus local-mean-transmittance rank
+  ensemble checks, the average effect is roughly -0.204 PSNR, -0.008 SSIM,
+  +0.008 LPIPS, -0.002 raw AbsRel, and -0.001 aligned AbsRel versus random
+  budget 50. That is effectively a flat depth average with worse RGB, and the
+  seed-level behavior is not robust.
 
 Metric artifact paths in Modal:
 
@@ -265,6 +486,21 @@ Metric artifact paths in Modal:
 | `tum_fr1_desk_v3_b50_7k` | `/workspace/neural-mapping/outputs/runs/tum_fr1_desk_v3_b50_7k/splatfacto/budget_050/metrics/ns_eval.json` | `/workspace/neural-mapping/outputs/runs/tum_fr1_desk_v3_b50_7k/splatfacto/budget_050/metrics/depth_eval.json` | `/workspace/neural-mapping/outputs/runs/tum_fr1_desk_v3_b50_7k/splatfacto/budget_050/train/unnamed/splatfacto/2026-06-10_141840/nerfstudio_models/step-000006999.ckpt` |
 | `tum_fr1_desk_v3_active_depth_trans_b50_7k` | `/workspace/neural-mapping/outputs/runs/tum_fr1_desk_v3_active_depth_trans_b50_7k/splatfacto/budget_050/metrics/ns_eval.json` | `/workspace/neural-mapping/outputs/runs/tum_fr1_desk_v3_active_depth_trans_b50_7k/splatfacto/budget_050/metrics/depth_eval.json` | `/workspace/neural-mapping/outputs/runs/tum_fr1_desk_v3_active_depth_trans_b50_7k/splatfacto/budget_050/train/unnamed/splatfacto/2026-06-10_142929/nerfstudio_models/step-000006999.ckpt` |
 | `tum_fr1_desk_v3_active_depth_grad_b50_7k` | `/workspace/neural-mapping/outputs/runs/tum_fr1_desk_v3_active_depth_grad_b50_7k/splatfacto/budget_050/metrics/ns_eval.json` | `/workspace/neural-mapping/outputs/runs/tum_fr1_desk_v3_active_depth_grad_b50_7k/splatfacto/budget_050/metrics/depth_eval.json` | `/workspace/neural-mapping/outputs/runs/tum_fr1_desk_v3_active_depth_grad_b50_7k/splatfacto/budget_050/train/unnamed/splatfacto/2026-06-10_142916/nerfstudio_models/step-000006999.ckpt` |
+| `tum_fr1_room_v1_b25_7k` | `/workspace/neural-mapping/outputs/runs/tum_fr1_room_v1_b25_7k/splatfacto/budget_025/metrics/ns_eval.json` | `/workspace/neural-mapping/outputs/runs/tum_fr1_room_v1_b25_7k/splatfacto/budget_025/metrics/depth_eval.json` | `/workspace/neural-mapping/outputs/runs/tum_fr1_room_v1_b25_7k/splatfacto/budget_025/train/unnamed/splatfacto/2026-06-10_144226/nerfstudio_models/step-000006999.ckpt` |
+| `tum_fr1_room_v1_b50_7k` | `/workspace/neural-mapping/outputs/runs/tum_fr1_room_v1_b50_7k/splatfacto/budget_050/metrics/ns_eval.json` | `/workspace/neural-mapping/outputs/runs/tum_fr1_room_v1_b50_7k/splatfacto/budget_050/metrics/depth_eval.json` | `/workspace/neural-mapping/outputs/runs/tum_fr1_room_v1_b50_7k/splatfacto/budget_050/train/unnamed/splatfacto/2026-06-10_144213/nerfstudio_models/step-000006999.ckpt` |
+| `tum_fr1_room_v1_active_depth_trans_b50_7k` | `/workspace/neural-mapping/outputs/runs/tum_fr1_room_v1_active_depth_trans_b50_7k/splatfacto/budget_050/metrics/ns_eval.json` | `/workspace/neural-mapping/outputs/runs/tum_fr1_room_v1_active_depth_trans_b50_7k/splatfacto/budget_050/metrics/depth_eval.json` | `/workspace/neural-mapping/outputs/runs/tum_fr1_room_v1_active_depth_trans_b50_7k/splatfacto/budget_050/train/unnamed/splatfacto/2026-06-11_174216/nerfstudio_models/step-000006999.ckpt` |
+| `tum_fr1_room_v1_active_depth_accum_b50_7k` | `/workspace/neural-mapping/outputs/runs/tum_fr1_room_v1_active_depth_accum_b50_7k/splatfacto/budget_050/metrics/ns_eval.json` | `/workspace/neural-mapping/outputs/runs/tum_fr1_room_v1_active_depth_accum_b50_7k/splatfacto/budget_050/metrics/depth_eval.json` | `/workspace/neural-mapping/outputs/runs/tum_fr1_room_v1_active_depth_accum_b50_7k/splatfacto/budget_050/train/unnamed/splatfacto/2026-06-11_185011/nerfstudio_models/step-000006999.ckpt` |
+| `tum_fr1_room_v2_b25_7k` | `/workspace/neural-mapping/outputs/runs/tum_fr1_room_v2_b25_7k/splatfacto/budget_025/metrics/ns_eval.json` | `/workspace/neural-mapping/outputs/runs/tum_fr1_room_v2_b25_7k/splatfacto/budget_025/metrics/depth_eval.json` | `/workspace/neural-mapping/outputs/runs/tum_fr1_room_v2_b25_7k/splatfacto/budget_025/train/unnamed/splatfacto/2026-06-11_175752/nerfstudio_models/step-000006999.ckpt` |
+| `tum_fr1_room_v2_b50_7k` | `/workspace/neural-mapping/outputs/runs/tum_fr1_room_v2_b50_7k/splatfacto/budget_050/metrics/ns_eval.json` | `/workspace/neural-mapping/outputs/runs/tum_fr1_room_v2_b50_7k/splatfacto/budget_050/metrics/depth_eval.json` | `/workspace/neural-mapping/outputs/runs/tum_fr1_room_v2_b50_7k/splatfacto/budget_050/train/unnamed/splatfacto/2026-06-11_175756/nerfstudio_models/step-000006999.ckpt` |
+| `tum_fr1_room_v2_active_depth_lmean_b50_7k` | `/workspace/neural-mapping/outputs/runs/tum_fr1_room_v2_active_depth_lmean_b50_7k/splatfacto/budget_050/metrics/ns_eval.json` | `/workspace/neural-mapping/outputs/runs/tum_fr1_room_v2_active_depth_lmean_b50_7k/splatfacto/budget_050/metrics/depth_eval.json` | `/workspace/neural-mapping/outputs/runs/tum_fr1_room_v2_active_depth_lmean_b50_7k/splatfacto/budget_050/train/unnamed/splatfacto/2026-06-11_180810/nerfstudio_models/step-000006999.ckpt` |
+| `tum_fr1_room_v2_active_depth_trans_b50_7k` | `/workspace/neural-mapping/outputs/runs/tum_fr1_room_v2_active_depth_trans_b50_7k/splatfacto/budget_050/metrics/ns_eval.json` | `/workspace/neural-mapping/outputs/runs/tum_fr1_room_v2_active_depth_trans_b50_7k/splatfacto/budget_050/metrics/depth_eval.json` | `/workspace/neural-mapping/outputs/runs/tum_fr1_room_v2_active_depth_trans_b50_7k/splatfacto/budget_050/train/unnamed/splatfacto/2026-06-11_183751/nerfstudio_models/step-000006999.ckpt` |
+| `tum_fr1_room_v2_active_depth_txlmean_b50_7k` | `/workspace/neural-mapping/outputs/runs/tum_fr1_room_v2_active_depth_txlmean_b50_7k/splatfacto/budget_050/metrics/ns_eval.json` | `/workspace/neural-mapping/outputs/runs/tum_fr1_room_v2_active_depth_txlmean_b50_7k/splatfacto/budget_050/metrics/depth_eval.json` | `/workspace/neural-mapping/outputs/runs/tum_fr1_room_v2_active_depth_txlmean_b50_7k/splatfacto/budget_050/train/unnamed/splatfacto/2026-06-12_150313/nerfstudio_models/step-000006999.ckpt` |
+| `tum_fr1_room_v2_active_depth_accum_b50_7k` | `/workspace/neural-mapping/outputs/runs/tum_fr1_room_v2_active_depth_accum_b50_7k/splatfacto/budget_050/metrics/ns_eval.json` | `/workspace/neural-mapping/outputs/runs/tum_fr1_room_v2_active_depth_accum_b50_7k/splatfacto/budget_050/metrics/depth_eval.json` | `/workspace/neural-mapping/outputs/runs/tum_fr1_room_v2_active_depth_accum_b50_7k/splatfacto/budget_050/train/unnamed/splatfacto/2026-06-11_185012/nerfstudio_models/step-000006999.ckpt` |
+| `tum_fr1_room_v3_b25_7k` | `/workspace/neural-mapping/outputs/runs/tum_fr1_room_v3_b25_7k/splatfacto/budget_025/metrics/ns_eval.json` | `/workspace/neural-mapping/outputs/runs/tum_fr1_room_v3_b25_7k/splatfacto/budget_025/metrics/depth_eval.json` | `/workspace/neural-mapping/outputs/runs/tum_fr1_room_v3_b25_7k/splatfacto/budget_025/train/unnamed/splatfacto/2026-06-11_181834/nerfstudio_models/step-000006999.ckpt` |
+| `tum_fr1_room_v3_b50_7k` | `/workspace/neural-mapping/outputs/runs/tum_fr1_room_v3_b50_7k/splatfacto/budget_050/metrics/ns_eval.json` | `/workspace/neural-mapping/outputs/runs/tum_fr1_room_v3_b50_7k/splatfacto/budget_050/metrics/depth_eval.json` | `/workspace/neural-mapping/outputs/runs/tum_fr1_room_v3_b50_7k/splatfacto/budget_050/train/unnamed/splatfacto/2026-06-11_181833/nerfstudio_models/step-000006999.ckpt` |
+| `tum_fr1_room_v3_active_depth_accum_b50_7k` | `/workspace/neural-mapping/outputs/runs/tum_fr1_room_v3_active_depth_accum_b50_7k/splatfacto/budget_050/metrics/ns_eval.json` | `/workspace/neural-mapping/outputs/runs/tum_fr1_room_v3_active_depth_accum_b50_7k/splatfacto/budget_050/metrics/depth_eval.json` | `/workspace/neural-mapping/outputs/runs/tum_fr1_room_v3_active_depth_accum_b50_7k/splatfacto/budget_050/train/unnamed/splatfacto/2026-06-11_182725/nerfstudio_models/step-000006999.ckpt` |
+| `tum_fr1_room_v3_active_depth_trans_b50_7k` | `/workspace/neural-mapping/outputs/runs/tum_fr1_room_v3_active_depth_trans_b50_7k/splatfacto/budget_050/metrics/ns_eval.json` | `/workspace/neural-mapping/outputs/runs/tum_fr1_room_v3_active_depth_trans_b50_7k/splatfacto/budget_050/metrics/depth_eval.json` | `/workspace/neural-mapping/outputs/runs/tum_fr1_room_v3_active_depth_trans_b50_7k/splatfacto/budget_050/train/unnamed/splatfacto/2026-06-11_183752/nerfstudio_models/step-000006999.ckpt` |
+| `tum_fr1_room_v3_active_depth_txlmean_b50_7k` | `/workspace/neural-mapping/outputs/runs/tum_fr1_room_v3_active_depth_txlmean_b50_7k/splatfacto/budget_050/metrics/ns_eval.json` | `/workspace/neural-mapping/outputs/runs/tum_fr1_room_v3_active_depth_txlmean_b50_7k/splatfacto/budget_050/metrics/depth_eval.json` | `/workspace/neural-mapping/outputs/runs/tum_fr1_room_v3_active_depth_txlmean_b50_7k/splatfacto/budget_050/train/unnamed/splatfacto/2026-06-12_151326/nerfstudio_models/step-000006999.ckpt` |
 
 Depth-error uncertainty report path in Modal:
 
@@ -273,6 +509,12 @@ Depth-error uncertainty report path in Modal:
 `/workspace/neural-mapping/outputs/reports/render_uncertainty_maps/tum_fr1_desk_v2_depth_maps_b25_budget_025_depth-abs-rel.json`
 
 `/workspace/neural-mapping/outputs/reports/render_uncertainty_maps/tum_fr1_desk_v3_depth_maps_b25_budget_025_depth-abs-rel.json`
+
+`/workspace/neural-mapping/outputs/reports/render_uncertainty_maps/tum_fr1_room_v1_depth_maps_b25_budget_025_depth-abs-rel.json`
+
+`/workspace/neural-mapping/outputs/reports/render_uncertainty_maps/tum_fr1_room_v2_depth_maps_b25_budget_025_depth-abs-rel.json`
+
+`/workspace/neural-mapping/outputs/reports/render_uncertainty_maps/tum_fr1_room_v3_depth_maps_b25_budget_025_depth-abs-rel.json`
 
 Modal run URLs:
 
@@ -319,6 +561,66 @@ Modal run URLs:
 - V3 transmittance active budget 50 depth eval: `ap-G667K9kJJK02qQFOYdeBf3`.
 - V3 depth-gradient active budget 50 RGB eval: `ap-uxF5mFW6nvYXjDMaeGoMvN`.
 - V3 depth-gradient active budget 50 depth eval: `ap-o2XuZnZYvCWrUpkf5Mq8A5`.
+- Room v1 prepare TUM RGB-D data: `ap-ZJ3NHIhoeMwPbMCvzxnCft`.
+- Room v1 random budget 25 training: `ap-GYuj3snycl9YJh4RUBL7Pl`.
+- Room v1 random budget 50 training: `ap-GSYC1sSvX3CveYVOidwejM`.
+- Room v1 final random budget 25 RGB eval: `ap-3mTrFe9TYy5XOltFQE0ITQ`.
+- Room v1 final random budget 25 depth eval: `ap-LxxfKsC7LzH4nYcyvFMimf`.
+- Room v1 random budget 50 RGB eval: `ap-em6Q7U6abrfOUMudsKxJbT`.
+- Room v1 random budget 50 depth eval: `ap-AH9aSXVeAcK02Jr0f5z1Uw`.
+- Room v1 depth-error uncertainty report: `ap-AGNkSS8JeTAWGwT1Avq3yT`.
+- Room v1 transmittance active split materialization: `ap-T4rxpt86j8UyTZwuq9a0Yy`.
+- Room v1 transmittance active budget 50 training: `ap-NyJv5y429OiPCilbFCs9k5`.
+- Room v1 transmittance active budget 50 RGB eval: `ap-EumGXgXN11eLt9IT6gNzAa`.
+- Room v1 transmittance active budget 50 depth eval: `ap-3VoayotkTipD0ekiRSWPig`.
+- Room v2 prepare TUM RGB-D data: `ap-DPd4GESBAOb4TiwzRswmmg`.
+- Room v2 random budget 25 training: `ap-H1J3LFb5RRgi0etxR9bW6V`.
+- Room v2 random budget 50 training: `ap-FzI7pbYfQAF9gDfz3fhGE0`.
+- Room v2 random budget 25 RGB eval: `ap-y6f0B8EMzuUcviNXSPArw2`.
+- Room v2 random budget 50 RGB eval: `ap-DBH4Z3yzaHBivRzEZJhdkS`.
+- Room v2 random budget 25 depth eval: `ap-RW2acHMx51P14FTtP0808f`.
+- Room v2 random budget 50 depth eval: `ap-BANFzOQHxP3ra9vCOttsXY`.
+- Room v2 depth-error uncertainty report: `ap-cPcrECZe3Qoi2kXeECMLGo`.
+- Room v2 local-mean-transmittance active split materialization: `ap-5iNHJ1Iv7FFKw1p75qudPX`.
+- Room v2 local-mean-transmittance active budget 50 training: `ap-1YrgeNyvGJxXFZYQS7va72`.
+- Room v2 local-mean-transmittance active budget 50 RGB eval: `ap-tF3fKc5MzeX14bEPU4Qx8t`.
+- Room v2 local-mean-transmittance active budget 50 depth eval: `ap-LJjSWoqlGYoMitKOS7l08q`.
+- Room v3 prepare TUM RGB-D data: `ap-wFtvphiNSeOWhqSrqOBlPL`.
+- Room v3 random budget 25 training: `ap-QxmOhJ63KNGScWJM1IiGPv`.
+- Room v3 random budget 50 training: `ap-KUKUPWt4PEtQlBaLWngFi9`.
+- Room v3 random budget 25 RGB eval: `ap-evWvzMAg5oZswh3jWLGOoK`.
+- Room v3 random budget 50 RGB eval: `ap-tRQuUQEQ4ECZOr11Uw12gp`.
+- Room v3 random budget 25 depth eval: `ap-PSYdaK2ZO3eCUGnS7vKkeh`.
+- Room v3 random budget 50 depth eval: `ap-1bMqHfO0Gd2S92FX9jJ0xW`.
+- Room v3 depth-error uncertainty report: `ap-x5zk9oXnnBuToQdN0FTB2g`.
+- Room v3 accumulation-gradient active split materialization: `ap-2lAn2Vd2OGWqK1sPJ5uxkF`.
+- Room v3 accumulation-gradient active budget 50 training: `ap-O6lM4aMkKBH3TyJ13kQ3Ps`.
+- Room v3 accumulation-gradient active budget 50 RGB eval: `ap-0LJiz9eYEV2w1xfgd9B3Yg`.
+- Room v3 accumulation-gradient active budget 50 depth eval: `ap-Xu7anuvfAiURJylLP8takj`.
+- Room v2 fixed-transmittance active split materialization: `ap-ffRUaJ9Yc0Lb98O5URMewq`.
+- Room v2 fixed-transmittance active budget 50 training: `ap-t3JSrYKuiRYJiChLILxctM`.
+- Room v2 fixed-transmittance active budget 50 RGB eval: `ap-6Fa2kLFwc2N6SLbic2KxYM`.
+- Room v2 fixed-transmittance active budget 50 depth eval: `ap-pKuDdUGzCqufuqx6aYDAwB`.
+- Room v2 rank-ensemble trans+lmean active split materialization: `ap-KTQJ3GXRjYid4PmnjPGtvT`.
+- Room v2 rank-ensemble trans+lmean active budget 50 training: `ap-6TW0x7roIiuAuvkuorqtXX`.
+- Room v2 rank-ensemble trans+lmean active budget 50 RGB eval: `ap-So7rMu5SCAs7jtsAna2nPL`.
+- Room v2 rank-ensemble trans+lmean active budget 50 depth eval: `ap-Y8nvHqoxCZkJvp5CrGLx8X`.
+- Room v3 fixed-transmittance active split materialization: `ap-2WADPXWn2q7Et843dZ9MQV`.
+- Room v3 fixed-transmittance active budget 50 training: `ap-3yzlEqD6P5Z50nBSVfP0Ed`.
+- Room v3 fixed-transmittance active budget 50 RGB eval: `ap-xNWYwIkb969I4PwLs0U5K5`.
+- Room v3 fixed-transmittance active budget 50 depth eval: `ap-5jTLJMn6A4iqVJmujIjZu7`.
+- Room v3 rank-ensemble trans+lmean active split materialization: `ap-CGX8geQMk06iyTLTou5dDk`.
+- Room v3 rank-ensemble trans+lmean active budget 50 training: `ap-jXdWs0yCRY6HXhky7wdta2`.
+- Room v3 rank-ensemble trans+lmean active budget 50 RGB eval: `ap-qlfn9ceBNFZfmYHYTexv2z`.
+- Room v3 rank-ensemble trans+lmean active budget 50 depth eval: `ap-3XCYHbdj5Xyx5AmMYh2mYW`.
+- Room v1 fixed-accumulation active split materialization: `ap-jAU9d9iejvRXcWPiPqcBL2`.
+- Room v1 fixed-accumulation active budget 50 training: `ap-rlVw920yFisZxEYqg4wM78`.
+- Room v1 fixed-accumulation active budget 50 RGB eval: `ap-C6UcO58M1cQJVXZC7MFdtK`.
+- Room v1 fixed-accumulation active budget 50 depth eval: `ap-CvuaFkOuzmYhbWn6ahbUmD`.
+- Room v2 fixed-accumulation active split materialization: `ap-JGjlNow0XJcSmYhFj4lcIt`.
+- Room v2 fixed-accumulation active budget 50 training: `ap-FFT1xEFC6qZlpCuCFphhuT`.
+- Room v2 fixed-accumulation active budget 50 RGB eval: `ap-HiskmaPeH6NVFqWAJgZKuJ`.
+- Room v2 fixed-accumulation active budget 50 depth eval: `ap-C3RwzB3fPQqIUNCeWSepPq`.
 
 Interpretation:
 
@@ -342,9 +644,13 @@ Interpretation:
   50. The v3 depth-gradient run had slightly better RGB SSIM/LPIPS but weaker
   geometry, so transmittance is the more stable active signal for the current
   RGB-D pilot.
-- The next depth-bearing milestone is a second TUM sequence or a different
-  RGB-D dataset, because all RGB-D evidence still comes from
-  `freiburg1_desk`.
+- The room transfer check is useful but more fragile. Adaptive signal selection
+  improved raw and aligned AbsRel on all three room seeds, but the fixed
+  transmittance control only helped v1/v2 depth and failed on v3, while fixed
+  accumulation helped v1/v3 and failed on v2. The room v2 trans+lmean
+  rank-ensemble control improved depth over random but did not beat fixed
+  transmittance. The next depth-bearing milestone is a different RGB-D dataset
+  or a stronger room active policy.
 
 ## BWW Entrance Ensemble-Tail Replication
 
