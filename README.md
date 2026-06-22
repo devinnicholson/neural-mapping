@@ -65,6 +65,15 @@ random budget 50 but still regressed RGB, while v3 regressed both RGB and depth
 versus random. `freiburg1_room` currently needs signal-specific selection
 rather than a one-size-fits-all RGB-D rule.
 
+As of 2026-06-22 UTC, a third TUM RGB-D sequence, `freiburg1_xyz`, has a
+matched random/depth-gradient/transmittance check. Random budget 50 improved
+over random budget 25 from 18.747 to 19.432 PSNR and from 0.697 to 0.725 SSIM.
+Depth-gradient active expansion then improved random budget 50 to 20.047 PSNR /
+0.742 SSIM / 0.239 LPIPS, while transmittance-tail active expansion was the
+stronger control at 20.189 PSNR / 0.745 SSIM / 0.232 LPIPS. Transmittance also
+reduced raw depth AbsRel from 1.726 to 1.604 and median-aligned AbsRel from
+0.171 to 0.157 versus random budget 50.
+
 The current static dashboard is available at [docs/dashboard.html](docs/dashboard.html).
 
 ## Current Build Target

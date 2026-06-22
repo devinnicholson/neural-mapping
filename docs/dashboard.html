@@ -594,9 +594,9 @@
         <p class="lede">Same-seed Splatfacto runs. Active splits start from the budget-25 seed set and add frames using ensemble RGB disagreement plus camera-pose diversity.</p>
       </div>
       <div class="meta">
-        <span class="pill primary">Updated 2026-06-10</span>
-        <span>19 paired seeds</span>
-        <span>1 RGB-D baseline</span>
+        <span class="pill primary">Updated 2026-06-22</span>
+        <span>multi-scene active checks</span>
+        <span>TUM RGB-D transfer</span>
       </div>
     </header>
 
@@ -678,7 +678,7 @@
     <section aria-labelledby="tum-heading">
       <div class="section-head">
         <h2 id="tum-heading">RGB-D depth and active selection</h2>
-        <p class="section-note">TUM RGB-D FR1 desk and room, random, adaptive depth-risk, and fixed-policy splits, 7k Splatfacto iterations.</p>
+        <p class="section-note">TUM RGB-D FR1 desk, room, and xyz, random, adaptive depth-risk, and fixed-policy splits, 7k Splatfacto iterations.</p>
       </div>
       <div class="panel">
         <div class="table-wrap">
@@ -983,6 +983,50 @@
                 <td class="num">0.427</td>
                 <td class="num">0.423</td>
               </tr>
+              <tr>
+                <td>tum_fr1_xyz_v1_b25_7k</td>
+                <td class="num">25</td>
+                <td class="num">18.747</td>
+                <td class="num">0.697</td>
+                <td class="num">0.277</td>
+                <td class="num">1.684</td>
+                <td class="num">2.020m</td>
+                <td class="num">0.196</td>
+                <td class="num">0.677</td>
+              </tr>
+              <tr>
+                <td>tum_fr1_xyz_v1_b50_7k</td>
+                <td class="num">50</td>
+                <td class="num">19.432</td>
+                <td class="num">0.725</td>
+                <td class="num">0.249</td>
+                <td class="num">1.726</td>
+                <td class="num">2.007m</td>
+                <td class="num">0.171</td>
+                <td class="num">0.731</td>
+              </tr>
+              <tr>
+                <td>tum_fr1_xyz_v1_active_depth_grad_b50_7k</td>
+                <td class="num">50</td>
+                <td class="num">20.047</td>
+                <td class="num">0.742</td>
+                <td class="num">0.239</td>
+                <td class="num">1.698</td>
+                <td class="num">1.969m</td>
+                <td class="num">0.165</td>
+                <td class="num">0.725</td>
+              </tr>
+              <tr>
+                <td>tum_fr1_xyz_v1_active_depth_trans_b50_7k</td>
+                <td class="num">50</td>
+                <td class="num">20.189</td>
+                <td class="num">0.745</td>
+                <td class="num">0.232</td>
+                <td class="num">1.604</td>
+                <td class="num">1.877m</td>
+                <td class="num">0.157</td>
+                <td class="num">0.740</td>
+              </tr>
             </tbody>
           </table>
         </div>
@@ -1151,6 +1195,22 @@
                 <td class="num">0.334</td>
                 <td class="num">1.065</td>
                 <td class="num">0.446</td>
+              </tr>
+              <tr>
+                <td>xyz v1 transmittance</td>
+                <td class="num">0.139</td>
+                <td class="num">0.599</td>
+                <td class="num">0.326</td>
+                <td class="num">2.142</td>
+                <td class="num">0.447</td>
+              </tr>
+              <tr>
+                <td>xyz v1 depth gradient</td>
+                <td class="num">0.083</td>
+                <td class="num">0.607</td>
+                <td class="num">0.352</td>
+                <td class="num">2.153</td>
+                <td class="num">0.472</td>
               </tr>
             </tbody>
           </table>

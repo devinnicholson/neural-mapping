@@ -430,8 +430,8 @@ than random sampling.
 ## First Depth-Bearing Bringup
 
 After the sample-scene active-selection work, we started moving into RGB-D data
-with TUM RGB-D `freiburg1_desk`, then added an initial second-sequence check on
-`freiburg1_room`.
+with TUM RGB-D `freiburg1_desk`, then added transfer checks on
+`freiburg1_room` and `freiburg1_xyz`.
 
 What changed:
 
@@ -461,6 +461,10 @@ What changed:
   rank average across multiple nested uncertainty fields.
 - Ran a room v2 rank-ensemble control that averaged transmittance and
   local-mean-transmittance before score/pose hybrid selection.
+- Added `freiburg1_xyz` as a third TUM RGB-D sequence. The first xyz split ran
+  random budget 25/50 baselines, a depth-error uncertainty report, and matched
+  budget-50 active controls for depth-gradient and transmittance. Both active
+  controls beat random budget 50; transmittance was strongest on RGB and depth.
 
 Initial RGB reconstruction results:
 
@@ -844,7 +848,8 @@ PSNR, +0.026 SSIM, and -0.017 LPIPS, with BWW entrance showing the strongest
 four-seed replication. Kitchen remains a hard-case caveat. The first TUM
 RGB-D runs extend the pipeline to depth-bearing data and close an initial
 active loop: transmittance-tail budget-50 splits improve over random budget 50
-on three TUM split seeds. Depth-gradient was slightly stronger on v1 held-out
-depth but weaker than transmittance on v3 geometry, so the stable RGB-D signal
-right now is transmittance tail risk. The next step is to replicate that RGB-D
-result on another TUM sequence or another RGB-D dataset.
+on three TUM desk split seeds, and the first `freiburg1_xyz` transfer check
+also favors transmittance over random and depth-gradient. `freiburg1_room`
+remains the caveat: active depth selection helps geometry, but the best signal
+changes by split and fixed policies are not robust there. The next step is a
+larger RGB-D dataset or a stronger room policy.
