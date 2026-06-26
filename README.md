@@ -65,14 +65,27 @@ random budget 50 but still regressed RGB, while v3 regressed both RGB and depth
 versus random. `freiburg1_room` currently needs signal-specific selection
 rather than a one-size-fits-all RGB-D rule.
 
-As of 2026-06-22 UTC, a third TUM RGB-D sequence, `freiburg1_xyz`, has a
-matched random/depth-gradient/transmittance check. Random budget 50 improved
-over random budget 25 from 18.747 to 19.432 PSNR and from 0.697 to 0.725 SSIM.
-Depth-gradient active expansion then improved random budget 50 to 20.047 PSNR /
-0.742 SSIM / 0.239 LPIPS, while transmittance-tail active expansion was the
-stronger control at 20.189 PSNR / 0.745 SSIM / 0.232 LPIPS. Transmittance also
-reduced raw depth AbsRel from 1.726 to 1.604 and median-aligned AbsRel from
-0.171 to 0.157 versus random budget 50.
+As of 2026-06-25 UTC, a third TUM RGB-D sequence, `freiburg1_xyz`, now has six
+locked split seeds. Across xyz v1-v6, depth-gradient active expansion is the
+strongest fixed-policy average, improving random budget 50 by about +0.264 PSNR,
++0.007 SSIM, -0.003 LPIPS, -0.005 median-aligned AbsRel, and +0.008 aligned
+delta1. Transmittance-tail selection remains RGB-positive on average, but v5
+and v6 both regressed on aligned depth, which weakens it as a universal geometry
+policy. The practical takeaway is that seed-report signal selection matters:
+transmittance is often strong for photometric quality, while depth-gradient has
+been the safer fixed xyz signal. A stronger transmittance weight
+(`score_weight=0.65`) also regressed xyz v3, so `score_weight=0.35` remains the
+better default for the score/pose mix.
+
+As of 2026-06-26 UTC, a longer `freiburg1_xyz` v9 budget sweep tested one
+locked split from budget 25 through the maximum feasible budget 150. The
+depth-gradient hybrid selector with `score_weight=0.65` improved RGB quality at
+budgets 50, 75, 100, and 125. The cleanest RGB/depth win was budget 100:
+active selection improved PSNR from 19.220 to 19.347 and median-aligned AbsRel
+from 0.171 to 0.163 versus random. At budget 150, where all non-val/test frames
+are consumed, random won strongly; this makes the sweep useful as a saturation
+check and suggests the active policy is best treated as compact subset
+selection, not as a full trajectory ordering rule.
 
 The current static dashboard is available at [docs/dashboard.html](docs/dashboard.html).
 

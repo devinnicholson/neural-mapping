@@ -164,6 +164,10 @@ def _split_fields(value: str) -> list[str]:
     return [field for field in value.replace(",", " ").split() if field]
 
 
+def _parse_int_fields(value: str) -> list[int]:
+    return [int(field) for field in _split_fields(value)]
+
+
 def _capture_zip_candidates(capture_name: str) -> list[str]:
     aliases = {
         "campanile": "campanelle",
@@ -1109,6 +1113,7 @@ def _json_list(payload: dict[str, Any], key: str) -> list[str]:
 def main(
     action: str = "smoke",
     budget: int = 25,
+    budgets: str = "",
     base_budget: int = 25,
     target_budget: int = 50,
     iterations: int = 3000,
@@ -1155,6 +1160,7 @@ def main(
             prepare_poster_sample.remote(
                 capture_name=capture_name,
                 scene_name=data_scene_name,
+                budgets=_parse_int_fields(budgets) or None,
                 selection_method=selection_method,
                 seed=split_seed,
             )
@@ -1164,6 +1170,7 @@ def main(
             prepare_tum_rgbd_sequence.remote(
                 sequence_name=tum_sequence,
                 scene_name=data_scene_name,
+                budgets=_parse_int_fields(budgets) or None,
                 val_count=val_count,
                 test_count=test_count,
                 seed=split_seed,
@@ -1287,6 +1294,7 @@ def main(
             prepare_poster_sample.remote(
                 capture_name=capture_name,
                 scene_name=data_scene_name,
+                budgets=_parse_int_fields(budgets) or None,
                 selection_method=selection_method,
                 seed=split_seed,
             )

@@ -5,7 +5,7 @@ Checkpoints, renders, and full Modal output volumes are intentionally not tracke
 
 ## Current Evidence Snapshot
 
-Date: 2026-06-22 UTC
+Date: 2026-06-25 UTC
 
 Best-supported acquisition rule so far:
 
@@ -42,7 +42,10 @@ rule.
 | TUM FR1 room fixed transmittance v1-v3 | 3 | Depth-error transmittance tail risk | `score-pose-hybrid`, `score_weight=0.35` | Mixed control: depth improves on v1/v2 but regresses on v3; average RGB is roughly flat |
 | TUM FR1 room fixed accumulation v1-v3 | 3 | Depth-error accumulation-gradient tail risk | `score-pose-hybrid`, `score_weight=0.35` | Mixed control: strong on v1, small positive on v3, but RGB/raw-depth regression on v2 |
 | TUM FR1 room v2-v3 rank ensemble | 2 | Rank-averaged transmittance + local-mean-transmittance tail risk | `score-pose-hybrid`, `score_weight=0.35` | Diagnostic: v2 improves depth versus random but regresses RGB; v3 regresses RGB and depth versus random |
-| TUM FR1 xyz v1 | 1 | Depth-error transmittance/depth-gradient tail risk | `score-pose-hybrid`, `score_weight=0.35` | Transmittance strongest: +0.757 PSNR, +0.020 SSIM, -0.017 LPIPS, -0.122 raw AbsRel, -0.014 aligned AbsRel vs random 50 |
+| TUM FR1 xyz v1-v6 | 6 | Depth-error depth-gradient tail risk | `score-pose-hybrid`, `score_weight=0.35` | Strongest six-seed fixed RGB-D policy on xyz: +0.264 PSNR, +0.007 SSIM, -0.003 LPIPS, -0.005 aligned AbsRel, +0.008 aligned delta1 vs random 50 |
+| TUM FR1 xyz v1-v6 | 6 | Depth-error transmittance tail risk | `score-pose-hybrid`, `score_weight=0.35` | RGB-positive but geometry-near-flat because v5/v6 regress aligned depth: +0.214 PSNR, +0.007 SSIM, -0.003 LPIPS, -0.001 aligned AbsRel, +0.009 aligned delta1 vs random 50 |
+| TUM FR1 xyz v3 weight ablation | 1 | Depth-error transmittance tail risk | `score-pose-hybrid`, `score_weight=0.65` | Negative control: regressed below `score_weight=0.35` and random b50 on aligned depth |
+| TUM FR1 xyz v9 budget sweep | 1 | Depth-error depth-gradient tail risk | `score-pose-hybrid`, `score_weight=0.65` | Active helps RGB from b50-b125 and gives the cleanest RGB/depth win at b100; at saturated b150, random wins strongly |
 
 Across the twelve dozer, redwoods2, and BWW entrance ensemble-tail seeds, the
 active selector averages about +1.165 PSNR, +0.026 SSIM, and -0.017 LPIPS
@@ -90,16 +93,77 @@ Current interpretation:
   story: v2 was depth-positive but RGB-negative, while v3 regressed RGB and
   depth. The room evidence is depth-positive for adaptive signal selection, but
   still RGB-mixed and not yet a stable fixed-policy result.
-- TUM RGB-D `freiburg1_xyz` is a third-sequence transfer check. On its first
-  split, both depth-gradient and transmittance active expansions beat random
-  budget 50 on RGB and depth, and transmittance was the stronger policy. This
-  is useful because the uncertainty report had a real ambiguity:
-  depth-gradient had the best AUROC/AUPRC, while transmittance had the best
-  rank correlation.
+- TUM RGB-D `freiburg1_xyz` is now a six-seed third-sequence transfer check.
+  Depth-gradient is the strongest six-seed fixed-policy average, while
+  transmittance remains RGB-positive but regressed on aligned depth in v5 and
+  v6. The caveat changes the interpretation from "use transmittance everywhere"
+  to "use the seed uncertainty report to choose the signal." The v3
+  `score_weight=0.65` transmittance ablation also regressed RGB and aligned
+  depth, so the default `score_weight=0.35` is still the better balance of
+  uncertainty and pose diversity.
+- A longer `freiburg1_xyz` v9 budget sweep tested one locked split at budgets
+  25/50/75/100/125/150 with the depth-gradient hybrid selector at
+  `score_weight=0.65`. Active selection improved RGB quality at b50, b75,
+  b100, and b125. Geometry was strongest at b100, where active improved PSNR
+  from 19.220 to 19.347 and median-aligned AbsRel from 0.171 to 0.163 versus
+  random. At b150, where the split uses every non-val/test frame, active
+  selection regressed badly; this suggests the policy is useful for choosing a
+  compact subset, not for ordering the entire remaining trajectory.
+
+## TUM FR1 XYZ v9 Budget Sweep
+
+Date: 2026-06-26 UTC
+
+Protocol:
+
+- Source sequence: TUM RGB-D `freiburg1_xyz`.
+- Prepared scene: `tum_fr1_xyz_v9`.
+- Source frames: 180 RGB-D frames, sampled with `frame_stride=3`.
+- Split seed: `20260623`.
+- Test/validation: 20 held-out test frames and 10 validation frames.
+- Baseline: random train-frame prefix budgets 25/50/75/100/125/150.
+- Active policy: start from the same random budget-25 seed split and expand
+  with `score-pose-hybrid`, `score_weight=0.65`, and score key
+  `top_decile_mean_uncertainty.depth-gradient`.
+- Method: Nerfstudio `splatfacto`, 7,000 iterations, downscale factor 1,
+  Modal L4.
+
+RGB metrics:
+
+| Budget | Random PSNR | Active PSNR | Random SSIM | Active SSIM | Random LPIPS | Active LPIPS |
+|---:|---:|---:|---:|---:|---:|---:|
+| 25 | 18.236 | - | 0.683 | - | 0.284 | - |
+| 50 | 18.935 | 19.096 | 0.711 | 0.718 | 0.279 | 0.265 |
+| 75 | 18.943 | 19.305 | 0.721 | 0.729 | 0.267 | 0.261 |
+| 100 | 19.220 | 19.347 | 0.728 | 0.736 | 0.260 | 0.256 |
+| 125 | 19.333 | 19.587 | 0.738 | 0.745 | 0.257 | 0.245 |
+| 150 | 19.609 | 18.829 | 0.744 | 0.725 | 0.250 | 0.278 |
+
+Held-out depth metrics:
+
+| Budget | Random Raw AbsRel | Active Raw AbsRel | Random Aligned AbsRel | Active Aligned AbsRel | Random Aligned delta1 | Active Aligned delta1 |
+|---:|---:|---:|---:|---:|---:|---:|
+| 25 | 1.801 | - | 0.205 | - | 0.638 | - |
+| 50 | 1.712 | 1.675 | 0.177 | 0.171 | 0.716 | 0.719 |
+| 75 | 1.779 | 1.702 | 0.169 | 0.170 | 0.718 | 0.722 |
+| 100 | 1.736 | 1.731 | 0.171 | 0.163 | 0.722 | 0.753 |
+| 125 | 1.736 | 1.799 | 0.167 | 0.174 | 0.730 | 0.699 |
+| 150 | 1.673 | 1.701 | 0.156 | 0.221 | 0.758 | 0.701 |
+
+Interpretation:
+
+- b100 is the cleanest active result in this sweep: it improves PSNR, SSIM,
+  LPIPS, raw AbsRel, aligned AbsRel, and aligned delta1.
+- b50 and b75 are RGB-positive; b50 is also modestly depth-positive, while b75
+  is mixed on aligned geometry.
+- b125 remains RGB-positive but loses on aligned depth.
+- b150 is a negative control for saturation. Once the budget consumes every
+  available non-val/test frame, the active ordering is no longer helpful and
+  random gives the better held-out model.
 
 ## TUM RGB-D Depth-Bearing Bringup And Replication
 
-Date: 2026-06-22 UTC
+Date: 2026-06-25 UTC
 
 Dataset and protocol:
 
@@ -107,11 +171,13 @@ Dataset and protocol:
   `freiburg1_xyz`.
 - Prepared scenes: `tum_fr1_desk_v1`, `tum_fr1_desk_v2`, and
   `tum_fr1_desk_v3`; `tum_fr1_room_v1`, `tum_fr1_room_v2`, and
-  `tum_fr1_room_v3`; `tum_fr1_xyz_v1`.
+  `tum_fr1_room_v3`; `tum_fr1_xyz_v1`, `tum_fr1_xyz_v2`, `tum_fr1_xyz_v3`,
+  `tum_fr1_xyz_v4`, `tum_fr1_xyz_v5`, and `tum_fr1_xyz_v6`.
 - Source frames: 180 RGB-D frames, sampled with `frame_stride=3`.
 - Split seeds: `20260610` for desk v1, `20260611` for desk v2, `20260612`
-  for desk v3, `20260613` for room v2, `20260614` for room v3, and
-  `20260615` for xyz v1.
+  for desk v3, `20260613` for room v2, `20260614` for room v3,
+  `20260615` for xyz v1, `20260616` for xyz v2, `20260617` for xyz v3,
+  `20260618` for xyz v4, `20260619` for xyz v5, and `20260620` for xyz v6.
 - Baseline selection method: random.
 - Active selection method: start from the same 25-frame seed set, score 125
   candidate views with the budget-25 depth-error uncertainty report, and add 25
@@ -126,6 +192,8 @@ Dataset and protocol:
   comma-separated rank ensemble of transmittance and local-mean-transmittance.
   XYZ v1 trained both transmittance and depth-gradient active controls because
   the seed report split the evidence between rank correlation and AUROC/AUPRC.
+  XYZ v2, v3, v4, v5, and v6 repeated active controls, and xyz v3 also tested
+  a stronger transmittance weight (`score_weight=0.65`) as a negative control.
 - Each budget uses 20 held-out test frames and 10 validation frames.
 - Method: Nerfstudio `splatfacto`.
 - Training length: 7,000 iterations.
@@ -164,6 +232,27 @@ Dataset and protocol:
 | Random RGB-D xyz v1 | `tum_fr1_xyz_v1_b50_7k` | 50 | 7,000 | 19.432 | 0.725 | 0.249 | 2.580 |
 | Active depth-gradient xyz v1 | `tum_fr1_xyz_v1_active_depth_grad_b50_7k` | 50 | 7,000 | 20.047 | 0.742 | 0.239 | 4.381 |
 | Active transmittance xyz v1 | `tum_fr1_xyz_v1_active_depth_trans_b50_7k` | 50 | 7,000 | 20.189 | 0.745 | 0.232 | 4.446 |
+| Random RGB-D xyz v2 | `tum_fr1_xyz_v2_b25_7k` | 25 | 7,000 | 19.707 | 0.726 | 0.241 | 4.079 |
+| Random RGB-D xyz v2 | `tum_fr1_xyz_v2_b50_7k` | 50 | 7,000 | 20.065 | 0.743 | 0.238 | 4.472 |
+| Active depth-gradient xyz v2 | `tum_fr1_xyz_v2_active_depth_grad_b50_7k` | 50 | 7,000 | 20.263 | 0.745 | 0.244 | 4.462 |
+| Active transmittance xyz v2 | `tum_fr1_xyz_v2_active_depth_trans_b50_7k` | 50 | 7,000 | 20.298 | 0.748 | 0.237 | 4.485 |
+| Random RGB-D xyz v3 | `tum_fr1_xyz_v3_b25_7k` | 25 | 7,000 | 18.255 | 0.670 | 0.266 | 4.402 |
+| Random RGB-D xyz v3 | `tum_fr1_xyz_v3_b50_7k` | 50 | 7,000 | 18.701 | 0.698 | 0.256 | 3.337 |
+| Active depth-gradient xyz v3 | `tum_fr1_xyz_v3_active_depth_grad_b50_7k` | 50 | 7,000 | 18.854 | 0.705 | 0.254 | 4.501 |
+| Active transmittance xyz v3 | `tum_fr1_xyz_v3_active_depth_trans_b50_7k` | 50 | 7,000 | 18.912 | 0.708 | 0.249 | 4.449 |
+| Active transmittance xyz v3, w065 | `tum_fr1_xyz_v3_active_depth_trans_w065_b50_7k` | 50 | 7,000 | 18.744 | 0.700 | 0.262 | 4.345 |
+| Random RGB-D xyz v4 | `tum_fr1_xyz_v4_b25_7k` | 25 | 7,000 | 18.854 | 0.696 | 0.259 | 4.490 |
+| Random RGB-D xyz v4 | `tum_fr1_xyz_v4_b50_7k` | 50 | 7,000 | 19.422 | 0.718 | 0.249 | 4.580 |
+| Active depth-gradient xyz v4 | `tum_fr1_xyz_v4_active_depth_grad_b50_7k` | 50 | 7,000 | 19.458 | 0.722 | 0.242 | 4.576 |
+| Active transmittance xyz v4 | `tum_fr1_xyz_v4_active_depth_trans_b50_7k` | 50 | 7,000 | 19.593 | 0.723 | 0.245 | 4.560 |
+| Random RGB-D xyz v5 | `tum_fr1_xyz_v5_b25_7k` | 25 | 7,000 | 17.777 | 0.666 | 0.280 | 4.195 |
+| Random RGB-D xyz v5 | `tum_fr1_xyz_v5_b50_7k` | 50 | 7,000 | 18.597 | 0.714 | 0.253 | 4.561 |
+| Active transmittance xyz v5 | `tum_fr1_xyz_v5_active_depth_trans_b50_7k` | 50 | 7,000 | 18.104 | 0.707 | 0.266 | 4.581 |
+| Active depth-gradient xyz v5 | `tum_fr1_xyz_v5_active_depth_grad_b50_7k` | 50 | 7,000 | 18.883 | 0.721 | 0.250 | 3.300 |
+| Random RGB-D xyz v6 | `tum_fr1_xyz_v6_b25_7k` | 25 | 7,000 | 18.787 | 0.686 | 0.294 | 3.310 |
+| Random RGB-D xyz v6 | `tum_fr1_xyz_v6_b50_7k` | 50 | 7,000 | 19.415 | 0.727 | 0.252 | 4.500 |
+| Active transmittance xyz v6 | `tum_fr1_xyz_v6_active_depth_trans_b50_7k` | 50 | 7,000 | 19.820 | 0.738 | 0.245 | 3.899 |
+| Active depth-gradient xyz v6 | `tum_fr1_xyz_v6_active_depth_grad_b50_7k` | 50 | 7,000 | 19.710 | 0.734 | 0.249 | 3.336 |
 
 Held-out depth metrics:
 
@@ -207,6 +296,42 @@ Held-out depth metrics:
 | `tum_fr1_xyz_v1_b50_7k` | 50 | 1.726 | 2.007 | 0.017 | 0.171 | 0.445 | 0.731 |
 | `tum_fr1_xyz_v1_active_depth_grad_b50_7k` | 50 | 1.698 | 1.969 | 0.025 | 0.165 | 0.433 | 0.725 |
 | `tum_fr1_xyz_v1_active_depth_trans_b50_7k` | 50 | 1.604 | 1.877 | 0.020 | 0.157 | 0.414 | 0.740 |
+| `tum_fr1_xyz_v4_b25_7k` | 25 | 1.827 | 2.027 | 0.028 | 0.191 | 0.455 | 0.690 |
+| `tum_fr1_xyz_v4_b50_7k` | 50 | 1.776 | 1.965 | 0.024 | 0.172 | 0.412 | 0.725 |
+| `tum_fr1_xyz_v4_active_depth_grad_b50_7k` | 50 | 1.747 | 1.948 | 0.023 | 0.176 | 0.417 | 0.713 |
+| `tum_fr1_xyz_v4_active_depth_trans_b50_7k` | 50 | 1.816 | 2.052 | 0.020 | 0.167 | 0.414 | 0.732 |
+| `tum_fr1_xyz_v5_b25_7k` | 25 | 1.535 | 1.783 | 0.048 | 0.194 | 0.477 | 0.661 |
+| `tum_fr1_xyz_v5_b50_7k` | 50 | 1.749 | 2.050 | 0.023 | 0.175 | 0.477 | 0.708 |
+| `tum_fr1_xyz_v5_active_depth_trans_b50_7k` | 50 | 1.637 | 1.902 | 0.032 | 0.198 | 0.524 | 0.678 |
+| `tum_fr1_xyz_v5_active_depth_grad_b50_7k` | 50 | 1.692 | 1.985 | 0.027 | 0.168 | 0.434 | 0.719 |
+| `tum_fr1_xyz_v6_b25_7k` | 25 | 1.671 | 2.025 | 0.034 | 0.196 | 0.490 | 0.651 |
+| `tum_fr1_xyz_v6_b50_7k` | 50 | 1.674 | 2.006 | 0.024 | 0.171 | 0.453 | 0.707 |
+| `tum_fr1_xyz_v6_active_depth_trans_b50_7k` | 50 | 1.818 | 2.213 | 0.017 | 0.184 | 0.458 | 0.691 |
+| `tum_fr1_xyz_v6_active_depth_grad_b50_7k` | 50 | 1.660 | 1.969 | 0.028 | 0.172 | 0.456 | 0.698 |
+
+XYZ repeated-seed aligned depth summary:
+
+| Scene | Budget | Aligned AbsRel | Aligned RMSE (m) | Aligned delta1 |
+|---|---:|---:|---:|---:|
+| `tum_fr1_xyz_v1_b50_7k` | 50 | 0.171 | 0.445 | 0.731 |
+| `tum_fr1_xyz_v1_active_depth_grad_b50_7k` | 50 | 0.165 | 0.433 | 0.725 |
+| `tum_fr1_xyz_v1_active_depth_trans_b50_7k` | 50 | 0.157 | 0.414 | 0.740 |
+| `tum_fr1_xyz_v2_b50_7k` | 50 | 0.155 | 0.353 | 0.745 |
+| `tum_fr1_xyz_v2_active_depth_grad_b50_7k` | 50 | 0.134 | 0.334 | 0.793 |
+| `tum_fr1_xyz_v2_active_depth_trans_b50_7k` | 50 | 0.143 | 0.344 | 0.783 |
+| `tum_fr1_xyz_v3_b50_7k` | 50 | 0.180 | 0.477 | 0.684 |
+| `tum_fr1_xyz_v3_active_depth_grad_b50_7k` | 50 | 0.178 | 0.491 | 0.700 |
+| `tum_fr1_xyz_v3_active_depth_trans_b50_7k` | 50 | 0.167 | 0.468 | 0.731 |
+| `tum_fr1_xyz_v3_active_depth_trans_w065_b50_7k` | 50 | 0.189 | 0.490 | 0.679 |
+| `tum_fr1_xyz_v4_b50_7k` | 50 | 0.172 | 0.412 | 0.725 |
+| `tum_fr1_xyz_v4_active_depth_grad_b50_7k` | 50 | 0.176 | 0.417 | 0.713 |
+| `tum_fr1_xyz_v4_active_depth_trans_b50_7k` | 50 | 0.167 | 0.414 | 0.732 |
+| `tum_fr1_xyz_v5_b50_7k` | 50 | 0.175 | 0.477 | 0.708 |
+| `tum_fr1_xyz_v5_active_depth_trans_b50_7k` | 50 | 0.198 | 0.524 | 0.678 |
+| `tum_fr1_xyz_v5_active_depth_grad_b50_7k` | 50 | 0.168 | 0.434 | 0.719 |
+| `tum_fr1_xyz_v6_b50_7k` | 50 | 0.171 | 0.453 | 0.707 |
+| `tum_fr1_xyz_v6_active_depth_trans_b50_7k` | 50 | 0.184 | 0.458 | 0.691 |
+| `tum_fr1_xyz_v6_active_depth_grad_b50_7k` | 50 | 0.172 | 0.456 | 0.698 |
 
 Depth-error uncertainty alignment:
 
@@ -531,10 +656,11 @@ Active RGB-D results:
   budget 50. That is effectively a flat depth average with worse RGB, and the
   seed-level behavior is not robust.
 - The `freiburg1_xyz` transfer check is a cleaner third-sequence signal than
-  room: both active controls beat random budget 50, and transmittance wins on
-  RGB plus raw and median-aligned depth. This does not erase the room fixed
-  policy failures, but it strengthens transmittance as the default RGB-D
-  control before trying heavier datasets.
+  room, but v5 and v6 add important caveats. Depth-gradient is now the best
+  six-seed fixed-policy average, while transmittance was strong through v4 but
+  regressed on aligned depth in v5 and v6. This does not erase the room
+  fixed-policy failures, but it strengthens the case for adaptive signal
+  selection before trying heavier datasets.
 
 Metric artifact paths in Modal:
 
@@ -738,11 +864,11 @@ Interpretation:
   rank-ensemble control improved depth over random but did not beat fixed
   transmittance. The next depth-bearing milestone is a different RGB-D dataset
   or a stronger room active policy.
-- The `freiburg1_xyz` transfer check gives a cleaner third-sequence result:
-  random budget 50 improved RGB and aligned depth over random budget 25, and
-  both active budget-50 controls beat random budget 50. Transmittance was the
-  strongest xyz selector, improving RGB and both raw and aligned depth versus
-  random budget 50.
+- The `freiburg1_xyz` transfer check gives a cleaner third-sequence result than
+  room but is no longer a simple fixed-transmittance story. Random budget 50
+  improved RGB and aligned depth over random budget 25. Across six seeds,
+  depth-gradient has the stronger fixed-policy average, and v5/v6 show
+  transmittance can regress on aligned depth even when it improves RGB.
 
 ## BWW Entrance Ensemble-Tail Replication
 
