@@ -1,0 +1,4 @@
+budget,random_psnr,active_psnr,delta_psnr,random_ssim,active_ssim,delta_ssim,random_lpips,active_lpips,delta_lpips,random_raw_absrel,active_raw_absrel,delta_raw_absrel,random_aligned_absrel,active_aligned_absrel,delta_aligned_absrel,random_aligned_delta1,active_aligned_delta1,delta_aligned_delta1,note
+25,14.853,,NA,0.540,,NA,0.435,,NA,0.439,,NA,0.454,,NA,0.503,,NA,seed split only
+50,16.261,17.255,0.994,0.602,0.649,0.047,0.381,0.340,-0.041,0.338,0.317,-0.021,0.332,0.299,-0.033,0.626,0.671,0.045,RGB positive and depth positive
+100,17.421,18.128,0.708,0.668,0.693,0.025,0.328,0.304,-0.024,0.285,0.290,0.005,0.230,0.206,-0.024,0.745,0.766,0.021,RGB positive and aligned depth positive

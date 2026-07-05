@@ -1047,18 +1047,33 @@ def collect_metric_rows() -> list[dict[str, Any]]:
         scene = parts[parts.index("runs") + 1]
         budget = parts[parts.index("splatfacto") + 1].replace("budget_", "")
         result = metrics["results"]
-        rows.append(
-            {
-                "scene": scene,
-                "budget": budget,
-                "checkpoint": metrics.get("checkpoint"),
-                "psnr": result.get("psnr"),
-                "ssim": result.get("ssim"),
-                "lpips": result.get("lpips"),
-                "fps": result.get("fps"),
-                "metrics_path": str(path),
-            }
-        )
+        row = {
+            "scene": scene,
+            "budget": budget,
+            "checkpoint": metrics.get("checkpoint"),
+            "psnr": result.get("psnr"),
+            "ssim": result.get("ssim"),
+            "lpips": result.get("lpips"),
+            "fps": result.get("fps"),
+            "metrics_path": str(path),
+        }
+        depth_path = path.with_name("depth_eval.json")
+        if depth_path.exists():
+            depth_metrics = _read_json(depth_path)
+            raw = depth_metrics.get("summary", {}).get("raw", {})
+            aligned = depth_metrics.get("summary", {}).get("median_aligned", {})
+            row.update(
+                {
+                    "depth_metrics_path": str(depth_path),
+                    "depth_raw_abs_rel": raw.get("abs_rel"),
+                    "depth_raw_rmse": raw.get("rmse"),
+                    "depth_raw_delta1": raw.get("delta1"),
+                    "depth_aligned_abs_rel": aligned.get("abs_rel"),
+                    "depth_aligned_rmse": aligned.get("rmse"),
+                    "depth_aligned_delta1": aligned.get("delta1"),
+                }
+            )
+        rows.append(row)
     return rows
 
 

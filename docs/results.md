@@ -5,7 +5,7 @@ Checkpoints, renders, and full Modal output volumes are intentionally not tracke
 
 ## Current Evidence Snapshot
 
-Date: 2026-06-25 UTC
+Date: 2026-07-05 UTC
 
 Best-supported acquisition rule so far:
 
@@ -46,6 +46,7 @@ rule.
 | TUM FR1 xyz v1-v6 | 6 | Depth-error transmittance tail risk | `score-pose-hybrid`, `score_weight=0.35` | RGB-positive but geometry-near-flat because v5/v6 regress aligned depth: +0.214 PSNR, +0.007 SSIM, -0.003 LPIPS, -0.001 aligned AbsRel, +0.009 aligned delta1 vs random 50 |
 | TUM FR1 xyz v3 weight ablation | 1 | Depth-error transmittance tail risk | `score-pose-hybrid`, `score_weight=0.65` | Negative control: regressed below `score_weight=0.35` and random b50 on aligned depth |
 | TUM FR1 xyz v9 budget sweep | 1 | Depth-error depth-gradient tail risk | `score-pose-hybrid`, `score_weight=0.65` | Active helps RGB from b50-b125 and gives the cleanest RGB/depth win at b100; at saturated b150, random wins strongly |
+| TUM FR1 desk v4 compact validation | 1 | Depth-error depth-gradient tail risk | `score-pose-hybrid`, `score_weight=0.65` | Transfer-positive second RGB-D scene: b50 improves by +0.994 PSNR and -0.033 aligned AbsRel; b100 improves by +0.708 PSNR and -0.024 aligned AbsRel |
 
 Across the twelve dozer, redwoods2, and BWW entrance ensemble-tail seeds, the
 active selector averages about +1.165 PSNR, +0.026 SSIM, and -0.017 LPIPS
@@ -109,6 +110,70 @@ Current interpretation:
   random. At b150, where the split uses every non-val/test frame, active
   selection regressed badly; this suggests the policy is useful for choosing a
   compact subset, not for ordering the entire remaining trajectory.
+- The `freiburg1_desk` v4 compact validation reran that same depth-gradient
+  hybrid policy on a second TUM scene at budgets 50 and 100. It is positive on
+  RGB and median-aligned depth at both budgets. The b100 raw AbsRel moved from
+  0.285 to 0.290, so the clean claim is "aligned geometry and RGB improved,"
+  not "every depth metric improved."
+
+## TUM FR1 Desk v4 Compact Validation
+
+Date: 2026-07-05 UTC
+
+Protocol:
+
+- Source sequence: TUM RGB-D `freiburg1_desk`.
+- Prepared scene: `tum_fr1_desk_v4_compact`.
+- Source frames: 180 RGB-D frames, sampled with `frame_stride=3`.
+- Split seed: `20260627`.
+- Test/validation: 20 held-out test frames and 10 validation frames.
+- Baseline: random train-frame prefix budgets 25/50/100.
+- Active policy: start from the same random budget-25 seed split and expand
+  with `score-pose-hybrid`, `score_weight=0.65`, and score key
+  `top_decile_mean_uncertainty.depth-gradient`.
+- Method: Nerfstudio `splatfacto`, 7,000 iterations, downscale factor 1,
+  Modal L4.
+
+RGB metrics:
+
+| Budget | Selection | Scene | PSNR | SSIM | LPIPS | FPS |
+|---:|---|---|---:|---:|---:|---:|
+| 25 | Random seed | `tum_fr1_desk_v4_compact_b25_7k` | 14.853 | 0.540 | 0.435 | 4.288 |
+| 50 | Random | `tum_fr1_desk_v4_compact_b50_7k` | 16.261 | 0.602 | 0.381 | 4.265 |
+| 50 | Active depth-gradient hybrid | `tum_fr1_desk_v4_compact_active_depth_grad_hybrid_b50_7k` | 17.255 | 0.649 | 0.340 | 4.421 |
+| 100 | Random | `tum_fr1_desk_v4_compact_b100_7k` | 17.421 | 0.668 | 0.328 | 3.303 |
+| 100 | Active depth-gradient hybrid | `tum_fr1_desk_v4_compact_active_depth_grad_hybrid_b100_7k` | 18.128 | 0.693 | 0.304 | 4.496 |
+
+Held-out depth metrics:
+
+| Budget | Selection | Raw AbsRel | Raw RMSE | Raw delta1 | Aligned AbsRel | Aligned RMSE | Aligned delta1 |
+|---:|---|---:|---:|---:|---:|---:|---:|
+| 25 | Random seed | 0.439 | 0.926 | 0.259 | 0.454 | 1.127 | 0.503 |
+| 50 | Random | 0.338 | 0.751 | 0.322 | 0.332 | 0.934 | 0.626 |
+| 50 | Active depth-gradient hybrid | 0.317 | 0.702 | 0.373 | 0.299 | 0.833 | 0.671 |
+| 100 | Random | 0.285 | 0.623 | 0.296 | 0.230 | 0.741 | 0.745 |
+| 100 | Active depth-gradient hybrid | 0.290 | 0.605 | 0.216 | 0.206 | 0.657 | 0.766 |
+
+Delta summary:
+
+| Budget | Delta PSNR | Delta SSIM | Delta LPIPS | Delta raw AbsRel | Delta aligned AbsRel | Delta aligned delta1 | Read |
+|---:|---:|---:|---:|---:|---:|---:|---|
+| 50 | +0.994 | +0.047 | -0.041 | -0.021 | -0.033 | +0.045 | RGB positive and depth positive |
+| 100 | +0.708 | +0.025 | -0.024 | +0.005 | -0.024 | +0.021 | RGB positive and aligned-depth positive |
+
+Interpretation:
+
+- This is the second-scene validation for the xyz v9 compact-budget result.
+  The same depth-gradient hybrid policy improved held-out RGB and
+  median-aligned depth at both checked budgets.
+- b50 is the cleaner all-metric result: PSNR, SSIM, LPIPS, raw AbsRel, raw
+  RMSE, raw delta1, aligned AbsRel, aligned RMSE, and aligned delta1 all move
+  in the right direction.
+- b100 is still positive for the main compact-view claim, but its depth result
+  is metric-dependent: aligned geometry improves, raw RMSE improves, and raw
+  AbsRel is nearly tied/slightly worse.
+- The result supports continuing the RGB-D validation on a harder room scene
+  before claiming a general active acquisition policy.
 
 ## TUM FR1 XYZ v9 Budget Sweep
 

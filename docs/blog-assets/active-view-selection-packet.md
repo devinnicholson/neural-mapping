@@ -15,6 +15,12 @@ but it is not a reliable ordering of the entire trajectory.
 
 Source table: `tum-fr1-xyz-v9-budget-sweep.csv`.
 
+## Second RGB-D Validation Figure
+
+![TUM FR1 desk v4 compact validation](tum-fr1-desk-v4-compact-validation.svg)
+
+Source table: `tum-fr1-desk-v4-compact-validation.csv`.
+
 ## Blog Table
 
 | Budget | Random PSNR | Active PSNR | Delta PSNR | Random LPIPS | Active LPIPS | Delta LPIPS | Random aligned AbsRel | Active aligned AbsRel | Delta aligned AbsRel | Outcome |
@@ -24,6 +30,13 @@ Source table: `tum-fr1-xyz-v9-budget-sweep.csv`.
 | 100 | 19.220 | 19.347 | +0.127 | 0.260 | 0.256 | -0.004 | 0.171 | 0.163 | -0.008 | Cleanest RGB and depth win |
 | 125 | 19.333 | 19.587 | +0.254 | 0.257 | 0.245 | -0.012 | 0.167 | 0.174 | +0.007 | RGB positive but aligned depth down |
 | 150 | 19.609 | 18.829 | -0.779 | 0.250 | 0.278 | +0.028 | 0.156 | 0.221 | +0.065 | Saturation negative control |
+
+## Desk Validation Table
+
+| Budget | Random PSNR | Active PSNR | Delta PSNR | Random LPIPS | Active LPIPS | Delta LPIPS | Random aligned AbsRel | Active aligned AbsRel | Delta aligned AbsRel | Outcome |
+|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---|
+| 50 | 16.261 | 17.255 | +0.994 | 0.381 | 0.340 | -0.041 | 0.332 | 0.299 | -0.033 | RGB positive and depth positive |
+| 100 | 17.421 | 18.128 | +0.708 | 0.328 | 0.304 | -0.024 | 0.230 | 0.206 | -0.024 | RGB positive and aligned depth positive |
 
 ## Supporting Scene Summary
 
@@ -35,6 +48,7 @@ Source table: `tum-fr1-xyz-v9-budget-sweep.csv`.
 | Library | 3 | +0.496 PSNR, +0.015 SSIM, -0.003 LPIPS |
 | Kitchen | 4 | Mixed hard-scene result: +0.687 PSNR, +0.002 SSIM, -0.028 LPIPS |
 | TUM FR1 xyz v1-v6 | 6 | Depth-gradient fixed policy: +0.264 PSNR, +0.007 SSIM, -0.003 LPIPS, -0.005 aligned AbsRel |
+| TUM FR1 desk v4 compact | 1 | Depth-gradient compact validation: b50 +0.994 PSNR and -0.033 aligned AbsRel; b100 +0.708 PSNR and -0.024 aligned AbsRel |
 
 ## Post Outline
 
@@ -47,11 +61,14 @@ Source table: `tum-fr1-xyz-v9-budget-sweep.csv`.
    support the RGB story; kitchen is the stress case.
 4. Move to RGB-D: depth-bearing TUM runs make the problem harder because a
    view can look good photometrically while depth geometry is still wrong.
-5. Use the v9 budget sweep as the clearest result: active helps b50-b125 on
-   RGB, b100 is the clean RGB/depth win, and b150 proves the selector should be
-   treated as compact subset selection rather than a full trajectory ordering.
-6. Close with the next validation: repeat the compact b50/b100 experiment on a
-   second TUM RGB-D scene.
+5. Use the v9 budget sweep as the clearest first RGB-D result: active helps
+   b50-b125 on RGB, b100 is the clean RGB/depth win, and b150 proves the
+   selector should be treated as compact subset selection rather than a full
+   trajectory ordering.
+6. Add the desk v4 compact validation: on a second TUM scene, the same
+   depth-gradient hybrid improves b50 and b100 RGB quality and aligned depth.
+7. Close with the next validation: run the same locked compact test on a harder
+   TUM room scene before claiming a general RGB-D acquisition rule.
 
 ## Caveats To Keep In The Post
 
@@ -59,6 +76,9 @@ Source table: `tum-fr1-xyz-v9-budget-sweep.csv`.
   runs; depth-gradient is the safer fixed policy for the current xyz evidence.
 - Kitchen and b150 are important negative controls. They prevent the result
   from sounding like "uncertainty always wins."
+- Desk v4 is a one-seed transfer validation, not a multi-seed proof. It is
+  valuable because it was run after the xyz sweep and used the same fixed
+  depth-gradient hybrid policy.
 - The project currently evaluates offline acquisition. It is not yet a
   real-time robot planner.
 - Checkpoints and rendered outputs are not in Git. The manifest records Modal
