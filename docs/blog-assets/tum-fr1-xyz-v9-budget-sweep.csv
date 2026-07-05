@@ -1,0 +1,7 @@
+budget,random_psnr,active_psnr,delta_psnr,random_ssim,active_ssim,delta_ssim,random_lpips,active_lpips,delta_lpips,random_aligned_absrel,active_aligned_absrel,delta_aligned_absrel,random_aligned_delta1,active_aligned_delta1,delta_aligned_delta1,note
+25,18.236,,NA,0.683,,NA,0.284,,NA,0.205,,NA,0.638,,NA,seed split only
+50,18.935,19.096,0.161,0.711,0.718,0.007,0.279,0.265,-0.014,0.177,0.171,-0.006,0.716,0.719,0.003,RGB positive and modest depth positive
+75,18.943,19.305,0.362,0.721,0.729,0.008,0.267,0.261,-0.006,0.169,0.170,0.001,0.718,0.722,0.004,RGB positive and aligned depth mixed
+100,19.220,19.347,0.127,0.728,0.736,0.008,0.260,0.256,-0.004,0.171,0.163,-0.008,0.722,0.753,0.031,cleanest RGB and depth win
+125,19.333,19.587,0.254,0.738,0.745,0.007,0.257,0.245,-0.012,0.167,0.174,0.007,0.730,0.699,-0.031,RGB positive but aligned depth down
+150,19.609,18.829,-0.779,0.744,0.725,-0.019,0.250,0.278,0.028,0.156,0.221,0.065,0.758,0.701,-0.057,saturation negative control

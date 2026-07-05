@@ -318,6 +318,11 @@
       color: var(--gold);
     }
 
+    .status.loss {
+      background: var(--coral-soft);
+      color: var(--bad);
+    }
+
     .metric-row {
       display: grid;
       grid-template-columns: 80px minmax(120px, 1fr) 86px;
@@ -409,6 +414,81 @@
 
     tr:last-child td {
       border-bottom: 0;
+    }
+
+    .sweep-layout {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 310px;
+      align-items: stretch;
+    }
+
+    .sweep-layout table {
+      min-width: 760px;
+    }
+
+    .sweep-chart {
+      display: grid;
+      align-content: start;
+      gap: 13px;
+      padding: 14px;
+      border-left: 1px solid var(--line);
+      background: var(--surface);
+    }
+
+    .sweep-caption {
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 760;
+      letter-spacing: 0.055em;
+      text-transform: uppercase;
+    }
+
+    .sweep-bars {
+      display: grid;
+      gap: 10px;
+    }
+
+    .sweep-row {
+      display: grid;
+      grid-template-columns: 42px minmax(100px, 1fr) 58px;
+      gap: 9px;
+      align-items: center;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .sweep-axis {
+      position: relative;
+      height: 10px;
+      overflow: hidden;
+      border-radius: 999px;
+      background: var(--surface-pressed);
+    }
+
+    .sweep-axis::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      left: 50%;
+      width: 1px;
+      background: var(--line-strong);
+    }
+
+    .sweep-bar {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      left: 50%;
+      min-width: 3px;
+      border-radius: 999px;
+      background: var(--green);
+    }
+
+    .sweep-bar.loss {
+      right: 50%;
+      left: auto;
+      background: var(--bad);
     }
 
     .mini-grid {
@@ -533,6 +613,15 @@
         grid-template-columns: 1fr;
       }
 
+      .sweep-layout {
+        grid-template-columns: 1fr;
+      }
+
+      .sweep-chart {
+        border-top: 1px solid var(--line);
+        border-left: 0;
+      }
+
       .section-head {
         align-items: start;
         flex-direction: column;
@@ -590,13 +679,13 @@
     <header>
       <div>
         <div class="eyebrow">Active selection results</div>
-        <h1>Budget-50 comparisons for the current frame-selection rule.</h1>
-        <p class="lede">Same-seed Splatfacto runs. Active splits start from the budget-25 seed set and add frames using ensemble RGB disagreement plus camera-pose diversity.</p>
+        <h1>Active view selection improves compact-budget neural maps.</h1>
+        <p class="lede">Same-seed Splatfacto runs across sample scenes and RGB-D transfers. Active splits start from a small seed set, then add views with uncertainty and pose diversity.</p>
       </div>
       <div class="meta">
-        <span class="pill primary">Updated 2026-06-25</span>
+        <span class="pill primary">Updated 2026-07-05</span>
         <span>multi-scene active checks</span>
-        <span>TUM RGB-D transfer</span>
+        <span>TUM RGB-D budget sweep</span>
       </div>
     </header>
 
@@ -611,7 +700,7 @@
     <section aria-labelledby="scene-heading">
       <div class="section-head">
         <h2 id="scene-heading">Scene groups</h2>
-        <p class="section-note">BWW is the strongest sample-scene repeat. Kitchen is the stress case. TUM xyz is the cleanest RGB-D repeat.</p>
+        <p class="section-note">BWW is the strongest sample-scene repeat. Kitchen is the stress case. TUM xyz summarizes the fixed budget-50 RGB-D repeats.</p>
       </div>
       <div class="dashboard-grid">
         <div class="panel">
@@ -671,6 +760,44 @@
             </thead>
             <tbody></tbody>
           </table>
+        </div>
+      </div>
+    </section>
+
+    <section aria-labelledby="sweep-heading">
+      <div class="section-head">
+        <h2 id="sweep-heading">Budget sweep</h2>
+        <p class="section-note">TUM FR1 xyz v9, fixed test set, 7k Splatfacto iterations, depth-gradient hybrid selector.</p>
+      </div>
+      <div class="panel">
+        <div class="panel-header">
+          <div>
+            <h3>Compact-budget behavior</h3>
+            <div class="panel-kicker">Active minus random at the same training-frame budget</div>
+          </div>
+          <span class="pill">b100 peak</span>
+        </div>
+        <div class="sweep-layout">
+          <div class="table-wrap">
+            <table id="sweep-table">
+              <thead>
+                <tr>
+                  <th class="num">Budget</th>
+                  <th>Outcome</th>
+                  <th class="num">Delta PSNR</th>
+                  <th class="num">Delta LPIPS</th>
+                  <th class="num">Delta AbsRel</th>
+                  <th class="num">Delta delta1</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+          <aside class="sweep-chart" aria-label="PSNR delta by budget">
+            <div class="sweep-caption">PSNR delta by budget</div>
+            <div class="sweep-bars" id="sweep-bars"></div>
+            <p class="note">Positive values mean active selection beat random at the same budget. b150 uses every non-held-out frame and acts as the saturation check.</p>
+          </aside>
         </div>
       </div>
     </section>
@@ -1521,6 +1648,38 @@
           note: "Depth-gradient is the best six-seed fixed average; transmittance regresses on aligned depth in v5/v6."
         }
       ],
+      sweep: [
+        {
+          budget: 50,
+          outcome: "RGB + depth up",
+          status: "clean",
+          delta: { psnr: 0.161, lpips: -0.014, absRel: -0.006, delta1: 0.003 }
+        },
+        {
+          budget: 75,
+          outcome: "RGB up, depth mixed",
+          status: "mixed",
+          delta: { psnr: 0.362, lpips: -0.006, absRel: 0.001, delta1: 0.004 }
+        },
+        {
+          budget: 100,
+          outcome: "RGB + depth win",
+          status: "strong",
+          delta: { psnr: 0.127, lpips: -0.004, absRel: -0.008, delta1: 0.031 }
+        },
+        {
+          budget: 125,
+          outcome: "RGB up, depth down",
+          status: "mixed",
+          delta: { psnr: 0.254, lpips: -0.013, absRel: 0.007, delta1: -0.031 }
+        },
+        {
+          budget: 150,
+          outcome: "saturation loss",
+          status: "loss",
+          delta: { psnr: -0.780, lpips: 0.028, absRel: 0.065, delta1: -0.057 }
+        }
+      ],
       bwwSeeds: [
         { seed: "v1", random: { psnr: 27.640579, ssim: 0.899556, lpips: 0.060898 }, active: { psnr: 28.913723, ssim: 0.913486, lpips: 0.047792 }, delta: { psnr: 1.273144, ssim: 0.013930, lpips: -0.013106 } },
         { seed: "v2", random: { psnr: 25.373598, ssim: 0.857715, lpips: 0.089883 }, active: { psnr: 28.367418, ssim: 0.907160, lpips: 0.052855 }, delta: { psnr: 2.993820, ssim: 0.049444, lpips: -0.037028 } },
@@ -1558,7 +1717,7 @@
     }
 
     function deltaClass(metric, value) {
-      const lowerIsBetter = metric === "lpips";
+      const lowerIsBetter = metric === "lpips" || metric === "absRel";
       const good = lowerIsBetter ? value < 0 : value > 0;
       const bad = lowerIsBetter ? value > 0 : value < 0;
       return good ? "good" : bad ? "bad" : "";
@@ -1651,6 +1810,33 @@
       `).join("");
     }
 
+    function renderSweep() {
+      const tbody = document.querySelector("#sweep-table tbody");
+      tbody.innerHTML = data.sweep.map((row) => `
+        <tr>
+          <td class="num">${row.budget}</td>
+          <td><span class="status ${row.status}">${row.outcome}</span></td>
+          <td class="num delta ${deltaClass("psnr", row.delta.psnr)}">${signed(row.delta.psnr)}</td>
+          <td class="num delta ${deltaClass("lpips", row.delta.lpips)}">${signed(row.delta.lpips)}</td>
+          <td class="num delta ${deltaClass("absRel", row.delta.absRel)}">${signed(row.delta.absRel)}</td>
+          <td class="num delta ${deltaClass("delta1", row.delta.delta1)}">${signed(row.delta.delta1)}</td>
+        </tr>
+      `).join("");
+
+      const maxAbsPsnr = Math.max(...data.sweep.map((row) => Math.abs(row.delta.psnr)));
+      document.getElementById("sweep-bars").innerHTML = data.sweep.map((row) => {
+        const width = Math.max(4, Math.abs(row.delta.psnr) / maxAbsPsnr * 48);
+        const loss = row.delta.psnr < 0;
+        return `
+          <div class="sweep-row">
+            <span>b${row.budget}</span>
+            <span class="sweep-axis"><span class="sweep-bar ${loss ? "loss" : ""}" style="width: ${width}%"></span></span>
+            <span class="delta ${deltaClass("psnr", row.delta.psnr)}">${signed(row.delta.psnr)}</span>
+          </div>
+        `;
+      }).join("");
+    }
+
     function renderSignals() {
       document.getElementById("signal-grid").innerHTML = data.signals.map((signal) => {
         const mean = signal.values.reduce((acc, value) => acc + value, 0) / signal.values.length;
@@ -1682,6 +1868,7 @@
     renderGroups();
     renderBwwTable();
     renderMatrix();
+    renderSweep();
     renderSignals();
     renderMethod();
   </script>

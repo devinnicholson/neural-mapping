@@ -88,6 +88,11 @@ check and suggests the active policy is best treated as compact subset
 selection, not as a full trajectory ordering rule.
 
 The current static dashboard is available at [docs/dashboard.html](docs/dashboard.html).
+The reproducibility handoff is in [docs/run-manifest.md](docs/run-manifest.md),
+the compact blog packet is in
+[docs/blog-assets/active-view-selection-packet.md](docs/blog-assets/active-view-selection-packet.md),
+and the next RGB-D validation runbook is in
+[docs/next-rgbd-validation.md](docs/next-rgbd-validation.md).
 
 ## Current Build Target
 
