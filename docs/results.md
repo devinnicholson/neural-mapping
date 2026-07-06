@@ -194,7 +194,9 @@ Protocol:
 - Baseline: random train-frame prefix budgets 25/50/100.
 - Active policy: start from the same random budget-25 seed split and expand
   with `score-pose-hybrid`, `score_weight=0.65`, and score key
-  `top_decile_mean_uncertainty.transmittance`.
+  `top_decile_mean_uncertainty.transmittance`. A second control used
+  `top_decile_mean_uncertainty.local-mean-transmittance`, the report's
+  strongest AUROC signal.
 - Method: Nerfstudio `splatfacto`, 7,000 iterations, downscale factor 1,
   Modal L4.
 
@@ -214,8 +216,10 @@ RGB metrics:
 | 25 | Random seed | `tum_fr1_room_v4_compact_b25_7k` | 14.793 | 0.540 | 0.437 | 3.020 |
 | 50 | Random | `tum_fr1_room_v4_compact_b50_7k` | 16.641 | 0.617 | 0.381 | 2.961 |
 | 50 | Active transmittance hybrid | `tum_fr1_room_v4_compact_active_trans_hybrid_b50_7k` | 16.676 | 0.607 | 0.384 | 4.094 |
+| 50 | Active local-mean hybrid | `tum_fr1_room_v4_compact_active_lmean_hybrid_b50_7k` | 16.531 | 0.606 | 0.382 | 4.060 |
 | 100 | Random | `tum_fr1_room_v4_compact_b100_7k` | 17.882 | 0.669 | 0.341 | 4.169 |
 | 100 | Active transmittance hybrid | `tum_fr1_room_v4_compact_active_trans_hybrid_b100_7k` | 17.482 | 0.652 | 0.361 | 4.208 |
+| 100 | Active local-mean hybrid | `tum_fr1_room_v4_compact_active_lmean_hybrid_b100_7k` | 16.778 | 0.639 | 0.394 | 3.195 |
 
 Held-out depth metrics:
 
@@ -224,28 +228,33 @@ Held-out depth metrics:
 | 25 | Random seed | 0.656 | 1.271 | 0.229 | 0.578 | 1.196 | 0.240 |
 | 50 | Random | 0.508 | 1.034 | 0.239 | 0.504 | 1.127 | 0.326 |
 | 50 | Active transmittance hybrid | 0.532 | 1.077 | 0.220 | 0.471 | 1.114 | 0.375 |
+| 50 | Active local-mean hybrid | 0.494 | 1.000 | 0.248 | 0.475 | 1.087 | 0.365 |
 | 100 | Random | 0.449 | 0.948 | 0.207 | 0.399 | 1.047 | 0.484 |
 | 100 | Active transmittance hybrid | 0.459 | 0.925 | 0.258 | 0.430 | 1.028 | 0.402 |
+| 100 | Active local-mean hybrid | 0.521 | 1.101 | 0.236 | 0.611 | 3.440 | 0.383 |
 
 Delta summary:
 
-| Budget | Delta PSNR | Delta SSIM | Delta LPIPS | Delta raw AbsRel | Delta aligned AbsRel | Delta aligned delta1 | Read |
-|---:|---:|---:|---:|---:|---:|---:|---|
-| 50 | +0.035 | -0.010 | +0.003 | +0.024 | -0.032 | +0.049 | RGB mixed, aligned depth positive |
-| 100 | -0.400 | -0.017 | +0.019 | +0.009 | +0.031 | -0.082 | Negative on primary RGB and aligned depth |
+| Budget | Selection | Delta PSNR | Delta SSIM | Delta LPIPS | Delta raw AbsRel | Delta aligned AbsRel | Delta aligned delta1 | Read |
+|---:|---|---:|---:|---:|---:|---:|---:|---|
+| 50 | Transmittance | +0.035 | -0.010 | +0.003 | +0.024 | -0.032 | +0.049 | RGB mixed, aligned depth positive |
+| 50 | Local mean | -0.110 | -0.011 | +0.000 | -0.014 | -0.029 | +0.040 | Depth positive, RGB negative |
+| 100 | Transmittance | -0.400 | -0.017 | +0.019 | +0.009 | +0.031 | -0.082 | Negative on primary RGB and aligned depth |
+| 100 | Local mean | -1.104 | -0.030 | +0.053 | +0.071 | +0.211 | -0.101 | Strong negative control |
 
 Interpretation:
 
 - Room v4 is a useful stress failure after the desk v4 transfer success. The
   hard room trajectory is not solved by selecting the strongest high-error-tail
   signal from the seed report.
-- b50 is mixed: the selector improves PSNR and median-aligned depth but loses
-  on SSIM, LPIPS, and raw depth.
-- b100 fails the compact-view success gate. Random b100 remains stronger on
-  the main RGB metrics and aligned geometry.
-- The report suggests the next room control should try
-  `top_decile_mean_uncertainty.local-mean-transmittance`, which had the best
-  AUROC, before moving to a multi-seed room protocol.
+- b50 is mixed either way. Transmittance improves PSNR and median-aligned depth
+  but loses on SSIM, LPIPS, and raw depth. Local-mean transmittance improves
+  raw/aligned depth but loses the RGB comparison.
+- b100 fails the compact-view success gate for both selectors. Random b100
+  remains stronger on the main RGB metrics and aligned geometry.
+- The local-mean control closes the obvious scoring-key loophole. Room v4
+  should now move to multi-seed validation or a more conservative score/pose
+  weighting, not more single-split selector tuning.
 
 ## TUM FR1 XYZ v9 Budget Sweep
 

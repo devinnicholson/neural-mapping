@@ -83,8 +83,9 @@ Source table: `tum-fr1-room-v4-compact-stress.csv`.
    depth-gradient hybrid improves b50 and b100 RGB quality and aligned depth.
 7. Add the room v4 stress test: the hardest TUM room trajectory breaks the
    clean transfer story at b100, which keeps the claim appropriately narrow.
-8. Close with the next validation: use the room report to test a local-mean
-   transmittance control or move to multi-seed room validation.
+8. Close with the next validation: room v4 local-mean was already checked and
+   also fails b100, so the next clean step is multi-seed room validation or a
+   lower score/pose weight control.
 
 ## Caveats To Keep In The Post
 
@@ -96,8 +97,9 @@ Source table: `tum-fr1-room-v4-compact-stress.csv`.
   valuable because it was run after the xyz sweep and used the same fixed
   depth-gradient hybrid policy.
 - Room v4 is the counterweight: adaptive transmittance selection produced a
-  weak b50 mixed result and failed b100. Keep it in the post as a real stress
-  failure, not as a footnote.
+  weak b50 mixed result and failed b100; the local-mean-transmittance control
+  also failed b100. Keep it in the post as a real stress failure, not as a
+  footnote.
 - The project currently evaluates offline acquisition. It is not yet a
   real-time robot planner.
 - Checkpoints and rendered outputs are not in Git. The manifest records Modal

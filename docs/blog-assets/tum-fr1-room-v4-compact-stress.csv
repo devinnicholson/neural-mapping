@@ -1,4 +1,6 @@
-budget,random_psnr,active_psnr,delta_psnr,random_ssim,active_ssim,delta_ssim,random_lpips,active_lpips,delta_lpips,random_raw_absrel,active_raw_absrel,delta_raw_absrel,random_aligned_absrel,active_aligned_absrel,delta_aligned_absrel,random_aligned_delta1,active_aligned_delta1,delta_aligned_delta1,note
-25,14.793,,NA,0.540,,NA,0.437,,NA,0.656,,NA,0.578,,NA,0.240,,NA,seed split only
-50,16.641,16.676,0.035,0.617,0.607,-0.010,0.381,0.384,0.003,0.508,0.532,0.024,0.504,0.471,-0.032,0.326,0.375,0.049,RGB mixed and aligned depth positive
-100,17.882,17.482,-0.400,0.669,0.652,-0.017,0.341,0.361,0.019,0.449,0.459,0.009,0.399,0.430,0.031,0.484,0.402,-0.082,negative on primary RGB and aligned depth
+budget,selection,random_psnr,active_psnr,delta_psnr,random_ssim,active_ssim,delta_ssim,random_lpips,active_lpips,delta_lpips,random_raw_absrel,active_raw_absrel,delta_raw_absrel,random_aligned_absrel,active_aligned_absrel,delta_aligned_absrel,random_aligned_delta1,active_aligned_delta1,delta_aligned_delta1,note
+25,random seed,14.793,,NA,0.540,,NA,0.437,,NA,0.656,,NA,0.578,,NA,0.240,,NA,seed split only
+50,transmittance hybrid,16.641,16.676,0.035,0.617,0.607,-0.010,0.381,0.384,0.003,0.508,0.532,0.024,0.504,0.471,-0.032,0.326,0.375,0.049,RGB mixed and aligned depth positive
+50,local-mean hybrid,16.641,16.531,-0.110,0.617,0.606,-0.011,0.381,0.382,0.000,0.508,0.494,-0.014,0.504,0.475,-0.029,0.326,0.365,0.040,depth positive and RGB negative
+100,transmittance hybrid,17.882,17.482,-0.400,0.669,0.652,-0.017,0.341,0.361,0.019,0.449,0.459,0.009,0.399,0.430,0.031,0.484,0.402,-0.082,negative on primary RGB and aligned depth
+100,local-mean hybrid,17.882,16.778,-1.104,0.669,0.639,-0.030,0.341,0.394,0.053,0.449,0.521,0.071,0.399,0.611,0.211,0.484,0.383,-0.101,strong negative control

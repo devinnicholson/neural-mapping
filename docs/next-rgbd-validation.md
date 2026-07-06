@@ -11,7 +11,7 @@ Run `freiburg1_desk` as `tum_fr1_desk_v4_compact` with budgets 25, 50, and
 100. The held-out split was fixed, and random b50/b100 were compared against
 active depth-gradient hybrid b50/b100.
 
-Result:
+Transmittance result:
 
 | Budget | Delta PSNR | Delta LPIPS | Delta raw AbsRel | Delta aligned AbsRel | Delta aligned delta1 | Read |
 |---:|---:|---:|---:|---:|---:|---|
@@ -50,13 +50,21 @@ Result:
 | 50 | +0.035 | +0.003 | +0.024 | -0.032 | +0.049 | RGB mixed, aligned depth positive |
 | 100 | -0.400 | +0.019 | +0.009 | +0.031 | -0.082 | Negative on primary RGB and aligned depth |
 
+Local-mean-transmittance control:
+
+| Budget | Delta PSNR | Delta LPIPS | Delta raw AbsRel | Delta aligned AbsRel | Delta aligned delta1 | Read |
+|---:|---:|---:|---:|---:|---:|---|
+| 50 | -0.110 | +0.000 | -0.014 | -0.029 | +0.040 | Depth positive, RGB negative |
+| 100 | -1.104 | +0.053 | +0.071 | +0.211 | -0.101 | Strong negative control |
+
 Read:
 
 - Room is the hardest TUM RGB-D sequence already explored in this project.
-- b50 keeps the compact-subset story alive only weakly: PSNR and aligned depth
-  improve, but SSIM/LPIPS and raw depth regress.
-- b100 fails the primary gate. The transmittance-tail selector over-concentrated
-  on uncertain room views and did not beat the random b100 subset.
+- b50 keeps the compact-subset story alive only weakly: transmittance improves
+  PSNR and aligned depth, while local mean improves depth but loses RGB.
+- b100 fails the primary gate for both selectors. The active policies
+  over-concentrated on uncertain room views and did not beat the random b100
+  subset.
 - This is useful negative evidence after the desk v4 success: adaptive signal
   selection is not enough by itself on the hardest room trajectory.
 
@@ -69,18 +77,18 @@ Tracked artifacts:
 
 ## Next Recommended Experiment
 
-Run a room v4 selector ablation using the same report but the stronger-AUROC
-`top_decile_mean_uncertainty.local-mean-transmittance` score, preferably at
-b50 and b100.
+Stop tuning this single room split. Run either a multi-seed room protocol or a
+more conservative score/pose-weight control before making more claims about
+hard-room acquisition.
 
 Why:
 
 - The room report ranked local-mean-transmittance best by AUROC, while
-  transmittance had the strongest top decile. The transmittance split was mixed,
-  so this is the next most defensible control.
-- If local-mean also fails at b100, stop treating room v4 as a selector-tuning
-  problem and move to a multi-seed room protocol or a more conservative
-  score/pose weight.
+  transmittance had the strongest top decile. Both were tried. Neither clears
+  the b100 gate.
+- The next useful question is robustness, not another one-off selector:
+  does the room failure persist across seeds, and can lower `score_weight`
+  prevent the active subset from collapsing into hard-but-redundant views?
 
 ## Commands
 
