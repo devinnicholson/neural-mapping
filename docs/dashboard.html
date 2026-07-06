@@ -1166,6 +1166,61 @@
                 <td class="num">0.423</td>
               </tr>
               <tr>
+                <td>tum_fr1_room_v4_compact_b25_7k</td>
+                <td class="num">25</td>
+                <td class="num">14.793</td>
+                <td class="num">0.540</td>
+                <td class="num">0.437</td>
+                <td class="num">0.656</td>
+                <td class="num">1.271m</td>
+                <td class="num">0.578</td>
+                <td class="num">0.240</td>
+              </tr>
+              <tr>
+                <td>tum_fr1_room_v4_compact_b50_7k</td>
+                <td class="num">50</td>
+                <td class="num">16.641</td>
+                <td class="num">0.617</td>
+                <td class="num">0.381</td>
+                <td class="num">0.508</td>
+                <td class="num">1.034m</td>
+                <td class="num">0.504</td>
+                <td class="num">0.326</td>
+              </tr>
+              <tr>
+                <td>tum_fr1_room_v4_compact_active_trans_hybrid_b50_7k</td>
+                <td class="num">50</td>
+                <td class="num">16.676</td>
+                <td class="num">0.607</td>
+                <td class="num">0.384</td>
+                <td class="num">0.532</td>
+                <td class="num">1.077m</td>
+                <td class="num">0.471</td>
+                <td class="num">0.375</td>
+              </tr>
+              <tr>
+                <td>tum_fr1_room_v4_compact_b100_7k</td>
+                <td class="num">100</td>
+                <td class="num">17.882</td>
+                <td class="num">0.669</td>
+                <td class="num">0.341</td>
+                <td class="num">0.449</td>
+                <td class="num">0.948m</td>
+                <td class="num">0.399</td>
+                <td class="num">0.484</td>
+              </tr>
+              <tr>
+                <td>tum_fr1_room_v4_compact_active_trans_hybrid_b100_7k</td>
+                <td class="num">100</td>
+                <td class="num">17.482</td>
+                <td class="num">0.652</td>
+                <td class="num">0.361</td>
+                <td class="num">0.459</td>
+                <td class="num">0.925m</td>
+                <td class="num">0.430</td>
+                <td class="num">0.402</td>
+              </tr>
+              <tr>
                 <td>tum_fr1_xyz_v1_b25_7k</td>
                 <td class="num">25</td>
                 <td class="num">18.747</td>
@@ -1712,6 +1767,17 @@
           meanActive: { psnr: 17.255045, ssim: 0.649322, lpips: 0.340175 },
           delta: { psnr: 0.994186, ssim: 0.047226, lpips: -0.040573 },
           note: "Second-scene compact validation: b50 improves RGB and aligned depth; b100 also improves RGB and aligned depth."
+        },
+        {
+          name: "TUM FR1 room v4",
+          slug: "tum_fr1_room_v4",
+          seeds: 1,
+          status: "mixed",
+          statusLabel: "mixed stress",
+          meanBaseline: { psnr: 16.640900, ssim: 0.617010, lpips: 0.381490 },
+          meanActive: { psnr: 16.675951, ssim: 0.606999, lpips: 0.384341 },
+          delta: { psnr: 0.035051, ssim: -0.010011, lpips: 0.002852 },
+          note: "Hard-room stress test: b50 gains small PSNR and aligned depth, but b100 regresses on primary RGB and aligned-depth metrics."
         }
       ],
       sweep: [

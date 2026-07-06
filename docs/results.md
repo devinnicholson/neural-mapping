@@ -115,6 +115,11 @@ Current interpretation:
   RGB and median-aligned depth at both budgets. The b100 raw AbsRel moved from
   0.285 to 0.290, so the clean claim is "aligned geometry and RGB improved,"
   not "every depth metric improved."
+- The `freiburg1_room` v4 compact stress test is mixed/negative. The
+  transmittance-tail hybrid selector gave b50 a small PSNR gain and better
+  median-aligned depth, but SSIM/LPIPS and raw depth regressed. At b100, active
+  selection lost to random on primary RGB metrics and aligned depth. Treat this
+  as a hard-scene failure case for the current fixed compact selector.
 
 ## TUM FR1 Desk v4 Compact Validation
 
@@ -174,6 +179,73 @@ Interpretation:
   AbsRel is nearly tied/slightly worse.
 - The result supports continuing the RGB-D validation on a harder room scene
   before claiming a general active acquisition policy.
+
+## TUM FR1 Room v4 Compact Stress Test
+
+Date: 2026-07-05 UTC
+
+Protocol:
+
+- Source sequence: TUM RGB-D `freiburg1_room`.
+- Prepared scene: `tum_fr1_room_v4_compact`.
+- Source frames: 180 RGB-D frames, sampled with `frame_stride=3`.
+- Split seed: `20260705`.
+- Test/validation: 20 held-out test frames and 10 validation frames.
+- Baseline: random train-frame prefix budgets 25/50/100.
+- Active policy: start from the same random budget-25 seed split and expand
+  with `score-pose-hybrid`, `score_weight=0.65`, and score key
+  `top_decile_mean_uncertainty.transmittance`.
+- Method: Nerfstudio `splatfacto`, 7,000 iterations, downscale factor 1,
+  Modal L4.
+
+Depth-error uncertainty alignment:
+
+| Signal | Spearman | AUROC | AUPRC | Top-decile mean error | Top-decile bad fraction |
+|---|---:|---:|---:|---:|---:|
+| transmittance | 0.173 | 0.702 | 0.417 | 1.125 | 0.542 |
+| local-mean-transmittance | 0.147 | 0.731 | 0.414 | 1.088 | 0.519 |
+| accumulation-gradient | 0.154 | 0.685 | 0.392 | 1.064 | 0.507 |
+| depth-gradient | 0.088 | 0.709 | 0.358 | 0.882 | 0.428 |
+
+RGB metrics:
+
+| Budget | Selection | Scene | PSNR | SSIM | LPIPS | FPS |
+|---:|---|---|---:|---:|---:|---:|
+| 25 | Random seed | `tum_fr1_room_v4_compact_b25_7k` | 14.793 | 0.540 | 0.437 | 3.020 |
+| 50 | Random | `tum_fr1_room_v4_compact_b50_7k` | 16.641 | 0.617 | 0.381 | 2.961 |
+| 50 | Active transmittance hybrid | `tum_fr1_room_v4_compact_active_trans_hybrid_b50_7k` | 16.676 | 0.607 | 0.384 | 4.094 |
+| 100 | Random | `tum_fr1_room_v4_compact_b100_7k` | 17.882 | 0.669 | 0.341 | 4.169 |
+| 100 | Active transmittance hybrid | `tum_fr1_room_v4_compact_active_trans_hybrid_b100_7k` | 17.482 | 0.652 | 0.361 | 4.208 |
+
+Held-out depth metrics:
+
+| Budget | Selection | Raw AbsRel | Raw RMSE | Raw delta1 | Aligned AbsRel | Aligned RMSE | Aligned delta1 |
+|---:|---|---:|---:|---:|---:|---:|---:|
+| 25 | Random seed | 0.656 | 1.271 | 0.229 | 0.578 | 1.196 | 0.240 |
+| 50 | Random | 0.508 | 1.034 | 0.239 | 0.504 | 1.127 | 0.326 |
+| 50 | Active transmittance hybrid | 0.532 | 1.077 | 0.220 | 0.471 | 1.114 | 0.375 |
+| 100 | Random | 0.449 | 0.948 | 0.207 | 0.399 | 1.047 | 0.484 |
+| 100 | Active transmittance hybrid | 0.459 | 0.925 | 0.258 | 0.430 | 1.028 | 0.402 |
+
+Delta summary:
+
+| Budget | Delta PSNR | Delta SSIM | Delta LPIPS | Delta raw AbsRel | Delta aligned AbsRel | Delta aligned delta1 | Read |
+|---:|---:|---:|---:|---:|---:|---:|---|
+| 50 | +0.035 | -0.010 | +0.003 | +0.024 | -0.032 | +0.049 | RGB mixed, aligned depth positive |
+| 100 | -0.400 | -0.017 | +0.019 | +0.009 | +0.031 | -0.082 | Negative on primary RGB and aligned depth |
+
+Interpretation:
+
+- Room v4 is a useful stress failure after the desk v4 transfer success. The
+  hard room trajectory is not solved by selecting the strongest high-error-tail
+  signal from the seed report.
+- b50 is mixed: the selector improves PSNR and median-aligned depth but loses
+  on SSIM, LPIPS, and raw depth.
+- b100 fails the compact-view success gate. Random b100 remains stronger on
+  the main RGB metrics and aligned geometry.
+- The report suggests the next room control should try
+  `top_decile_mean_uncertainty.local-mean-transmittance`, which had the best
+  AUROC, before moving to a multi-seed room protocol.
 
 ## TUM FR1 XYZ v9 Budget Sweep
 
