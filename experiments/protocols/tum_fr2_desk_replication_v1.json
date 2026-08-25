@@ -2,7 +2,7 @@
   "schema_version": 1,
   "status": "preregistered_before_confirmatory_runs",
   "preregistered_at_utc": "2026-08-25",
-  "implementation_commit": "SET_BY_FOLLOWUP_COMMIT_BEFORE_RUNS",
+  "implementation_commit": "2d0a12090ab41c92c9e3db6eb356bfd0f56ff366",
   "research_question": "Does a fixed depth-gradient and pose-diversity hybrid acquisition policy improve reconstruction at a 50-frame budget across independent splits, and does any benefit survive a leakage-resistant trajectory-block holdout?",
   "frozen_policy": {
     "base_budget": 25,
