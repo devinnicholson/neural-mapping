@@ -121,71 +121,95 @@ Current interpretation:
   median-aligned depth, but SSIM/LPIPS and raw depth regressed. At b100, active
   selection lost to random on primary RGB metrics and aligned depth. Treat this
   as a hard-scene failure case for the current fixed compact selector.
-- The first `freiburg2_desk` transfer pilot freezes the `depth-gradient`,
-  `score-pose-hybrid`, `score_weight=0.35` policy before observing the new
-  scene. At budget 50 it improves every RGB metric and raw depth AbsRel over
-  the same-seed random control, but median-aligned AbsRel worsens because a few
-  late-trajectory views have extreme scale failures. This is a promising
-  transfer observation, not a robust result: it has one split/training seed
-  and an interleaved trajectory holdout.
+- The `freiburg2_desk` study freezes the `depth-gradient`,
+  `score-pose-hybrid`, `score_weight=0.35` policy and then evaluates it on two
+  additional interleaved splits and a guarded temporal-block holdout. It passes
+  the preregistered RGB/raw-depth gates. Median-aligned AbsRel still regresses
+  on every interleaved split, which narrows the supported geometry claim.
 
-## TUM FR2 Desk Frozen-Policy Transfer Pilot
+## TUM FR2 Desk Preregistered Robustness Study
 
 Date: 2026-08-25 UTC
 
-Question: does the previously selected depth-gradient hybrid policy transfer
-without scene-specific tuning to a new camera family and sequence?
+Question: does one fixed depth-gradient hybrid policy improve reconstruction
+across independent splits, and does the benefit survive a leakage-resistant
+trajectory-block holdout?
 
 Protocol:
 
 - Source: TUM RGB-D `freiburg2_desk`, 180 associated RGB-D frames sampled with
   `frame_stride=3`.
-- Locked split seed: `20260824`; 10 validation and 20 held-out test frames.
+- Three random interleaved splits use seeds `20260824`-`20260826` and matched
+  training seeds 42-44. Each reserves 10 validation and 20 test frames.
+- A separate split uses seed `20260827`, matched training seed 45, contiguous
+  10-frame validation and 20-frame test blocks, and five-frame guard bands on
+  both sides of each block. Guard-band frames are excluded from training and
+  candidate selection.
 - Policy fixed before results: budget 25 to 50, `score-pose-hybrid`,
   `score_weight=0.35`, score key
   `top_decile_mean_uncertainty.depth-gradient`.
-- Training: Nerfstudio `splatfacto`, seed 42, 7,000 iterations, full input
-  resolution, Modal L4.
-- Evaluation: the same 20 test frames for all three models; 200,000 sampled
-  depth pixels per frame where available.
+- The protocol was committed before the three confirmatory active models were
+  trained. No signal, weight, budget, or decision rule changed after metrics
+  were inspected.
+- Training: Nerfstudio `splatfacto`, 7,000 iterations, full input resolution,
+  Modal L4. Active and random models share a training seed within each pair.
+- Evaluation: the same 20 test frames within each pair; up to 200,000 valid
+  depth pixels per frame.
 
-RGB metrics:
+Active-minus-random budget-50 results:
 
-| Budget | Selection | PSNR | SSIM | LPIPS |
-|---:|---|---:|---:|---:|
-| 25 | Random seed | 18.012 | 0.595 | 0.353 |
-| 50 | Random control | 19.805 | 0.668 | 0.315 |
-| 50 | Active depth-gradient hybrid | 19.892 | 0.684 | 0.302 |
-| 50 | Active minus random | **+0.087** | **+0.0166** | **-0.0132** |
+| Holdout | Split | PSNR | SSIM | LPIPS | Raw AbsRel | Raw delta1 | Aligned AbsRel |
+|---|---|---:|---:|---:|---:|---:|---:|
+| Interleaved | v1 | +0.087 | +0.0166 | -0.0132 | -0.0308 | +0.0544 | +0.1032 |
+| Interleaved | v2 | +0.455 | +0.0238 | -0.0131 | +0.0004 | -0.0137 | +0.1776 |
+| Interleaved | v3 | +0.782 | +0.0263 | -0.0113 | -0.0020 | +0.0110 | +0.0329 |
+| Interleaved | Mean | **+0.441** | **+0.0222** | **-0.0125** | **-0.0108** | **+0.0172** | +0.1046 |
+| Temporal block | v1 | **+0.297** | **+0.0415** | **-0.0437** | **-0.1200** | **+0.1480** | **-0.0967** |
 
-Depth metrics:
+Interleaved dispersion and descriptive paired bootstrap intervals:
 
-| Budget | Selection | Raw AbsRel | Raw delta1 | Aligned AbsRel | Aligned delta1 |
-|---:|---|---:|---:|---:|---:|
-| 25 | Random seed | 0.432 | 0.136 | 0.418 | 0.501 |
-| 50 | Random control | 0.417 | 0.105 | 0.517 | 0.594 |
-| 50 | Active depth-gradient hybrid | 0.386 | 0.159 | 0.621 | 0.621 |
-| 50 | Active minus random | **-0.0308** | **+0.0544** | +0.103 | **+0.0265** |
+| Metric | Mean delta | Population SD | Favorable pairs | Descriptive 95% interval |
+|---|---:|---:|---:|---:|
+| PSNR | +0.4412 | 0.2840 | 3/3 | [+0.0868, +0.6729] |
+| SSIM | +0.0222 | 0.0041 | 3/3 | [+0.0166, +0.0254] |
+| LPIPS | -0.0125 | 0.0009 | 3/3 | [-0.0132, -0.0119] |
+| Raw AbsRel | -0.0108 | 0.0142 | 2/3 | [-0.0308, -0.0004] |
+| Raw delta1 | +0.0172 | 0.0281 | 2/3 | [-0.0137, +0.0399] |
+| Median-aligned AbsRel | +0.1046 | 0.0591 | 0/3 | [+0.0329, +0.1528] |
+
+With only three pairs, these bootstrap intervals are descriptive, not
+definitive inferential statistics.
 
 Uncertainty diagnostic:
 
-- Depth-gradient Spearman correlation with aligned pixel error: 0.247.
-- Bad-pixel AUROC/AUPRC: 0.557/0.286 at the 80th-percentile error threshold.
-- Mean aligned error is 0.422 overall and 0.800 in the highest uncertainty
-  decile. The signal is useful but weak, and should not be described as a
-  calibrated predictor from this run alone.
+| Split | Candidates | Spearman | AUROC | AUPRC | AUSE |
+|---|---:|---:|---:|---:|---:|
+| Interleaved v1 | 125 | 0.247 | 0.557 | 0.286 | 0.203 |
+| Interleaved v2 | 125 | 0.144 | 0.577 | 0.300 | 0.297 |
+| Interleaved v3 | 125 | 0.424 | 0.739 | 0.455 | 0.080 |
+| Temporal block v1 | 105 | 0.349 | 0.743 | 0.420 | 0.117 |
+
+Pixel-level error ranking ranges from weak to useful across splits. It should
+not be described as calibrated, and its quality does not map monotonically to
+the downstream PSNR gain.
 
 Read:
 
-- The active policy clears the RGB and raw-depth gate on this split.
-- Median-aligned AbsRel fails the gate. Frames 13-15 dominate the instability;
-  active aligned AbsRel reaches 6.08 on frame 13. Reporting only the aggregate
-  RGB win or only raw depth would conceal a material failure mode.
-- This is a single-seed transfer pilot with a random interleaved holdout. The
-  next claim-bearing run must use multiple seeds and a trajectory-block or
-  pose-distance holdout.
-- The complete machine-readable protocol, metrics, run IDs, and caveats are in
-  `experiments/records/tum_fr2_desk_frozen_v1.json`.
+- The interleaved gate passes: mean PSNR is positive, mean raw AbsRel is
+  negative, and both directions reproduce on at least two of three splits.
+- The temporal-block gate passes: active improves PSNR, LPIPS, raw AbsRel, and
+  median-aligned AbsRel over the matched random control.
+- The LPIPS safety gate passes in every pair; there is no hidden perceptual
+  regression larger than 0.01.
+- Median-aligned AbsRel fails consistently on the three interleaved splits.
+  Reporting only the raw-depth result would conceal this material failure mode.
+- The result establishes within-sequence robustness, not cross-dataset
+  generalization or state-of-the-art performance. The next claim-bearing study
+  should move to a locked external dataset rather than tune this sequence.
+- The preregistration is in
+  `experiments/protocols/tum_fr2_desk_replication_v1.json`; exact metrics and
+  Modal run IDs are in
+  `experiments/records/tum_fr2_desk_replication_v1.json`.
 
 ## TUM FR1 Desk v4 Compact Validation
 

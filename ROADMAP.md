@@ -16,6 +16,32 @@ The extension question:
 
 The goal is not to build a full robot SLAM stack from scratch. The goal is a rigorous, reproducible research project with a measurable claim.
 
+## Current Milestone
+
+Completed on 2026-08-25:
+
+- A policy fixed before confirmatory execution passed its preregistered
+  `freiburg2_desk` gate across three interleaved splits and a separate guarded
+  temporal-block holdout.
+- The result supports a narrow RGB/raw-depth acquisition claim. It does not
+  support median-aligned depth improvement on interleaved trajectory splits.
+- The protocol, paired metrics, uncertainty diagnostics, and remote run IDs are
+  stored under `experiments/protocols` and `experiments/records`.
+
+Next claim-bearing gate:
+
+1. Freeze a public external-dataset protocol before downloading or inspecting
+   result metrics.
+2. Compare the fixed selector against random, temporal coverage, and pose-only
+   baselines on multiple scenes and seeds.
+3. Add surface geometry metrics where reference meshes are available.
+4. Release resolved environments, split manifests, compact metric rows, and a
+   one-command table/figure build before calling the paper externally
+   reproducible.
+
+Do not retune `freiburg2_desk` after this milestone; use it as completed
+within-sequence evidence and move model selection to development data.
+
 ## Target Contribution
 
 The strongest final contribution is:
@@ -504,4 +530,3 @@ Outstanding project:
 - Replica: https://arxiv.org/abs/1906.05797
 - ScanNet: https://arxiv.org/abs/1702.04405
 - ScanNet++: https://arxiv.org/abs/2308.11417
-

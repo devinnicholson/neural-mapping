@@ -29,6 +29,14 @@ Run the lightweight repo tests:
 make test
 ```
 
+Recompute every stored FR2 paired delta, aggregate, bootstrap interval, and
+decision gate:
+
+```bash
+python scripts/verify_replication_record.py \
+  experiments/records/tum_fr2_desk_replication_v1.json
+```
+
 ## Headline Claims
 
 | Claim | Source | Metrics | Audit artifacts |
@@ -38,25 +46,32 @@ make test
 | TUM RGB-D `freiburg1_xyz` v9 budget sweep supports compact subset selection, with b100 as the cleanest active result and b150 as a saturation negative control. | `docs/results.md`, `docs/dashboard.html`, `docs/blog-assets/tum-fr1-xyz-v9-budget-sweep.csv` | b100: +0.127 PSNR, +0.008 SSIM, -0.004 LPIPS, -0.008 aligned AbsRel, +0.031 aligned delta1. b150: -0.779 PSNR, -0.019 SSIM, +0.028 LPIPS, +0.065 aligned AbsRel, -0.057 aligned delta1. | Modal metrics listed below. Blog plot: `docs/blog-assets/tum-fr1-xyz-v9-budget-sweep.svg`. |
 | TUM RGB-D `freiburg1_desk` v4 compact validation transfers the xyz depth-gradient policy to a second scene. | `docs/results.md`, `docs/dashboard.html`, `docs/blog-assets/tum-fr1-desk-v4-compact-validation.csv` | b50: +0.994 PSNR, +0.047 SSIM, -0.041 LPIPS, -0.033 aligned AbsRel. b100: +0.708 PSNR, +0.025 SSIM, -0.024 LPIPS, -0.024 aligned AbsRel. | Modal metrics listed below. Blog plot: `docs/blog-assets/tum-fr1-desk-v4-compact-validation.svg`. |
 | TUM RGB-D `freiburg1_room` v4 compact stress test is mixed and does not transfer cleanly. | `docs/results.md`, `docs/dashboard.html`, `docs/blog-assets/tum-fr1-room-v4-compact-stress.csv` | b50: +0.035 PSNR, -0.010 SSIM, +0.003 LPIPS, -0.032 aligned AbsRel. b100: -0.400 PSNR, -0.017 SSIM, +0.019 LPIPS, +0.031 aligned AbsRel. | Modal metrics listed below. Blog plot: `docs/blog-assets/tum-fr1-room-v4-compact-stress.svg`. |
-| TUM RGB-D `freiburg2_desk` frozen-policy pilot is RGB/raw-depth positive but alignment-mixed. | `docs/results.md`, `experiments/records/tum_fr2_desk_frozen_v1.json` | +0.087 PSNR, +0.0166 SSIM, -0.0132 LPIPS, -0.0308 raw AbsRel, but +0.103 aligned AbsRel versus same-seed random b50. | Machine-readable record and Modal artifact paths listed below. Single-seed pilot; not a robust transfer claim. |
+| TUM RGB-D `freiburg2_desk` passes the preregistered within-sequence robustness gate. | `docs/results.md`, `experiments/protocols/tum_fr2_desk_replication_v1.json`, `experiments/records/tum_fr2_desk_replication_v1.json` | Three interleaved pairs average +0.441 PSNR, +0.0222 SSIM, -0.0125 LPIPS, and -0.0108 raw AbsRel. A guarded temporal-block pair gives +0.297 PSNR and -0.120 raw AbsRel. | Protocol commit, exact paired metrics, split/training seeds, holdout spans, uncertainty diagnostics, and every Modal run ID are in the machine-readable record. Aligned AbsRel regresses on all three interleaved pairs. |
 
-## TUM FR2 Desk Frozen-Policy Reproduction
+## TUM FR2 Desk Preregistered Robustness Reproduction
 
 Protocol:
 
 - Source sequence: TUM RGB-D `freiburg2_desk`.
-- Prepared scene: `tum_fr2_desk_frozen_v1`.
+- Interleaved prepared scenes: `tum_fr2_desk_frozen_v1` through `v3`.
+- Blocked prepared scene: `tum_fr2_desk_blocked_v1` with five-frame guard
+  bands around contiguous validation and test blocks.
 - Source frames: 180 RGB-D frames sampled with `frame_stride=3`.
-- Split seed: `20260824`; 10 validation and 20 test frames.
+- Split seeds: `20260824`-`20260827`; 10 validation and 20 test frames each.
 - Random budgets: 25 and 50.
 - Active policy: expand the random b25 seed to b50 with
   `score-pose-hybrid`, `score_weight=0.35`, and
   `top_decile_mean_uncertainty.depth-gradient`.
-- Training: Nerfstudio `splatfacto`, seed 42, 7,000 iterations, downscale
-  factor 1, NVIDIA L4.
-- Code under test: `aeafa844315f250326b3f550d4d352f8eae2bd58`.
+- Training: Nerfstudio `splatfacto`, matched pair seeds 42-45, 7,000
+  iterations, downscale factor 1, NVIDIA L4.
+- Preregistered protocol commit:
+  `1b81c56cef90f440784b4fc3cff45c6eb5f6ab73`.
+- Implementation commit:
+  `2d0a12090ab41c92c9e3db6eb356bfd0f56ff366`.
 
-Run the frozen pilot:
+The commands below show the v1 execution pattern. Substitute the scene, split
+seed, training seed, and holdout parameters exactly as listed in the protocol
+record for v2, v3, and the temporal-block pair.
 
 ```bash
 modal run modal_app.py \
@@ -120,9 +135,10 @@ modal run modal_app.py \
   --downscale-factor 1
 ```
 
-Run `eval` and `depth-eval` for each scene/budget pair above. The compact record
-at `experiments/records/tum_fr2_desk_frozen_v1.json` stores the exact output
-values and Modal application IDs.
+Run `eval` and `depth-eval` for each scene/budget pair above. The completed
+record at `experiments/records/tum_fr2_desk_replication_v1.json` stores every
+confirmatory value and Modal application ID; the earlier v1 pilot record is
+retained for provenance.
 
 Artifact index:
 
@@ -134,6 +150,9 @@ Artifact index:
 | Uncertainty report | Modal `ap-4GsSdaiorCLz7ARgPHrNIj`; `/workspace/neural-mapping/outputs/reports/render_uncertainty_maps/tum_fr2_desk_frozen_v1_depth_error_maps_budget_025_depth-aligned-abs-rel.json` |
 | Active split | Modal `ap-cUWQLNamTKTL0O8pgZ5Dtc`; `/workspace/neural-mapping/data/splits/tum_fr2_desk_frozen_v1_active_depthgrad_w035_b50.json` |
 | Active b50 training/evaluation | `ap-C63cc0pQ0VEs9ONMoSRGkZ`, `ap-pkDtS4fdKczhmeGdN2YGfF`, `ap-FDXWLA7BQZ7O9qvzQI2EO9` |
+| Interleaved v2 confirmatory pair | Random b50: `ap-nkaDvRoiGkJRLhRTHtZCZ7`, `ap-WkXLagk7tzg9gF08ekWtLZ`, `ap-L4Z4ZzLOLaZC8JUlpwR5by`; uncertainty/active: `ap-UH6sXGT047mwiWwM1HfNmh`, `ap-2Lyw4ccjqCd2VeADdVD2QG`, `ap-WzmmMJEPZ0DV0GgAwP9zXZ`, `ap-AUUQO59uBMKkXpGfIWNS2l` |
+| Interleaved v3 confirmatory pair | Random b50: `ap-d39UYLhSP3ZMEnqezRi2He`, `ap-nxhwqfpI6voWJMAE20kszF`, `ap-HrBaDh0wcB6CNiJDbCk574`; uncertainty/active: `ap-bN1JP6g9nBhNuwj1hOJRiw`, `ap-hjdmi374rHl2I4IW4GT51W`, `ap-ZBFSPbIixJcolx2zh80wnp`, `ap-OpgDuwzWzqh123wdj3ogmW` |
+| Temporal-block confirmatory pair | Random b50: `ap-EYzVLhs5sJi1FaLQJ8f5HY`, `ap-Ro367r4VrvCh5C7UGh5DJd`, `ap-l3UKvCrBKCuCJ3p7jXMxIW`; uncertainty/active: `ap-l3QgFeGt7CRGwBrFjHJ1lE`, `ap-87M43ISRDQLbYDtIAUQRXy`, `ap-S3Ko3irBKmlPTzMzbF12vs`, `ap-xppEqtbWMjKQnndlrCaaBH` |
 
 ## TUM FR1 Desk v4 Compact Reproduction
 

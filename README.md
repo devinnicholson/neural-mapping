@@ -4,9 +4,10 @@ Research code for uncertainty-guided frame selection in sparse-view 3D Gaussian
 scene reconstruction.
 
 > **Status:** active research prototype. The repository contains a working
-> lightweight evaluation harness and repeated pilot results. The central policy
-> and final benchmark are not yet frozen, so the reported evidence should not be
-> interpreted as a submission-ready result.
+> lightweight evaluation harness, a preregistered RGB-D robustness study, and
+> repeated pilot results. The current evidence supports a narrow within-sequence
+> claim; cross-dataset evaluation and external reproduction are still required
+> before this should be interpreted as a submission-ready result.
 
 ## Research Question
 
@@ -64,7 +65,7 @@ policy.
 | TUM RGB-D `freiburg1_xyz` v1-v6 | Depth-gradient selection improved the random budget-50 baseline by approximately **+0.264 PSNR**, **+0.007 SSIM**, **-0.003 LPIPS**, and **-0.005 median-aligned AbsRel** on average. | Best current fixed-policy RGB-D result. |
 | TUM RGB-D budget sweep | The hybrid policy helped at intermediate budgets on `freiburg1_xyz` v9, with the cleanest RGB/depth result at budget 100, but regressed at the saturated budget of 150. | Supports compact subset selection rather than full-trajectory ordering. |
 | RGB-D transfer checks | `freiburg1_desk` v4 transferred positively at budgets 50 and 100; `freiburg1_room` v4 was mixed at budget 50 and negative at budget 100. | The current policy does not transfer reliably to every scene regime. |
-| TUM RGB-D `freiburg2_desk` frozen-policy pilot | On one locked split, active b50 improves random b50 by **+0.087 PSNR**, **+0.0166 SSIM**, **-0.0132 LPIPS**, and **-0.0308 raw AbsRel**, while median-aligned AbsRel regresses by **+0.103**. | Promising RGB/raw-depth transfer with an explicit alignment failure; requires multi-seed and blocked-holdout replication. |
+| TUM RGB-D `freiburg2_desk` preregistered robustness study | Across three locked interleaved splits, active b50 improves matched random b50 by **+0.441 PSNR**, **+0.0222 SSIM**, **-0.0125 LPIPS**, and **-0.0108 raw AbsRel** on average. A separate temporal-block holdout improves by **+0.297 PSNR**, **-0.0437 LPIPS**, and **-0.120 raw AbsRel**. | Clears the prespecified interleaved and blocked gates. Median-aligned AbsRel regresses on all three interleaved splits, so the supported depth claim is limited to raw metric behavior. |
 
 Full per-scene tables, negative results, run identifiers, and interpretation are
 maintained in [docs/results.md](docs/results.md). The corresponding run commands
@@ -79,7 +80,10 @@ The evidence currently supports the following statement:
 
 > Ensemble disagreement and renderer-derived signals can identify useful
 > candidate views, and a tail-risk/pose-diversity hybrid can improve reconstruction
-> at compact frame budgets on repeated scene splits.
+> at compact frame budgets on repeated scene splits. On TUM RGB-D
+> `freiburg2_desk`, one policy fixed before the confirmatory runs improves RGB
+> and raw depth outcomes across independent splits and a guarded temporal-block
+> holdout.
 
 It does **not** yet support these stronger statements:
 
@@ -226,7 +230,7 @@ The following items remain required for a complete external reproduction:
 
 - a frozen dependency lock and GPU image digest;
 - committed split manifests for every headline experiment;
-- public machine-readable metric rows and resolved run configurations;
+- public resolved run configurations and large evaluation artifacts;
 - checksummed model, render, and evaluation artifacts;
 - one command that regenerates every reported table and figure;
 - a clean-machine reproduction report.
