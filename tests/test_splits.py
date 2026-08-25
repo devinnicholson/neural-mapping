@@ -902,11 +902,13 @@ class SplitGenerationTests(unittest.TestCase):
                 [
                     "./images/frame_000.png",
                     "./images/frame_001.png",
-                    "./images/frame_002.png",
                 ],
             )
             self.assertEqual(transforms["val_filenames"], ["./images/frame_002.png"])
             self.assertEqual(transforms["test_filenames"], ["./images/frame_003.png"])
+            self.assertFalse(
+                set(transforms["train_filenames"]) & set(transforms["val_filenames"])
+            )
 
     def test_materialize_candidate_eval_cli_uses_remaining_frames_as_eval(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

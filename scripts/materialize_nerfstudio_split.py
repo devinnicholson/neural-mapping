@@ -25,7 +25,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--include-val-in-train",
         action=argparse.BooleanOptionalAction,
-        default=True,
+        default=False,
         help="Include validation frames in transforms.json train frames.",
     )
     parser.add_argument(
@@ -83,7 +83,7 @@ def main() -> int:
         subset_dir.mkdir(parents=True, exist_ok=True)
         _link_or_copy_assets(source, subset_dir, symlink=args.symlink_assets)
 
-        transform_paths = _unique_preserving_order([*included_train, *test_paths])
+        transform_paths = _unique_preserving_order([*included_train, *val_paths, *test_paths])
         transform_frames = _frames_for_paths(frame_by_path, transform_paths, source)
         eval_frames = _frames_for_paths(frame_by_path, test_paths, source)
         source_metadata = payload.get("metadata")

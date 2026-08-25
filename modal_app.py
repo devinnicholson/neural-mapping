@@ -1001,6 +1001,9 @@ def train_splatfacto(
     max_num_iterations: int = 3000,
     downscale_factor: int = 1,
     training_seed: int = 42,
+    orientation_method: str = "up",
+    center_method: str = "poses",
+    auto_scale_poses: bool = True,
     vis: str = "tensorboard",
 ) -> dict[str, Any]:
     """Train Splatfacto on a Nerfstudio-compatible dataset directory."""
@@ -1027,6 +1030,12 @@ def train_splatfacto(
             ns_data_dir,
             "--downscale-factor",
             str(downscale_factor),
+            "--orientation-method",
+            orientation_method,
+            "--center-method",
+            center_method,
+            "--auto-scale-poses",
+            str(auto_scale_poses),
         ],
         input_text="y\n",
     )
@@ -1350,6 +1359,9 @@ def main(
     frame_stride: int = 3,
     downscale_factor: int = 1,
     training_seed: int = 42,
+    orientation_method: str = "up",
+    center_method: str = "poses",
+    auto_scale_poses: bool = True,
     active_strategy: str = "pose-novelty",
     score_path: str = "",
     score_key: str = "score",
@@ -1500,6 +1512,9 @@ def main(
                 max_num_iterations=iterations,
                 downscale_factor=downscale_factor,
                 training_seed=training_seed,
+                orientation_method=orientation_method,
+                center_method=center_method,
+                auto_scale_poses=auto_scale_poses,
             )
         )
     elif action == "train-matrix":
@@ -1530,6 +1545,9 @@ def main(
                 max_num_iterations=iterations,
                 downscale_factor=downscale_factor,
                 training_seed=run_seed,
+                orientation_method=orientation_method,
+                center_method=center_method,
+                auto_scale_poses=auto_scale_poses,
             )
             calls.append((data_scene, run_scene, run_budget, run_seed, call))
             print(
@@ -1634,6 +1652,9 @@ def main(
                 max_num_iterations=iterations,
                 downscale_factor=downscale_factor,
                 training_seed=training_seed,
+                orientation_method=orientation_method,
+                center_method=center_method,
+                auto_scale_poses=auto_scale_poses,
             )
         )
         print(eval_latest_run.remote(scene_name=scene_name, budget=budget, render_outputs=render_outputs))
