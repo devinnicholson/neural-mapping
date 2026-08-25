@@ -1300,6 +1300,28 @@ def collect_metric_rows() -> list[dict[str, Any]]:
 
 
 @app.function(image=image, volumes=volumes, timeout=300)
+def artifact_inventory(name_contains: str = "") -> dict[str, list[str]]:
+    """List compact experiment artifacts for provenance and recovery checks."""
+
+    def matching(root: Path, pattern: str) -> list[str]:
+        return [
+            str(path)
+            for path in sorted(root.glob(pattern))
+            if not name_contains or name_contains in str(path)
+        ]
+
+    return {
+        "splits": matching(DATA_ROOT, "splits/*.json"),
+        "materialized_summaries": matching(
+            DATA_ROOT, "nerfstudio_splits/*/materialization_summary.json"
+        ),
+        "training_configs": matching(OUTPUT_ROOT, "runs/*/splatfacto/budget_*/train/**/config.yml"),
+        "metrics": matching(OUTPUT_ROOT, "runs/*/splatfacto/budget_*/metrics/*.json"),
+        "reports": matching(OUTPUT_ROOT, "reports/**/*.json"),
+    }
+
+
+@app.function(image=image, volumes=volumes, timeout=300)
 def summarize_splits(split_scene_names: list[str], budget: int = 50, base_budget: int = 25) -> list[dict[str, Any]]:
     """Collect compact train/val/test summaries from Modal split JSON files."""
 
@@ -1401,6 +1423,7 @@ def main(
     patch_size: int = 15,
     ensemble_scene_names: str = "",
     report_path: str = "",
+    name_contains: str = "",
     matrix_data_scene_names: str = "",
     matrix_scene_names: str = "",
     matrix_report_scene_names: str = "",
@@ -1828,6 +1851,8 @@ def main(
     elif action == "metrics":
         for row in collect_metric_rows.remote():
             print(json.dumps(row, indent=2))
+    elif action == "inventory":
+        print(json.dumps(artifact_inventory.remote(name_contains=name_contains), indent=2))
     elif action == "split-summary":
         split_scene_names = _split_fields(data_scene_name)
         if not split_scene_names:
@@ -1870,6 +1895,6 @@ def main(
             "Use env, prepare, prepare-tum, prepare-icl, score-candidates, frame-uncertainty, "
             "render-uncertainty-maps, render-uncertainty-matrix, ensemble-uncertainty-maps, "
             "prepare-active, prepare-active-matrix, train, train-matrix, eval, eval-matrix, "
-            "depth-eval, geometry-eval, metrics, split-summary, "
+            "depth-eval, geometry-eval, metrics, inventory, split-summary, "
             "report-summary, or smoke."
         )
