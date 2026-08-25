@@ -23,6 +23,8 @@ SEQUENCE_URLS = {
     "fr1_xyz": f"{TUM_BASE_URL}/freiburg1/rgbd_dataset_freiburg1_xyz.tgz",
     "freiburg1_room": f"{TUM_BASE_URL}/freiburg1/rgbd_dataset_freiburg1_room.tgz",
     "fr1_room": f"{TUM_BASE_URL}/freiburg1/rgbd_dataset_freiburg1_room.tgz",
+    "freiburg2_desk": f"{TUM_BASE_URL}/freiburg2/rgbd_dataset_freiburg2_desk.tgz",
+    "fr2_desk": f"{TUM_BASE_URL}/freiburg2/rgbd_dataset_freiburg2_desk.tgz",
 }
 
 FR1_INTRINSICS = {
@@ -38,13 +40,29 @@ FR1_INTRINSICS = {
     "p2": 0.0026,
 }
 
+FR2_INTRINSICS = {
+    "w": 640,
+    "h": 480,
+    "fl_x": 520.9,
+    "fl_y": 521.0,
+    "cx": 325.1,
+    "cy": 249.7,
+    "k1": 0.2312,
+    "k2": -0.7849,
+    "p1": -0.0033,
+    "p2": -0.0001,
+}
+
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--sequence",
         default="freiburg1_desk",
-        help="TUM sequence key. Known: freiburg1_desk, freiburg1_xyz, freiburg1_room.",
+        help=(
+            "TUM sequence key. Known: freiburg1_desk, freiburg1_xyz, "
+            "freiburg1_room, freiburg2_desk."
+        ),
     )
     parser.add_argument("--url", default=None, help="Override download URL.")
     parser.add_argument("--raw-root", required=True, help="Directory for downloaded/extracted TUM data.")
@@ -112,7 +130,7 @@ def main() -> int:
 
     payload = {
         "camera_model": "OPENCV",
-        **FR1_INTRINSICS,
+        **camera_intrinsics(sequence_key),
         "depth_unit_scale_factor": 1.0 / 5000.0,
         "frames": frames,
         "metadata": {
@@ -151,6 +169,15 @@ def main() -> int:
         f"from {sequence_dir}"
     )
     return 0
+
+
+def camera_intrinsics(sequence_key: str) -> dict[str, float | int]:
+    """Return the calibrated RGB intrinsics for a known TUM camera family."""
+
+    normalized = sequence_key.lower()
+    if normalized.startswith(("freiburg2_", "fr2_")):
+        return dict(FR2_INTRINSICS)
+    return dict(FR1_INTRINSICS)
 
 
 def build_associations(sequence_dir: Path, *, tolerance: float) -> list[dict[str, tuple]]:

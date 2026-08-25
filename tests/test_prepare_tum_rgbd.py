@@ -14,6 +14,17 @@ SPEC.loader.exec_module(prepare_tum_rgbd)
 
 
 class PrepareTumRgbdTest(unittest.TestCase):
+    def test_freiburg2_desk_uses_its_camera_calibration(self) -> None:
+        self.assertIn("freiburg2_desk", prepare_tum_rgbd.SEQUENCE_URLS)
+        self.assertIn("fr2_desk", prepare_tum_rgbd.SEQUENCE_URLS)
+
+        intrinsics = prepare_tum_rgbd.camera_intrinsics("freiburg2_desk")
+
+        self.assertEqual(intrinsics["fl_x"], 520.9)
+        self.assertEqual(intrinsics["fl_y"], 521.0)
+        self.assertEqual(intrinsics["cx"], 325.1)
+        self.assertEqual(intrinsics["cy"], 249.7)
+
     def test_pose_to_matrix_flips_tum_camera_axes_by_default(self) -> None:
         matrix = prepare_tum_rgbd.pose_to_matrix((1, 2, 3, 0, 0, 0, 1))
 
