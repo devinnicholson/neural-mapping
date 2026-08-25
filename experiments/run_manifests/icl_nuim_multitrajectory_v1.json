@@ -1,0 +1,36 @@
+{
+  "schema_version": 1,
+  "study": "icl_nuim_multitrajectory_v1",
+  "execution_date_utc": "2026-08-25",
+  "platform": "Modal",
+  "gpu_class": "NVIDIA L4",
+  "effective_execution_commit": "d701ff87af08186aca3db8fb1bb2a5c1c36170ea",
+  "canceled_pre_outcome_run": {
+    "app_id": "ap-7D8UqePBwDMlLSxcIbkonA",
+    "reason": "Canceled during configuration and image-cache initialization after discovering pose-normalization and train/validation-membership mismatches; no checkpoint outcome was inspected."
+  },
+  "data_preparation": {
+    "smoke": "ap-Tcsu1GsSOm40zAC5xprVFL",
+    "note": "Corrected splits were independently materialized before confirmatory training. Only complete, independently recoverable app identifiers are listed here; split-membership manifests are exported separately with the compact study artifacts."
+  },
+  "confirmatory_runs": {
+    "seed_random_and_controls_training": "ap-gYGuyeG6n41J0aMlaPSPVY",
+    "candidate_diagnostics": "ap-V9FOSZqw6KYeWQcb3EIrLM",
+    "active_split_materialization": "ap-Tn2kepQvGjejSEmhUdzATz",
+    "active_training": "ap-SVGhSXXcvUYyxsF7YMxOKV",
+    "random_and_controls_evaluation": "ap-b4va37yRTbZhJR0ODu5pB7",
+    "active_evaluation": "ap-ZHDYQuZ0dnBTpBwkQRDYtj"
+  },
+  "evaluation_jobs": {
+    "random_and_controls": 48,
+    "active": 24,
+    "outcomes_per_model": [
+      "held-out RGB",
+      "raw and median-aligned depth",
+      "metric fused-surface geometry"
+    ]
+  },
+  "known_infrastructure_events": [
+    "Some evaluation containers emitted a PyTorch inductor worker timeout during process shutdown after valid metric artifacts had been committed. No affected metric job was excluded or rerun selectively."
+  ]
+}

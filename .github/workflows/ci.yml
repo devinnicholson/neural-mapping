@@ -37,3 +37,23 @@ jobs:
               json.loads(path.read_text(encoding='utf-8'))
               print(path)
           PY
+      - name: Recompute confirmatory record and generated assets
+        if: matrix.python-version == '3.12'
+        run: |
+          python scripts/build_icl_benchmark_record.py \
+            --artifact-root experiments/artifacts/icl_nuim_multitrajectory_v1 \
+            --protocol experiments/protocols/icl_nuim_multitrajectory_v1.json \
+            --run-manifest experiments/run_manifests/icl_nuim_multitrajectory_v1.json \
+            --output experiments/records/icl_nuim_multitrajectory_v1.json
+          python scripts/generate_icl_report_assets.py
+          git diff --exit-code -- experiments/records paper/tables experiments/tables docs/icl_nuim_multitrajectory_v1.md
+
+  paper:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compile paper
+        uses: xu-cheng/latex-action@6549dc21effb2730855a1281407ecfcececc6c1b # 4.1.0
+        with:
+          root_file: main.tex
+          working_directory: paper

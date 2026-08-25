@@ -10,10 +10,9 @@
 \usepackage[hidelinks]{hyperref}
 \usepackage[nameinlink,capitalize]{cleveref}
 
-\newcommand{\method}{U3DGS}
-\newcommand{\todo}[1]{\textcolor{red}{[TODO: #1]}}
+\newcommand{\method}{DG-Pose}
 
-\title{Uncertainty-Aware Acquisition for Sparse-View Gaussian Neural Mapping}
+\title{Error Prediction Is Not Acquisition:\\A Controlled Study of Sparse-View Gaussian Neural Mapping}
 \author{Devin Nicholson}
 \date{}
 
@@ -21,16 +20,21 @@
 \maketitle
 
 \begin{abstract}
-We study offline frame acquisition for sparse-view 3D Gaussian neural maps.
-Starting from a fixed set of posed observations, the method scores candidate
-views with renderer-derived uncertainty and expands the map using a greedy
-mixture of upper-tail uncertainty and camera-pose novelty.  We evaluate one
-policy frozen before confirmatory training against matched random,
-acquisition-time coverage, and pose-coverage controls on four independent
-RGB-D trajectories.  The protocol uses disjoint temporal-block holdouts,
-two optimization seeds for the primary comparison, and evaluates held-out RGB,
-metric depth, and fused world-space surface geometry.  \todo{Replace this final
-sentence with the audited gate outcome after the benchmark record is complete.}
+We test whether a model signal that predicts difficult views also improves
+frame acquisition for sparse-view 3D Gaussian neural maps.  From 25 posed seed
+observations, a frozen policy expands to 50 by combining the upper tail of a
+rendered depth-gradient proxy with camera-pose novelty.  We compare it with
+matched random, acquisition-time coverage, and pose-coverage rules on four
+ICL-NUIM RGB-D trajectories.  The confirmatory protocol uses disjoint temporal
+holdouts, two optimization seeds, raw metric poses, and held-out RGB, depth,
+and fused surface outcomes.  The proxy detects high-error candidate views in
+all eight seed models (mean AUROC 0.716) and improves mean PSNR by 0.637 dB and
+LPIPS by 0.023 over random.  Nevertheless, the co-primary 5 cm surface F-score
+changes by $-0.0016$, both trajectory-cluster intervals include zero, and pose
+coverage is stronger under the seed-42 control comparison.  The preregistered
+overall-support gate fails.  These results separate error ranking from useful
+acquisition and show why image-space gains alone are insufficient evidence for
+neural mapping policies.
 \end{abstract}
 
 \input{sections/01_introduction}

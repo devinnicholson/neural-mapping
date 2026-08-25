@@ -4,9 +4,26 @@ The benchmark uses four synthetic trajectories through one scene model, not
 four independent physical environments.  Two optimizer seeds characterize only
 a narrow component of training variance.  Candidate poses are known in advance,
 so the experiment does not measure tracking failure, motion cost, or online
-planning latency.  The uncertainty signal is a renderer-derived heuristic, not
-a calibrated posterior.  Surface metrics are reconstructed from held-out depth
-views rather than evaluated against the complete official mesh, so unobserved
+planning latency.  The uncertainty signal is the spatial gradient of rendered
+expected depth: a renderer-derived edge/structure heuristic, not a calibrated
+posterior.  Its error-prediction diagnostics test empirical usefulness but do
+not transform it into epistemic uncertainty.  Surface metrics are reconstructed
+from held-out depth views rather than evaluated against the complete official
+mesh, so unobserved
 regions remain outside the metric.  Finally, the selector inherits the
 representation and inductive biases of Splatfacto; conclusions need not transfer
-to implicit radiance fields, point-based maps, or depth-supervised mapping.
+to implicit radiance fields, point-based maps, or depth-supervised mapping.  The
+confirmatory study compares against matched random, temporal-coverage, and
+pose-coverage controls, but does not reimplement FisherRF, POp-GS, COVER, or
+other contemporary active-mapping systems.  It therefore tests the frozen
+heuristic's incremental value under a controlled budget, not state-of-the-art
+superiority.
+
+The study also does not isolate every causal component of the hybrid score.
+The random and two coverage controls answer whether the complete frozen policy
+adds value, but a new preregistered experiment would be needed to estimate
+weight-specific effects without post-outcome tuning.  Exact billable GPU
+durations were not emitted by the original runner, so the record reports GPU
+class, job counts, iterations, and software versions but not reconstructed
+GPU-hours.  Future runners should persist start, stop, and billable duration in
+the same artifact as each metric.

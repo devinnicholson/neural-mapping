@@ -3,6 +3,22 @@
 This page records lightweight experiment results that are small enough to track in Git.
 Checkpoints, renders, and full Modal output volumes are intentionally not tracked.
 
+## Claim-bearing result: ICL-NUIM multi-trajectory study
+
+The completed cross-trajectory study supersedes the pilot ranking below for
+headline claims. Across eight matched active–random pairs, the frozen
+depth-gradient/pose policy improves mean PSNR by +0.637 dB and LPIPS by -0.023,
+but changes raw depth AbsRel by only -0.0047 and 5 cm surface F-score by -0.0016.
+The depth-gradient proxy ranks difficult candidates (mean AUROC 0.716), yet the
+primary, replication, coverage-control superiority, and overall-support gates
+fail. Pose coverage is the strongest seed-42 control on both co-primary grand
+means.
+
+The complete table, clustered intervals, decisions, and recomputation command
+are in [the confirmatory study card](icl_nuim_multitrajectory_v1.md). Everything
+below this section is retained as historical development evidence and must not
+be cited as the final cross-trajectory conclusion.
+
 ## Current Evidence Snapshot
 
 Date: 2026-08-25 UTC

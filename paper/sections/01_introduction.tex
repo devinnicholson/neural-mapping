@@ -10,29 +10,39 @@ map geometry rather than only image-space appearance.
 
 We investigate an offline, pool-based version of this problem for 3D Gaussian
 Splatting (3DGS).  A seed map renders every eligible candidate pose.  We
-aggregate a prescribed renderer-derived signal over the highest-uncertainty
-pixel decile and combine that score with distance from already selected camera
+aggregate a prescribed renderer-derived signal over its highest-scoring pixel
+decile and combine that score with distance from already selected camera
 centers.  The resulting policy is simple enough to audit and exposes a direct
 question: does model state contain acquisition information beyond trajectory or
 pose coverage?
 
 Our study is organized around falsifiable comparisons.  The policy and weight
 are fixed using earlier development sequences.  Confirmatory evaluation uses
-four independent trajectories, two training seeds, disjoint temporal-block
+four trajectories, two training seeds, disjoint temporal-block
 holdouts with guard bands, and matched 25-to-50-frame expansions.  We measure
 PSNR, SSIM, LPIPS, metric depth, and surface accuracy, completeness, Chamfer-L1,
 and F-score.  Pixel samples are used to estimate per-frame metrics, but the
 experimental unit is the trajectory-by-seed pair.
 
+The central result is a mismatch.  The depth-gradient proxy consistently ranks
+high-error candidates, and its selector improves average held-out appearance,
+but neither metric surface geometry nor replication and control-superiority
+gates support the acquisition hypothesis.  This is not resolved by choosing a
+favorable image metric: the conclusion is fixed by prespecified co-primary
+outcomes and every completed pair remains in the analysis.
+
 The intended contributions are:
 \begin{itemize}
   \item a reproducible acquisition protocol with fixed information boundaries
         and matched random, temporal-coverage, and pose-coverage controls;
-  \item a renderer-derived tail-risk and pose-diversity selector evaluated
-        unchanged across independent RGB-D trajectories;
+  \item a renderer-derived depth-structure and pose-diversity selector evaluated
+        unchanged across four RGB-D trajectories and two optimization seeds;
   \item a metric surface evaluator that fuses held-out predicted and reference
         depth in the published coordinate system; and
   \item a complete record of supportive, mixed, and negative outcomes, including
         uncertainty diagnostics and protocol corrections made before outcome
-        inspection.
+        inspection; and
+  \item evidence that candidate-error discrimination does not by itself imply
+        geometry-improving acquisition, motivating decision-aware objectives
+        and stronger coverage controls.
 \end{itemize}

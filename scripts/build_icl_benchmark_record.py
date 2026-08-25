@@ -182,6 +182,72 @@ def _mean_method(controls: list[dict[str, Any]], method: str, metric: str) -> fl
     return statistics.mean(values)
 
 
+def _audit_split_manifest(path: Path, train_count: int) -> dict[str, Any]:
+    payload = _read(path)
+    expected = {"train": train_count, "val": 10, "test": 20}
+    sets: dict[str, set[str]] = {}
+    for name, count in expected.items():
+        values = payload.get(name)
+        if not isinstance(values, list) or not all(isinstance(value, str) for value in values):
+            raise ValueError(f"Missing string-list {name!r} in {path}")
+        if len(values) != count or len(set(values)) != count:
+            raise ValueError(f"Expected {count} unique {name} frames in {path}, found {len(values)}")
+        sets[name] = set(values)
+    if sets["train"] & sets["val"] or sets["train"] & sets["test"] or sets["val"] & sets["test"]:
+        raise ValueError(f"Train/validation/test leakage in {path}")
+    if payload.get("budget") != train_count:
+        raise ValueError(f"Budget mismatch in {path}: {payload.get('budget')!r}")
+    transforms = payload.get("transforms_frames")
+    if not isinstance(transforms, list) or not sets["train"] | sets["val"] | sets["test"] <= set(transforms):
+        raise ValueError(f"Manifest references frames absent from transforms_frames in {path}")
+    return {"path": str(path), "train": sets["train"], "val": sets["val"], "test": sets["test"]}
+
+
+def audit_split_family(root: Path) -> tuple[list[dict[str, Any]], list[Path]]:
+    split_root = root / "splits"
+    summaries: list[dict[str, Any]] = []
+    source_paths: list[Path] = []
+    for trajectory in TRAJECTORIES:
+        base_path = split_root / f"icl_lr_{trajectory}_clean_v1_budget_025_split_manifest.json"
+        base = _audit_split_manifest(base_path, 25)
+        source_paths.append(base_path)
+        methods = {
+            "random": f"icl_lr_{trajectory}_clean_v1_budget_050_split_manifest.json",
+            "pose": f"icl_lr_{trajectory}_pose_v1_budget_050_split_manifest.json",
+            "trajectory": f"icl_lr_{trajectory}_trajectory_v1_budget_050_split_manifest.json",
+            "active_seed_42": f"icl_lr_{trajectory}_s42_active_v2_budget_050_split_manifest.json",
+            "active_seed_43": f"icl_lr_{trajectory}_s43_active_v2_budget_050_split_manifest.json",
+        }
+        method_summaries: dict[str, Any] = {}
+        for method, filename in methods.items():
+            path = split_root / filename
+            manifest = _audit_split_manifest(path, 50)
+            source_paths.append(path)
+            if manifest["val"] != base["val"] or manifest["test"] != base["test"]:
+                raise ValueError(f"Mismatched holdout for {trajectory} {method}")
+            if not base["train"] <= manifest["train"]:
+                raise ValueError(f"{trajectory} {method} does not expand the frozen 25-frame seed")
+            method_summaries[method] = {
+                "manifest": str(path),
+                "train_count": len(manifest["train"]),
+                "base_frames_retained": len(base["train"] & manifest["train"]),
+                "validation_matches_base": True,
+                "test_matches_base": True,
+                "partitions_disjoint": True,
+            }
+        summaries.append(
+            {
+                "trajectory": trajectory,
+                "base_manifest": str(base_path),
+                "base_train_count": len(base["train"]),
+                "validation_count": len(base["val"]),
+                "test_count": len(base["test"]),
+                "methods": method_summaries,
+            }
+        )
+    return summaries, source_paths
+
+
 def decisions(
     summary: dict[str, Any],
     trajectory_summary: dict[str, Any],
@@ -233,9 +299,10 @@ def build_record(
     run_manifest_path: Path | None = None,
 ) -> dict[str, Any]:
     protocol = _read(protocol_path)
+    split_audit, split_paths = audit_split_family(artifact_root)
     pairs: list[dict[str, Any]] = []
     controls: list[dict[str, Any]] = []
-    source_paths: list[Path] = []
+    source_paths: list[Path] = list(split_paths)
 
     for trajectory in TRAJECTORIES:
         for seed in SEEDS:
@@ -307,6 +374,7 @@ def build_record(
         "protocol": str(protocol_path),
         "protocol_status": protocol.get("status"),
         "policy": protocol.get("acquisition_methods", {}).get("frozen_active"),
+        "split_integrity": split_audit,
         "paired_comparisons": pairs,
         "active_random_summary": summary,
         "trajectory_summary": trajectory_summary,

@@ -1,0 +1,180 @@
+{
+  "frames": [
+    {
+      "file_path": "rgb/726.png",
+      "output_depth_key": "depth",
+      "predicted_points": 20000,
+      "reference_points": 20000,
+      "target_source": "file"
+    },
+    {
+      "file_path": "rgb/732.png",
+      "output_depth_key": "depth",
+      "predicted_points": 20000,
+      "reference_points": 20000,
+      "target_source": "file"
+    },
+    {
+      "file_path": "rgb/738.png",
+      "output_depth_key": "depth",
+      "predicted_points": 20000,
+      "reference_points": 20000,
+      "target_source": "file"
+    },
+    {
+      "file_path": "rgb/745.png",
+      "output_depth_key": "depth",
+      "predicted_points": 20000,
+      "reference_points": 20000,
+      "target_source": "file"
+    },
+    {
+      "file_path": "rgb/751.png",
+      "output_depth_key": "depth",
+      "predicted_points": 20000,
+      "reference_points": 20000,
+      "target_source": "file"
+    },
+    {
+      "file_path": "rgb/757.png",
+      "output_depth_key": "depth",
+      "predicted_points": 20000,
+      "reference_points": 20000,
+      "target_source": "file"
+    },
+    {
+      "file_path": "rgb/763.png",
+      "output_depth_key": "depth",
+      "predicted_points": 20000,
+      "reference_points": 20000,
+      "target_source": "file"
+    },
+    {
+      "file_path": "rgb/770.png",
+      "output_depth_key": "depth",
+      "predicted_points": 20000,
+      "reference_points": 20000,
+      "target_source": "file"
+    },
+    {
+      "file_path": "rgb/776.png",
+      "output_depth_key": "depth",
+      "predicted_points": 20000,
+      "reference_points": 20000,
+      "target_source": "file"
+    },
+    {
+      "file_path": "rgb/782.png",
+      "output_depth_key": "depth",
+      "predicted_points": 20000,
+      "reference_points": 20000,
+      "target_source": "file"
+    },
+    {
+      "file_path": "rgb/789.png",
+      "output_depth_key": "depth",
+      "predicted_points": 20000,
+      "reference_points": 20000,
+      "target_source": "file"
+    },
+    {
+      "file_path": "rgb/795.png",
+      "output_depth_key": "depth",
+      "predicted_points": 20000,
+      "reference_points": 20000,
+      "target_source": "file"
+    },
+    {
+      "file_path": "rgb/801.png",
+      "output_depth_key": "depth",
+      "predicted_points": 20000,
+      "reference_points": 20000,
+      "target_source": "file"
+    },
+    {
+      "file_path": "rgb/808.png",
+      "output_depth_key": "depth",
+      "predicted_points": 20000,
+      "reference_points": 20000,
+      "target_source": "file"
+    },
+    {
+      "file_path": "rgb/814.png",
+      "output_depth_key": "depth",
+      "predicted_points": 20000,
+      "reference_points": 20000,
+      "target_source": "file"
+    },
+    {
+      "file_path": "rgb/820.png",
+      "output_depth_key": "depth",
+      "predicted_points": 20000,
+      "reference_points": 20000,
+      "target_source": "file"
+    },
+    {
+      "file_path": "rgb/827.png",
+      "output_depth_key": "depth",
+      "predicted_points": 20000,
+      "reference_points": 20000,
+      "target_source": "file"
+    },
+    {
+      "file_path": "rgb/833.png",
+      "output_depth_key": "depth",
+      "predicted_points": 20000,
+      "reference_points": 20000,
+      "target_source": "file"
+    },
+    {
+      "file_path": "rgb/839.png",
+      "output_depth_key": "depth",
+      "predicted_points": 20000,
+      "reference_points": 20000,
+      "target_source": "file"
+    },
+    {
+      "file_path": "rgb/845.png",
+      "output_depth_key": "depth",
+      "predicted_points": 20000,
+      "reference_points": 20000,
+      "target_source": "file"
+    }
+  ],
+  "metadata": {
+    "checkpoint": "/workspace/neural-mapping/outputs/runs/icl_lr_kt0_s43_active_v2/splatfacto/budget_050/train/unnamed/splatfacto/2026-08-25_165105/nerfstudio_models/step-000006999.ckpt",
+    "checkpoint_step": 6999,
+    "coordinate_convention": "Nerfstudio OpenGL camera-to-world; depth backprojected along -z",
+    "data": "/workspace/neural-mapping/data/nerfstudio_splits/icl_lr_kt0_s43_active_v2/budget_050",
+    "depth_unit_scale_factor": 0.0002,
+    "load_config": "/workspace/neural-mapping/outputs/runs/icl_lr_kt0_s43_active_v2/splatfacto/budget_050/train/unnamed/splatfacto/2026-08-25_165105/config.yml",
+    "max_depth": 10.0,
+    "max_pixels_per_frame": 20000,
+    "max_points": 500000,
+    "method_name": "splatfacto",
+    "min_accumulation": 0.0,
+    "min_depth": 0.05,
+    "target_source": "auto",
+    "test_frame_count": 20,
+    "thresholds_m": [
+      0.05,
+      0.1
+    ],
+    "voxel_size_m": 0.02
+  },
+  "summary": {
+    "accuracy_mean_m": 0.31706323600653735,
+    "accuracy_median_m": 0.1617925155633768,
+    "chamfer_l1_mean_m": 0.18415967503079833,
+    "completeness_mean_m": 0.05125611405505929,
+    "completeness_median_m": 0.02999346929008823,
+    "fscore_05cm": 0.3922752139559421,
+    "fscore_10cm": 0.539797711355826,
+    "precision_05cm": 0.2728123867434462,
+    "precision_10cm": 0.3908307494060323,
+    "predicted_point_count": 198664,
+    "recall_05cm": 0.6978666108135604,
+    "recall_10cm": 0.8722659405762844,
+    "reference_point_count": 167105
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "experiment_name": "unnamed",
+  "method_name": "splatfacto",
+  "checkpoint": "/workspace/neural-mapping/outputs/runs/icl_lr_kt3_s43_active_v2/splatfacto/budget_050/train/unnamed/splatfacto/2026-08-25_165319/nerfstudio_models/step-000006999.ckpt",
+  "results": {
+    "psnr": 17.264440536499023,
+    "psnr_std": 0.7176859974861145,
+    "ssim": 0.7168946266174316,
+    "ssim_std": 0.028229350224137306,
+    "lpips": 0.6888445019721985,
+    "lpips_std": 0.06618255376815796,
+    "num_rays_per_sec": 33732308.0,
+    "num_rays_per_sec_std": 8421981.0,
+    "fps": 109.80569458007812,
+    "fps_std": 27.41530418395996
+  }
+}

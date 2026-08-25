@@ -4,5 +4,11 @@ We formulate sparse-view Gaussian neural mapping as a controlled acquisition
 problem and evaluate one frozen uncertainty--pose policy against matched random
 and non-learned coverage rules.  The study couples rendering metrics with raw
 metric depth, fused surface geometry, uncertainty diagnostics, and explicit
-decision gates.  \todo{State the supported conclusion and failed stronger claim
-verbatim from the audited record.}
+decision gates.  The supported conclusion is narrow: rendered depth gradients
+rank difficult candidate views and, when combined with pose novelty, improve
+average held-out appearance over random in this benchmark.  The stronger claim
+fails.  The policy does not improve average metric surface F-score, does not
+meet the replication rule, and does not outperform direct coverage controls.
+For active neural mapping, uncertainty or error detection should therefore be
+validated through its downstream geometric decision effect, not accepted as a
+surrogate endpoint.

@@ -1,4 +1,4 @@
-.PHONY: test smoke results-summary paper tree
+.PHONY: test smoke results-summary record report-assets verify-research paper tree
 
 test:
 	python -m pytest -q
@@ -9,6 +9,19 @@ smoke:
 
 results-summary:
 	python scripts/summarize_active_metrics.py --input outputs/modal_metrics_latest.log --pairs-file configs/active_metric_pairs.json --format markdown
+
+record:
+	python scripts/build_icl_benchmark_record.py \
+		--artifact-root experiments/artifacts/icl_nuim_multitrajectory_v1 \
+		--protocol experiments/protocols/icl_nuim_multitrajectory_v1.json \
+		--run-manifest experiments/run_manifests/icl_nuim_multitrajectory_v1.json \
+		--output experiments/records/icl_nuim_multitrajectory_v1.json
+
+report-assets:
+	python scripts/generate_icl_report_assets.py
+
+verify-research: test record report-assets
+	git diff --exit-code -- experiments/records paper/tables experiments/tables docs/icl_nuim_multitrajectory_v1.md
 
 paper:
 	cd paper && latexmk -pdf main.tex

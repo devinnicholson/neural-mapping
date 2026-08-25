@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import importlib.util
+import json
 from pathlib import Path
 import unittest
 
@@ -24,6 +25,22 @@ class IclBenchmarkRecordTests(unittest.TestCase):
         self.assertFalse(MODULE._favorable("psnr", -0.1))
         self.assertTrue(MODULE._favorable("lpips", -0.1))
         self.assertFalse(MODULE._favorable("lpips", 0.1))
+
+    def test_split_audit_rejects_leakage(self) -> None:
+        path = Path(self.id().replace(".", "_") + ".json")
+        payload = {
+            "budget": 1,
+            "train": ["rgb/0.png"],
+            "val": ["rgb/0.png", *[f"rgb/v{i}.png" for i in range(9)]],
+            "test": [f"rgb/t{i}.png" for i in range(20)],
+        }
+        payload["transforms_frames"] = payload["train"] + payload["val"] + payload["test"]
+        path.write_text(json.dumps(payload), encoding="utf-8")
+        try:
+            with self.assertRaisesRegex(ValueError, "leakage"):
+                MODULE._audit_split_manifest(path, 1)
+        finally:
+            path.unlink(missing_ok=True)
 
 
 if __name__ == "__main__":

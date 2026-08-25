@@ -7,13 +7,52 @@ split disjointness, deterministic selectors, data association, depth metrics,
 surface backprojection, nearest-neighbor geometry metrics, and result-record
 recomputation.
 
-\todo{Insert the final run matrix, per-run wall time and GPU-hours, artifact
-checksums, failed/retried jobs, and the one-command table/figure regeneration
-instructions.}
+The confirmatory matrix contains eight 25-frame seed models, eight random
+50-frame models, eight active 50-frame models, and eight seed-42 coverage-control
+models.  All use NVIDIA L4 GPUs and 7,000 optimization iterations.  Final
+evaluation comprises 72 jobs: RGB, depth, and fused surface evaluation for each
+of 24 budget-50 models.  Some evaluation containers emitted a PyTorch compiler
+worker timeout during process shutdown after valid artifacts were committed;
+no result was selectively removed or rerun.  The runner did not persist exact
+billable durations, which we report as a provenance limitation rather than
+estimate from console timestamps.
+
+The repository commits 72 metric files, eight compact diagnostic reports, 24
+split manifests, the protocol, and the run manifest.  The audited record stores
+a SHA-256 digest for every input.  Each compact diagnostic also records the
+digest and byte length of its pixel-heavy source report.  The complete record
+and all paper tables are regenerated with:
+
+\begin{verbatim}
+python scripts/build_icl_benchmark_record.py \
+  --artifact-root experiments/artifacts/icl_nuim_multitrajectory_v1 \
+  --protocol experiments/protocols/icl_nuim_multitrajectory_v1.json \
+  --run-manifest experiments/run_manifests/icl_nuim_multitrajectory_v1.json \
+  --output experiments/records/icl_nuim_multitrajectory_v1.json
+python scripts/generate_icl_report_assets.py
+\end{verbatim}
 
 \section{Additional Results}
-\todo{Insert all per-trajectory, per-seed RGB, depth, and geometry outcomes.}
+\begin{table*}[h]
+  \centering
+  \caption{All eight active-minus-random paired co-primary and RGB/depth
+  effects.  Directions follow the main table.}
+  \input{tables/icl_pair_results}
+\end{table*}
+
+\begin{table*}[h]
+  \centering
+  \caption{Complete prespecified active-minus-random outcome summary.  SD is
+  the population standard deviation over eight pairs; Fav. is the count in the
+  metric's favorable direction; intervals resample trajectory clusters.}
+  \input{tables/icl_secondary_results}
+\end{table*}
 
 \section{Failure Cases}
-\todo{Insert representative uncertainty false positives, redundant active
-selections, and any trajectory where a coverage control wins.}
+KT2 is the clearest metric disagreement: active selection improves PSNR by
+0.689 dB and LPIPS by 0.049, yet worsens raw AbsRel by 0.047 and 5 cm F-score by
+0.066.  KT1 is an appearance failure despite modest geometric improvement.
+Pose coverage exceeds \method{} on both co-primary grand means and has higher
+PSNR than the active policy on all four seed-42 trajectory comparisons.  These
+cases are not filtered as outliers; they define the boundary of the supported
+claim.

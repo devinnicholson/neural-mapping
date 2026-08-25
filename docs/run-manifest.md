@@ -3,8 +3,9 @@
 Date: 2026-08-25
 
 This manifest ties the current headline claims to the commands and artifacts
-needed to audit or reproduce them. Large artifacts remain in Modal volumes or
-local experiment storage and are intentionally not tracked in Git.
+needed to audit or reproduce them. Large datasets, checkpoints, and pixel-heavy
+reports remain in Modal volumes; compact metrics, split memberships, source
+hashes, protocols, and claim-bearing records are tracked in Git.
 
 ## Verification Commands
 
@@ -29,6 +30,18 @@ Run the lightweight repo tests:
 make test
 ```
 
+Recompute the completed ICL-NUIM multi-trajectory record and every generated
+paper/CSV table:
+
+```bash
+python scripts/build_icl_benchmark_record.py \
+  --artifact-root experiments/artifacts/icl_nuim_multitrajectory_v1 \
+  --protocol experiments/protocols/icl_nuim_multitrajectory_v1.json \
+  --run-manifest experiments/run_manifests/icl_nuim_multitrajectory_v1.json \
+  --output experiments/records/icl_nuim_multitrajectory_v1.json
+python scripts/generate_icl_report_assets.py
+```
+
 Recompute every stored FR2 paired delta, aggregate, bootstrap interval, and
 decision gate:
 
@@ -41,6 +54,7 @@ python scripts/verify_replication_record.py \
 
 | Claim | Source | Metrics | Audit artifacts |
 |---|---|---|---|
+| Cross-trajectory ICL-NUIM confirms error ranking but rejects the geometry-improving acquisition claim. | `docs/icl_nuim_multitrajectory_v1.md`, `paper/main.tex` | Active−random: +0.637 PSNR, −0.023 LPIPS, −0.0047 raw AbsRel, −0.0016 surface F-score at 5 cm. Mean diagnostic AUROC 0.716. Overall gate: fail. | Frozen/amended protocol, 72 metric files, eight compact diagnostics with raw-source hashes, 24 split manifests, run manifest, and recomputable record under `experiments/`. |
 | Sample-scene active selection improves budget-50 held-out RGB quality across repeated scenes. | `docs/results.md`, `docs/dashboard.html` | Dozer v1-v4: +0.779 PSNR, +0.020 SSIM, -0.018 LPIPS. Redwoods2 v1-v4: +0.699 PSNR, +0.027 SSIM, -0.012 LPIPS. BWW v1-v4: +2.016 PSNR, +0.031 SSIM, -0.021 LPIPS. Library v1-v3: +0.496 PSNR, +0.015 SSIM, -0.003 LPIPS. | Pair definitions: `configs/active_metric_pairs.json`. Metrics index command: `modal run modal_app.py --action metrics`. Summary command: `scripts/summarize_active_metrics.py`. |
 | TUM RGB-D `freiburg1_xyz` v1-v6 shows depth-gradient as the strongest fixed xyz RGB-D policy at budget 50. | `docs/results.md`, `docs/dashboard.html` | +0.264 PSNR, +0.007 SSIM, -0.003 LPIPS, -0.005 aligned AbsRel, +0.008 aligned delta1 vs same-seed random b50. | Modal metrics under `/workspace/neural-mapping/outputs/runs/tum_fr1_xyz_v{1..6}_*/splatfacto/budget_050/metrics/`. Depth reports under each run's `metrics/depth_eval.json`. |
 | TUM RGB-D `freiburg1_xyz` v9 budget sweep supports compact subset selection, with b100 as the cleanest active result and b150 as a saturation negative control. | `docs/results.md`, `docs/dashboard.html`, `docs/blog-assets/tum-fr1-xyz-v9-budget-sweep.csv` | b100: +0.127 PSNR, +0.008 SSIM, -0.004 LPIPS, -0.008 aligned AbsRel, +0.031 aligned delta1. b150: -0.779 PSNR, -0.019 SSIM, +0.028 LPIPS, +0.065 aligned AbsRel, -0.057 aligned delta1. | Modal metrics listed below. Blog plot: `docs/blog-assets/tum-fr1-xyz-v9-budget-sweep.svg`. |

@@ -13,9 +13,20 @@ training budget.
 Next-best-view and active reconstruction methods balance information gain,
 coverage, visibility, and motion cost.  Learned systems may predict rendering
 error or geometric uncertainty, while classical controls favor unexplored
-space.  We isolate the marginal value of model-derived uncertainty by matching
+space.  ActiveNeRF learns predictive uncertainty and selects observations by
+expected uncertainty reduction~\cite{pan2022activenerf}.  FisherRF instead uses
+Fisher information to score views and quantify radiance-field uncertainty
+~\cite{jiang2024fisherrf}; POp-GS applies optimal experimental design directly
+to 3DGS~\cite{wilson2025popgs}.  Recent systems couple 3DGS with online
+exploration and rendering-based information gain~\cite{chen2025activegamer},
+while COVER derives a lightweight coverage surrogate from an approximation to
+Fisher information~\cite{chen2026cover}.  GAVIS models anisotropic per-Gaussian
+visibility and uses it for real-time uncertainty-aware active mapping
+~\cite{xue2026gavis}.  Our scope is narrower: we test a cheap post-hoc renderer
+heuristic in a fixed offline pool.  We isolate its marginal value by matching
 all policies to the same seed, holdout, and target budget and by including both
-acquisition-time and camera-pose coverage controls.
+acquisition-time and camera-pose coverage controls.  We do not claim an online
+planner or a replacement for these information-theoretic systems.
 
 \paragraph{Uncertainty and selective prediction.}
 Uncertainty is useful only insofar as it predicts error or improves a downstream
@@ -30,3 +41,11 @@ and surface ground truth for controlled reconstruction evaluation
 ~\cite{handa2014benchmark}.  We use its four living-room trajectories as
 independent acquisition environments and preserve their metric coordinate
 system during training and evaluation.
+
+\paragraph{Reproducible neural rendering systems.}
+Our experiments use Nerfstudio's modular training and evaluation framework
+~\cite{tancik2023nerfstudio}.  We treat the framework as experimental
+infrastructure rather than as evidence: resolved configurations, coordinate
+normalization, split membership, dependency versions, and derived outcomes are
+recorded independently because framework defaults can change the scientific
+meaning of metric geometry.

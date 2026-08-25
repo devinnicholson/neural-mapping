@@ -1,12 +1,76 @@
 \section{Results}
 
-\todo{Generate the main active--random table from the audited benchmark record.}
+\begin{table*}[t]
+  \centering
+  \caption{Mean active-minus-random effects within each trajectory, averaged
+  over optimization seeds 42 and 43.  Positive is favorable for PSNR, SSIM,
+  and $F_5$; negative is favorable for LPIPS and AbsRel.  No trajectory or seed
+  is excluded.}
+  \label{tab:main-results}
+  \input{tables/icl_main_results}
+\end{table*}
 
-\todo{Report the seed-42 random, trajectory-coverage, pose-coverage, and active
-control table without suppressing losing trajectories.}
+\paragraph{Appearance improves, geometry does not.}
+The policy improves mean PSNR by 0.637 dB and SSIM by 0.027 while reducing LPIPS
+by 0.023 (Table~\ref{tab:main-results}).  The appearance effect is heterogeneous:
+PSNR improves in 5/8 pairs and 3/4 trajectory means, and its trajectory-cluster
+interval is $[-0.023,1.476]$ dB.  Raw depth AbsRel is nearly unchanged at
+$-0.0047$ with a $[-0.0653,0.0531]$ interval.  Most importantly, mean 5 cm
+surface F-score changes by $-0.0016$, is favorable in only 2/4 trajectory
+means, and has interval $[-0.0459,0.0368]$.  KT0 exhibits aligned appearance
+and geometry gains; KT2 gains 0.689 dB PSNR but loses 0.066 F-score, directly
+demonstrating the image--geometry mismatch.
 
-\todo{Report uncertainty diagnostics, geometry/RGB disagreements, confidence
-intervals, and the exact prespecified gate outcomes.}
+\begin{table*}[t]
+  \centering
+  \caption{Seed-42 grand means over four trajectories.  Coverage controls use
+  the same seed set, target budget, test frames, optimizer seed, and training
+  schedule as \method.  $F_5$ is surface F-score at 5 cm.}
+  \label{tab:controls}
+  \input{tables/icl_control_results}
+\end{table*}
+
+\paragraph{Simple coverage is a stronger control.}
+At seed 42, \method{} improves PSNR over random by 0.489 dB but reduces $F_5$
+from 0.227 to 0.221 (Table~\ref{tab:controls}).  Temporal and pose coverage both
+have higher PSNR and $F_5$ than \method; pose coverage is best on both
+co-primary grand means.  The prespecified control-superiority claim therefore
+fails.  This comparison matters because pose novelty already contributes 65\%
+of the proposed score: the remaining depth-gradient term does not demonstrate
+incremental geometric value over a direct coverage rule.
+
+\begin{table*}[t]
+  \centering
+  \caption{Post-hoc error-ranking diagnostics for the target-free
+  depth-gradient proxy.  Error targets are used only for evaluation.  AUSE is
+  area under the sparsification-error curve.}
+  \label{tab:diagnostics}
+  \input{tables/icl_diagnostics}
+\end{table*}
+
+\paragraph{Error prediction succeeds.}
+Spearman correlation is positive and AUROC exceeds 0.5 in every seed model
+(Table~\ref{tab:diagnostics}); mean values are 0.141 and 0.716, respectively.
+Thus the failed acquisition result cannot be summarized as an entirely
+uninformative proxy.  Rather, prioritizing high rendered depth gradients tends
+to identify difficult views without reliably identifying views whose addition
+improves the held-out surface.  Difficulty, reducible error, redundancy, and
+geometric coverage are distinct quantities.
+
+\begin{table}[t]
+  \centering
+  \caption{Prespecified decisions.}
+  \label{tab:gates}
+  \input{tables/icl_gates}
+\end{table}
+
+\paragraph{Decision gates.}
+Table~\ref{tab:gates} reports every frozen rule.  H1 fails because mean $F_5$
+is not positive.  H2 fails because both co-primary outcomes are favorable in
+only 5/8 pairs and $F_5$ in only 2/4 trajectory means.  H3 fails against the
+coverage controls.  H4 passes, as does the LPIPS safety gate: mean LPIPS
+improves, and the largest trajectory-mean regression is 0.012, below the
+prespecified 0.02 limit.  Because H1 and H2 fail, overall support is false.
 
 \paragraph{Protocol correction.}
 Before any confirmatory model completed or outcome was inspected, initial

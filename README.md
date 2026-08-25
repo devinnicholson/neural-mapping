@@ -1,248 +1,197 @@
-# Uncertainty-Aware 3D Gaussian Neural Mapping
+# Error Prediction Is Not Acquisition
 
-Research code for uncertainty-guided frame selection in sparse-view 3D Gaussian
-scene reconstruction.
+[![CI](https://github.com/devinnicholson/neural-mapping/actions/workflows/ci.yml/badge.svg)](https://github.com/devinnicholson/neural-mapping/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-> **Status:** active research prototype. The repository contains a working
-> lightweight evaluation harness, a preregistered RGB-D robustness study, and
-> repeated pilot results. The current evidence supports a narrow within-sequence
-> claim; cross-dataset evaluation and external reproduction are still required
-> before this should be interpreted as a submission-ready result.
+A controlled study of frame acquisition for sparse-view 3D Gaussian neural
+mapping. The repository contains the full path from deterministic RGB-D splits
+and GPU training to metric surface evaluation, frozen decision rules, compact
+artifacts, and a workshop-style paper.
 
-## Research Question
+The central result is deliberately reported as mixed: a target-free rendered
+depth-gradient proxy identifies difficult candidate views, and its hybrid
+selector improves held-out appearance over random on average, but it does not
+improve metric surface reconstruction or beat direct coverage controls.
 
-Given an initial set of posed RGB or RGB-D observations and a pool of candidate
-camera views, can model-derived uncertainty identify which additional frames
-will most improve a 3D Gaussian scene representation?
+## Confirmatory result
 
-The current hypothesis is deliberately narrower:
+The completed study expands a shared 25-frame seed to 50 frames on each of four
+ICL-NUIM living-room trajectories. Active and random methods are paired by
+trajectory, optimization seed, held-out frames, training schedule, and NVIDIA
+L4 hardware.
 
-> At compact frame budgets, upper-tail model uncertainty is a useful acquisition
-> signal when it is constrained by camera-pose diversity. Uncertainty-only
-> selection is less robust because it can concentrate on redundant or
-> systematically difficult views.
+| Outcome | Mean active − random | Favorable pairs | Favorable trajectories | Trajectory-cluster 95% interval |
+|---|---:|---:|---:|---:|
+| PSNR ↑ | +0.6372 dB | 5/8 | 3/4 | [-0.0231, +1.4764] |
+| LPIPS ↓ | -0.0231 | 6/8 | 2/4 | [-0.0546, +0.0084] |
+| Raw depth AbsRel ↓ | -0.0047 | 5/8 | 2/4 | [-0.0653, +0.0531] |
+| Surface F-score at 5 cm ↑ | -0.0016 | 5/8 | 2/4 | [-0.0459, +0.0368] |
 
-This repository studies **offline, pool-based frame selection**. It does not
-claim to implement online SLAM, autonomous exploration, real-time next-best-view
-planning, or a universally calibrated probabilistic model.
+The depth-gradient diagnostic passes independently: Spearman correlation is
+positive in 8/8 seed models and AUROC exceeds 0.5 in 8/8 (mean AUROC 0.716).
+The preregistered primary, replication, coverage-control superiority, and
+overall-support gates fail. The LPIPS safety and error-ranking gates pass.
 
-## Method Overview
+This supports one narrow conclusion: candidate-error discrimination is not a
+sufficient surrogate for geometry-improving acquisition. It does not establish
+state-of-the-art next-best-view planning, calibrated epistemic uncertainty,
+online SLAM, or transfer to physical scenes.
 
-The current acquisition loop is:
+Read the [study card](docs/icl_nuim_multitrajectory_v1.md), the
+[frozen protocol](experiments/protocols/icl_nuim_multitrajectory_v1.json), the
+[audited record](experiments/records/icl_nuim_multitrajectory_v1.json), or the
+[paper source](paper/main.tex).
 
-1. Construct a deterministic seed split with fixed validation and test frames.
-2. Train one or more Splatfacto seed models on the initial frame budget.
-3. Render the remaining candidate poses and compute per-pixel uncertainty.
-4. Aggregate each candidate by upper-tail risk, currently the mean uncertainty
-   in its highest-uncertainty pixel decile.
-5. Greedily select additional frames using uncertainty and pose novelty.
-6. Retrain under the same optimization budget and evaluate on the untouched
-   test set.
+## Research question
 
-For candidate view $v$, selected frame set $S$, normalized tail-risk score
-$\widetilde{U}(v)$, and normalized distance to the nearest selected camera
-$\widetilde{D}(v,S)$, the hybrid acquisition score is
+Given a trained seed map, known candidate camera poses, and a fixed acquisition
+budget, does renderer state identify observations whose addition improves both
+novel-view appearance and world-space surface geometry beyond inexpensive
+random and coverage rules?
+
+For rendered expected depth $z_v$ at candidate view $v$, the frozen signal is
+the forward finite-difference magnitude
 
 $$
-A(v \mid S) = \lambda\widetilde{U}(v) + (1-\lambda)\widetilde{D}(v,S).
+u_v(i,j)=\sqrt{|z_v(i,j)-z_v(i-1,j)|^2+|z_v(i,j)-z_v(i,j-1)|^2}.
 $$
 
-The experiments compare this rule with random selection, trajectory coverage,
-pose coverage, uncertainty-only selection, and renderer-derived uncertainty
-signals. Final claims will use one policy frozen on development scenes and
-evaluated unchanged on held-out scenes.
+The view score $U(v)$ is the mean of its highest-scoring pixel decile. At each
+greedy step, min–max-normalized signal and nearest selected-camera distance are
+combined as
 
-## Current Evidence
+$$
+A(v\mid S)=0.35\,\widetilde U(v)+0.65\,\widetilde D(v,S).
+$$
 
-The results below are pilot evidence. They establish that the pipeline works and
-motivate the frozen benchmark; they do not yet establish a general acquisition
-policy.
+Candidate RGB and reference depth never enter selection. They are used only
+afterward to evaluate error ranking and reconstruction.
 
-| Study | Current result | Interpretation |
-|---|---|---|
-| Nerfstudio sample scenes | Across twelve `dozer`, `redwoods2`, and `bww_entrance` ensemble-tail seeds, the hybrid selector improved the same-seed random budget-50 baseline by approximately **+1.165 PSNR**, **+0.026 SSIM**, and **-0.017 LPIPS** on average. | Strongest repeated RGB pilot. |
-| `library` and `kitchen` | `library` improved on average; `kitchen` contained a substantial regression on one seed despite positive average PSNR and LPIPS. | Evidence of transfer, but not uniform robustness. |
-| TUM RGB-D `freiburg1_xyz` v1-v6 | Depth-gradient selection improved the random budget-50 baseline by approximately **+0.264 PSNR**, **+0.007 SSIM**, **-0.003 LPIPS**, and **-0.005 median-aligned AbsRel** on average. | Best current fixed-policy RGB-D result. |
-| TUM RGB-D budget sweep | The hybrid policy helped at intermediate budgets on `freiburg1_xyz` v9, with the cleanest RGB/depth result at budget 100, but regressed at the saturated budget of 150. | Supports compact subset selection rather than full-trajectory ordering. |
-| RGB-D transfer checks | `freiburg1_desk` v4 transferred positively at budgets 50 and 100; `freiburg1_room` v4 was mixed at budget 50 and negative at budget 100. | The current policy does not transfer reliably to every scene regime. |
-| TUM RGB-D `freiburg2_desk` preregistered robustness study | Across three locked interleaved splits, active b50 improves matched random b50 by **+0.441 PSNR**, **+0.0222 SSIM**, **-0.0125 LPIPS**, and **-0.0108 raw AbsRel** on average. A separate temporal-block holdout improves by **+0.297 PSNR**, **-0.0437 LPIPS**, and **-0.120 raw AbsRel**. | Clears the prespecified interleaved and blocked gates. Median-aligned AbsRel regresses on all three interleaved splits, so the supported depth claim is limited to raw metric behavior. |
+## Experimental design
 
-Full per-scene tables, negative results, run identifiers, and interpretation are
-maintained in [docs/results.md](docs/results.md). The corresponding run commands
-and artifact locations are recorded in
-[docs/run-manifest.md](docs/run-manifest.md). A compact visual summary is
-available in [docs/dashboard.html](docs/dashboard.html). New experiments also
-store compact machine-readable records under [experiments/records](experiments/records).
+| Component | Frozen specification |
+|---|---|
+| Dataset | Four clean ICL-NUIM living-room trajectories, uniformly sampled to 240 observations each |
+| Acquisition | Shared 25-frame seed; 50-frame target budget |
+| Holdout | 10 validation and contiguous 20-frame test blocks with five-sample guard bands where available |
+| Primary comparison | Active vs matched random, seeds 42 and 43 on every trajectory |
+| Controls | Random, acquisition-time farthest-first, and camera-center farthest-first; seed 42 |
+| Training | Nerfstudio Splatfacto, 7,000 iterations, camera optimization off, NVIDIA L4 |
+| Coordinate frame | Published metric poses; orientation, centering, and auto-scaling disabled |
+| Co-primary outcomes | Held-out PSNR and fused-surface F-score at 5 cm |
+| Secondary outcomes | SSIM, LPIPS, raw/aligned depth, accuracy, completeness, Chamfer-L1, precision/recall/F-score at 5 and 10 cm |
+| Experimental unit | Trajectory-by-optimization-seed matched pair; pixels are not treated as independent replicates |
 
-## Claim Boundary
+Every budget-50 split contains exactly 50 train, 10 validation, and 20 test
+filenames. The record builder verifies partition disjointness, common holdouts,
+retention of the 25-frame seed, source hashes, paired deltas, aggregate
+statistics, and all decision gates.
 
-The evidence currently supports the following statement:
+## Reproduce the record
 
-> Ensemble disagreement and renderer-derived signals can identify useful
-> candidate views, and a tail-risk/pose-diversity hybrid can improve reconstruction
-> at compact frame budgets on repeated scene splits. On TUM RGB-D
-> `freiburg2_desk`, one policy fixed before the confirmatory runs improves RGB
-> and raw depth outcomes across independent splits and a guarded temporal-block
-> holdout.
+The CPU audit path does not require a GPU:
 
-It does **not** yet support these stronger statements:
+```bash
+git clone https://github.com/devinnicholson/neural-mapping.git
+cd neural-mapping
+uv sync --all-extras --locked
+uv run pytest -q
 
-- one fixed selector generalizes across synthetic and real RGB-D datasets;
-- the uncertainty estimates are probabilistically calibrated;
-- the method improves complete-scene geometry or tracking;
-- the improvement remains after matching ensemble and baseline compute;
-- the method is state of the art against established active-view systems.
+uv run python scripts/build_icl_benchmark_record.py \
+  --artifact-root experiments/artifacts/icl_nuim_multitrajectory_v1 \
+  --protocol experiments/protocols/icl_nuim_multitrajectory_v1.json \
+  --run-manifest experiments/run_manifests/icl_nuim_multitrajectory_v1.json \
+  --output experiments/records/icl_nuim_multitrajectory_v1.json
 
-These boundaries are part of the evaluation protocol rather than post-hoc
-disclaimers. Failed signals, regressions, and saturation effects remain in the
-reported results.
+uv run python scripts/generate_icl_report_assets.py
+git diff --exit-code -- experiments/records paper/tables experiments/tables docs/icl_nuim_multitrajectory_v1.md
+```
 
-## Evaluation Protocol
+The committed evidence package is about 1 MB and contains:
 
-The benchmark separates model development from final evaluation:
+- 72 final RGB, depth, and geometry metric files;
+- eight compact per-seed diagnostic reports, each linked by SHA-256 to its
+  pixel-heavy source report;
+- 24 exact split-membership manifests;
+- the preregistration and dated pre-outcome amendment;
+- Modal run provenance and deterministic generated tables.
 
-- Validation data may tune normalization, thresholds, calibration, and the
-  acquisition weight.
-- Test frames are reserved before model or policy inspection and are used only
-  for final reporting.
-- Development scenes determine the final signal and selector.
-- Final scenes evaluate that frozen policy without scene-specific adaptation.
-- All comparisons use the same train/test split, optimization schedule, image
-  resolution, and evaluation implementation.
+Large datasets and model checkpoints remain outside Git.
 
-Primary outcome families are:
+## Run GPU experiments
 
-- **Rendering:** PSNR, SSIM, and LPIPS.
-- **Depth:** RMSE, AbsRel, and valid-pixel threshold accuracy.
-- **Geometry:** accuracy, completeness, Chamfer distance, and F-score when a
-  reference surface is available.
-- **Failure prediction:** Spearman correlation, AUROC, AUPRC, risk-coverage,
-  sparsification, AUSE, and reliability analysis.
-- **Efficiency:** selected-frame budget, GPU-hours, wall time, peak memory, and
-  scoring overhead.
+Local tests, record verification, and table generation are CPU-only. Training
+and rendered evaluation require a CUDA GPU. The reference environment is
+defined in [modal_app.py](modal_app.py) and pins Python 3.12, CUDA 12.8.1,
+PyTorch 2.11.0, Nerfstudio 1.1.5, gsplat 1.4.0, and SciPy 1.15.3.
 
-The complete protocol is in
-[docs/experiment-protocol.md](docs/experiment-protocol.md).
+```bash
+modal setup
+modal run modal_app.py --action env
+modal run modal_app.py --action prepare-icl \
+  --icl-trajectory lr_kt0 \
+  --data-scene-name icl_lr_kt0_clean_v1
+```
 
-## Roadmap to a Submission-Grade Result
+Matrix actions in `modal_app.py` prepare controls, train paired models, render
+candidate diagnostics, materialize active splits, and evaluate RGB/depth/surface
+outcomes. Use a new protocol and new scene names for any follow-up study; do not
+overwrite or tune the completed confirmatory family.
 
-| Phase | Deliverable | Exit criterion |
-|---|---|---|
-| 1. Protocol lock | Fixed development/test scene partition, information boundary, primary metrics, selector, and hyperparameters. | No final-test observation can change the acquisition rule. |
-| 2. Artifact provenance | Committed split manifests and machine-readable run records containing code, data, environment, seed, hardware, and artifact identifiers. | Every reported number traces to a reproducible run record. |
-| 3. Controlled benchmark | Multi-scene Replica evaluation followed by a frozen real RGB-D transfer study. | At least 6 controlled scenes, 3 real scenes, and repeated seeds for the primary comparison. |
-| 4. Statistical and compute audit | Paired confidence intervals, scene-level effects, ablations, and compute-matched baselines. | The main conclusion survives uncertainty estimates and fair resource accounting. |
-| 5. Research release | Generated figures and tables, paper, limitations, public artifacts, and clean-environment reproduction. | An independent user can reproduce at least one principal result from documented inputs. |
-
-The detailed implementation sequence remains in
-[ROADMAP.md](ROADMAP.md) and [docs/implementation-plan.md](docs/implementation-plan.md).
-
-## Repository Structure
+## Repository map
 
 ```text
-configs/                  experiment, dataset, uncertainty, and stress-test definitions
-data/                     local raw/processed data and split manifests
-docs/                     protocol, results, runbooks, literature, and project decisions
-examples/                 small dependency-light inputs for smoke tests
-outputs/                  generated reports and run artifacts
-scripts/                  command-line experiment and evaluation utilities
-src/uncertainty_3dgs/     reusable split and uncertainty-metric implementations
-tests/                    dependency-light unit and command-line tests
-modal_app.py              GPU workflow for Nerfstudio/Splatfacto experiments
+.
+├── experiments/
+│   ├── artifacts/       # compact source metrics, diagnostics, split manifests
+│   ├── protocols/       # frozen hypotheses, methods, gates, amendments
+│   ├── records/         # recomputable claim-bearing JSON records
+│   ├── run_manifests/   # execution and infrastructure provenance
+│   └── tables/          # generated machine-readable result tables
+├── paper/               # workshop paper and generated LaTeX tables
+├── scripts/             # splits, evaluation, auditing, artifact generation
+├── src/uncertainty_3dgs/# CPU-testable selection and metric primitives
+├── tests/               # math, split, metric, provenance, and record tests
+├── modal_app.py         # pinned GPU orchestration
+├── uv.lock              # resolved CPU/repository dependencies
+└── ROADMAP.md           # claim-oriented next studies
 ```
 
-Heavy training dependencies remain isolated from the lightweight utilities so
-split generation, metric validation, and result summarization can run without a
-CUDA environment.
+## Paper
 
-## Quick Start
-
-The lightweight package requires Python 3.10 or newer.
+Generated numerical tables are derived from the audited JSON record; they are
+not hand-maintained.
 
 ```bash
-python -m pip install -e ".[dev,numeric]"
-make test
-make smoke
+uv run python scripts/generate_icl_report_assets.py
+make paper
 ```
 
-`make test` runs the dependency-light test suite. `make smoke` generates a small
-deterministic split and computes uncertainty/error alignment metrics from the
-checked-in examples.
+The paper is framed around the image–geometry mismatch and reports the negative
+primary outcome, stronger coverage baselines, every seed, descriptive clustered
+intervals, limitations, and the pre-outcome correction.
 
-Generate a deterministic split manifest:
+## Standards for new claims
 
-```bash
-python scripts/generate_splits.py \
-  --frames examples/frames.txt \
-  --budgets 4 6 \
-  --val-count 2 \
-  --test-count 2 \
-  --scene example \
-  --seed 7 \
-  --selection-method random \
-  --output data/splits/example_split.json
-```
+A new headline claim must include:
 
-Compute uncertainty/error metrics:
+- a protocol committed before claim-bearing training;
+- a public dataset or releasable fresh-scene data;
+- locked train/validation/test membership with leakage checks;
+- matched seeds, budgets, hardware class, and optimization schedules;
+- random and domain-relevant coverage or literature baselines;
+- appearance, depth, calibration/selection, and metric geometry outcomes;
+- multi-scene or multi-trajectory replication with uncertainty intervals;
+- complete negative results, runtime/resource provenance, and artifact hashes.
 
-```bash
-python scripts/compute_uncertainty_metrics.py \
-  --input examples/metric_input.json \
-  --bad-threshold 0.5 \
-  --reliability-bins 10 \
-  --output outputs/reports/example_metrics.json
-```
+The next confirmatory family should test a decision-aware signal on distinct
+physical environments and compare directly with an information-theoretic active
+view method. It must use a new preregistration; the completed ICL-NUIM result is
+immutable.
 
-Summarize active-versus-random results from saved metric rows:
+## Citation and license
 
-```bash
-python scripts/summarize_active_metrics.py \
-  --input outputs/modal_metrics.log \
-  --pairs-file configs/active_metric_pairs.json \
-  --format markdown
-```
-
-## GPU Workflows
-
-Training and rendering use Nerfstudio Splatfacto with gsplat on Linux and NVIDIA
-CUDA. They are intentionally kept outside the base package.
-
-- [GPU baseline bring-up](docs/gpu-baseline-bringup.md)
-- [Modal workflow](docs/modal.md)
-- [SLURM workflow](docs/cluster-slurm.md)
-- [RGB-D validation runbook](docs/next-rgbd-validation.md)
-
-The full workflow is:
-
-```text
-acquire data -> validate frames and poses -> freeze split -> materialize dataset
--> train seed model(s) -> render candidate uncertainty -> select frames
--> retrain matched baselines -> evaluate untouched test views -> aggregate results
-```
-
-## Reproducibility Status
-
-The repository currently provides deterministic split generation, lightweight
-metric implementations, unit tests, configuration templates, runbooks, and a
-manifest linking headline claims to stored GPU runs.
-
-The following items remain required for a complete external reproduction:
-
-- a frozen dependency lock and GPU image digest;
-- committed split manifests for every headline experiment;
-- public resolved run configurations and large evaluation artifacts;
-- checksummed model, render, and evaluation artifacts;
-- one command that regenerates every reported table and figure;
-- a clean-machine reproduction report.
-
-Until those artifacts are released, the checked-in results should be treated as
-documented internal experiments rather than independently reproduced findings.
-
-## Documentation
-
-- [Literature map](docs/literature-map.md)
-- [Experiment protocol](docs/experiment-protocol.md)
-- [Results and negative findings](docs/results.md)
-- [Run manifest](docs/run-manifest.md)
-- [Implementation plan](docs/implementation-plan.md)
-- [Project roadmap](ROADMAP.md)
+Citation metadata is in [CITATION.cff](CITATION.cff). Code is released under the
+[MIT License](LICENSE). ICL-NUIM data is distributed separately under CC BY
+3.0; this repository commits only filenames, transforms-derived memberships,
+and evaluation outputs, not the dataset images.

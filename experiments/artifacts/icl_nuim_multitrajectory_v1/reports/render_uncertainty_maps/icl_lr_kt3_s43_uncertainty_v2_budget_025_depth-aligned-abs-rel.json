@@ -1,0 +1,667 @@
+{
+  "metadata": {
+    "bad_error_quantile": 0.8,
+    "bad_threshold": 0.9280394315719604,
+    "cache_images": "cpu",
+    "candidate_count": 165,
+    "candidate_data": "/workspace/neural-mapping/data/candidate_eval/icl_lr_kt3_s43_uncertainty_v2",
+    "checkpoint": "/workspace/neural-mapping/outputs/runs/icl_lr_kt3_s43_seed_v2/splatfacto/budget_025/train/unnamed/splatfacto/2026-08-25_162452/nerfstudio_models/step-000006999.ckpt",
+    "checkpoint_step": 6999,
+    "depth_unit_scale_factor": 0.0002,
+    "error_metric": "depth-aligned-abs-rel",
+    "load_config": "/workspace/neural-mapping/outputs/runs/icl_lr_kt3_s43_seed_v2/splatfacto/budget_025/train/unnamed/splatfacto/2026-08-25_162452/config.yml",
+    "max_depth": 10.0,
+    "max_global_pixels": 500000,
+    "max_pixels_per_frame": 50000,
+    "method_name": "splatfacto",
+    "min_depth": 0.05,
+    "patch_size": 15,
+    "raw_sampled_pixels_before_global_cap": 8250000,
+    "sampled_pixels": 500000,
+    "uncertainty_signals": [
+      "transmittance",
+      "local-mean-transmittance",
+      "local-std-transmittance",
+      "accumulation-gradient",
+      "depth-gradient"
+    ]
+  },
+  "schema_version": 1,
+  "signals": {
+    "accumulation-gradient": {
+      "auprc": 0.2846950431439077,
+      "auroc": 0.6192749610157743,
+      "bad_fraction": 0.200002,
+      "bad_threshold": 0.9280394315719604,
+      "count": 500000,
+      "mean_error": 0.9529666387987784,
+      "risk_coverage_auc": 0.7934394435105496,
+      "sparsification": {
+        "ause": 0.4936288061508527
+      },
+      "spearman": 0.06666020878369283,
+      "uncertainty_bins": [
+        {
+          "bad_fraction": 0.12806,
+          "bin": 0,
+          "count": 50000,
+          "lower_quantile": 0.0,
+          "max_uncertainty": 1.4101255146670155e-05,
+          "mean_error": 0.7312101017639905,
+          "mean_uncertainty": 8.004343150991246e-06,
+          "min_uncertainty": 0.0,
+          "upper_quantile": 0.1
+        },
+        {
+          "bad_fraction": 0.13914,
+          "bin": 1,
+          "count": 50000,
+          "lower_quantile": 0.1,
+          "max_uncertainty": 2.614749246276915e-05,
+          "mean_error": 0.7411197791543181,
+          "mean_uncertainty": 1.9989734436185246e-05,
+          "min_uncertainty": 1.4102010936767329e-05,
+          "upper_quantile": 0.2
+        },
+        {
+          "bad_fraction": 0.14462,
+          "bin": 2,
+          "count": 50000,
+          "lower_quantile": 0.2,
+          "max_uncertainty": 4.055586759932339e-05,
+          "mean_error": 0.7561994913242606,
+          "mean_uncertainty": 3.305979551776545e-05,
+          "min_uncertainty": 2.6148170945816673e-05,
+          "upper_quantile": 0.3
+        },
+        {
+          "bad_fraction": 0.1532,
+          "bin": 3,
+          "count": 50000,
+          "lower_quantile": 0.3,
+          "max_uncertainty": 5.9463931393111125e-05,
+          "mean_error": 0.7985374804043729,
+          "mean_uncertainty": 4.951701430414687e-05,
+          "min_uncertainty": 4.055823592352681e-05,
+          "upper_quantile": 0.4
+        },
+        {
+          "bad_fraction": 0.16258,
+          "bin": 4,
+          "count": 50000,
+          "lower_quantile": 0.4,
+          "max_uncertainty": 8.65513866301626e-05,
+          "mean_error": 0.7945765939910232,
+          "mean_uncertainty": 7.205034922946652e-05,
+          "min_uncertainty": 5.946410965407267e-05,
+          "upper_quantile": 0.5
+        },
+        {
+          "bad_fraction": 0.1767,
+          "bin": 5,
+          "count": 50000,
+          "lower_quantile": 0.5,
+          "max_uncertainty": 0.000130700966110453,
+          "mean_error": 0.8614928425342088,
+          "mean_uncertainty": 0.00010656284982615034,
+          "min_uncertainty": 8.655255078338087e-05,
+          "upper_quantile": 0.6
+        },
+        {
+          "bad_fraction": 0.20382,
+          "bin": 6,
+          "count": 50000,
+          "lower_quantile": 0.6,
+          "max_uncertainty": 0.00021559557353612036,
+          "mean_error": 0.9689195201782784,
+          "mean_uncertainty": 0.00016785049990401604,
+          "min_uncertainty": 0.00013070277054794133,
+          "upper_quantile": 0.7
+        },
+        {
+          "bad_fraction": 0.23906,
+          "bin": 7,
+          "count": 50000,
+          "lower_quantile": 0.7,
+          "max_uncertainty": 0.00042912052595056593,
+          "mean_error": 1.1453719035449075,
+          "mean_uncertainty": 0.0003033785257075215,
+          "min_uncertainty": 0.00021559743618126959,
+          "upper_quantile": 0.8
+        },
+        {
+          "bad_fraction": 0.30104,
+          "bin": 8,
+          "count": 50000,
+          "lower_quantile": 0.8,
+          "max_uncertainty": 0.0013198989909142256,
+          "mean_error": 1.3082720199668003,
+          "mean_uncertainty": 0.0007517787299992051,
+          "min_uncertainty": 0.000429155450547114,
+          "upper_quantile": 0.9
+        },
+        {
+          "bad_fraction": 0.3518,
+          "bin": 9,
+          "count": 50000,
+          "lower_quantile": 0.9,
+          "max_uncertainty": 0.2245844006538391,
+          "mean_error": 1.4239666551256183,
+          "mean_uncertainty": 0.00734875785458833,
+          "min_uncertainty": 0.001319941016845405,
+          "upper_quantile": 1.0
+        }
+      ]
+    },
+    "depth-gradient": {
+      "auprc": 0.32835374696517344,
+      "auroc": 0.6721688349380421,
+      "bad_fraction": 0.200002,
+      "bad_threshold": 0.9280394315719604,
+      "count": 500000,
+      "mean_error": 0.9529666387987784,
+      "risk_coverage_auc": 0.7273448600572014,
+      "sparsification": {
+        "ause": 0.43671146036634484
+      },
+      "spearman": 0.07066053003539943,
+      "uncertainty_bins": [
+        {
+          "bad_fraction": 0.06456,
+          "bin": 0,
+          "count": 50000,
+          "lower_quantile": 0.0,
+          "max_uncertainty": 0.0023151496425271034,
+          "mean_error": 0.5734832369767001,
+          "mean_uncertainty": 0.0009570032781353609,
+          "min_uncertainty": 0.0,
+          "upper_quantile": 0.1
+        },
+        {
+          "bad_fraction": 0.08192,
+          "bin": 1,
+          "count": 50000,
+          "lower_quantile": 0.1,
+          "max_uncertainty": 0.0070582423359155655,
+          "mean_error": 0.624666899258869,
+          "mean_uncertainty": 0.004479361551995389,
+          "min_uncertainty": 0.002315250691026449,
+          "upper_quantile": 0.2
+        },
+        {
+          "bad_fraction": 0.12426,
+          "bin": 2,
+          "count": 50000,
+          "lower_quantile": 0.2,
+          "max_uncertainty": 0.014177512377500534,
+          "mean_error": 0.7241566080602607,
+          "mean_uncertainty": 0.010453458853112534,
+          "min_uncertainty": 0.007058377843350172,
+          "upper_quantile": 0.3
+        },
+        {
+          "bad_fraction": 0.15646,
+          "bin": 3,
+          "count": 50000,
+          "lower_quantile": 0.3,
+          "max_uncertainty": 0.023424986749887466,
+          "mean_error": 0.7950457056851545,
+          "mean_uncertainty": 0.018600402043815703,
+          "min_uncertainty": 0.014177532866597176,
+          "upper_quantile": 0.4
+        },
+        {
+          "bad_fraction": 0.17946,
+          "bin": 4,
+          "count": 50000,
+          "lower_quantile": 0.4,
+          "max_uncertainty": 0.03535929694771767,
+          "mean_error": 0.878489548254099,
+          "mean_uncertainty": 0.02913413679972291,
+          "min_uncertainty": 0.023425348103046417,
+          "upper_quantile": 0.5
+        },
+        {
+          "bad_fraction": 0.20432,
+          "bin": 5,
+          "count": 50000,
+          "lower_quantile": 0.5,
+          "max_uncertainty": 0.051321983337402344,
+          "mean_error": 0.961949632706331,
+          "mean_uncertainty": 0.04291466972336173,
+          "min_uncertainty": 0.03535955399274826,
+          "upper_quantile": 0.6
+        },
+        {
+          "bad_fraction": 0.22968,
+          "bin": 6,
+          "count": 50000,
+          "lower_quantile": 0.6,
+          "max_uncertainty": 0.07424584776163101,
+          "mean_error": 1.0745324751034697,
+          "mean_uncertainty": 0.061964061117470264,
+          "min_uncertainty": 0.051322177052497864,
+          "upper_quantile": 0.7
+        },
+        {
+          "bad_fraction": 0.26492,
+          "bin": 7,
+          "count": 50000,
+          "lower_quantile": 0.7,
+          "max_uncertainty": 0.11242588609457016,
+          "mean_error": 1.1075519271406407,
+          "mean_uncertainty": 0.09152905736088753,
+          "min_uncertainty": 0.07424706220626831,
+          "upper_quantile": 0.8
+        },
+        {
+          "bad_fraction": 0.30046,
+          "bin": 8,
+          "count": 50000,
+          "lower_quantile": 0.8,
+          "max_uncertainty": 0.1956901252269745,
+          "mean_error": 1.2417719948131356,
+          "mean_uncertainty": 0.14717205501541494,
+          "min_uncertainty": 0.11242611706256866,
+          "upper_quantile": 0.9
+        },
+        {
+          "bad_fraction": 0.39398,
+          "bin": 9,
+          "count": 50000,
+          "lower_quantile": 0.9,
+          "max_uncertainty": 3.941218614578247,
+          "mean_error": 1.5480183599891182,
+          "mean_uncertainty": 0.39179766656070947,
+          "min_uncertainty": 0.1956918090581894,
+          "upper_quantile": 1.0
+        }
+      ]
+    },
+    "local-mean-transmittance": {
+      "auprc": 0.29007473642535003,
+      "auroc": 0.654534318446475,
+      "bad_fraction": 0.200002,
+      "bad_threshold": 0.9280394315719604,
+      "count": 500000,
+      "mean_error": 0.9529666387987784,
+      "risk_coverage_auc": 0.7477967211062779,
+      "sparsification": {
+        "ause": 0.4476897876295323
+      },
+      "spearman": 0.07431239553874927,
+      "uncertainty_bins": [
+        {
+          "bad_fraction": 0.10034,
+          "bin": 0,
+          "count": 50000,
+          "lower_quantile": 0.0,
+          "max_uncertainty": 0.00013781574671156704,
+          "mean_error": 0.6700691226857525,
+          "mean_uncertainty": 0.00012997466903310852,
+          "min_uncertainty": 0.00010509703133720905,
+          "upper_quantile": 0.1
+        },
+        {
+          "bad_fraction": 0.10872,
+          "bin": 1,
+          "count": 50000,
+          "lower_quantile": 0.1,
+          "max_uncertainty": 0.00014913399354554713,
+          "mean_error": 0.653228875448097,
+          "mean_uncertainty": 0.00014355474990064977,
+          "min_uncertainty": 0.00013781574671156704,
+          "upper_quantile": 0.2
+        },
+        {
+          "bad_fraction": 0.11642,
+          "bin": 2,
+          "count": 50000,
+          "lower_quantile": 0.2,
+          "max_uncertainty": 0.00016093041631393135,
+          "mean_error": 0.6711825245614998,
+          "mean_uncertainty": 0.00015484863460529596,
+          "min_uncertainty": 0.0001491341827204451,
+          "upper_quantile": 0.3
+        },
+        {
+          "bad_fraction": 0.1289,
+          "bin": 3,
+          "count": 50000,
+          "lower_quantile": 0.3,
+          "max_uncertainty": 0.00017839008069131523,
+          "mean_error": 0.698536427158206,
+          "mean_uncertainty": 0.00016884593174851034,
+          "min_uncertainty": 0.00016093069280032068,
+          "upper_quantile": 0.4
+        },
+        {
+          "bad_fraction": 0.1602,
+          "bin": 4,
+          "count": 50000,
+          "lower_quantile": 0.4,
+          "max_uncertainty": 0.00021427472529467195,
+          "mean_error": 0.7720104788945895,
+          "mean_uncertainty": 0.00019393499777128453,
+          "min_uncertainty": 0.0001783907355275005,
+          "upper_quantile": 0.5
+        },
+        {
+          "bad_fraction": 0.19194,
+          "bin": 5,
+          "count": 50000,
+          "lower_quantile": 0.5,
+          "max_uncertainty": 0.00029891199665144086,
+          "mean_error": 0.8974457017216438,
+          "mean_uncertainty": 0.00025038210289611015,
+          "min_uncertainty": 0.00021427498722914606,
+          "upper_quantile": 0.6
+        },
+        {
+          "bad_fraction": 0.23334,
+          "bin": 6,
+          "count": 50000,
+          "lower_quantile": 0.6,
+          "max_uncertainty": 0.0005051398184150457,
+          "mean_error": 1.0320846069578147,
+          "mean_uncertainty": 0.0003868316808156669,
+          "min_uncertainty": 0.00029891490703448653,
+          "upper_quantile": 0.7
+        },
+        {
+          "bad_fraction": 0.27848,
+          "bin": 7,
+          "count": 50000,
+          "lower_quantile": 0.7,
+          "max_uncertainty": 0.001057172892615199,
+          "mean_error": 1.2467526699811058,
+          "mean_uncertainty": 0.0007323732880293391,
+          "min_uncertainty": 0.0005051538464613259,
+          "upper_quantile": 0.8
+        },
+        {
+          "bad_fraction": 0.3489,
+          "bin": 8,
+          "count": 50000,
+          "lower_quantile": 0.8,
+          "max_uncertainty": 0.003283162135630846,
+          "mean_error": 1.581351077533421,
+          "mean_uncertainty": 0.0018523480894393287,
+          "min_uncertainty": 0.0010572054889053106,
+          "upper_quantile": 0.9
+        },
+        {
+          "bad_fraction": 0.33278,
+          "bin": 9,
+          "count": 50000,
+          "lower_quantile": 0.9,
+          "max_uncertainty": 0.6784681081771851,
+          "mean_error": 1.3070049030456483,
+          "mean_uncertainty": 0.038864136363812724,
+          "min_uncertainty": 0.0032832599245011806,
+          "upper_quantile": 1.0
+        }
+      ]
+    },
+    "local-std-transmittance": {
+      "auprc": 0.28546355127069767,
+      "auroc": 0.6398326350212331,
+      "bad_fraction": 0.200002,
+      "bad_threshold": 0.9280394315719604,
+      "count": 500000,
+      "mean_error": 0.9529666387987784,
+      "risk_coverage_auc": 0.7669237262323435,
+      "sparsification": {
+        "ause": 0.4673795263587359
+      },
+      "spearman": 0.06473737405821188,
+      "uncertainty_bins": [
+        {
+          "bad_fraction": 0.11076,
+          "bin": 0,
+          "count": 50000,
+          "lower_quantile": 0.0,
+          "max_uncertainty": 4.806577999261208e-05,
+          "mean_error": 0.6812079745320014,
+          "mean_uncertainty": 3.5478928479797103e-05,
+          "min_uncertainty": 3.588179879443487e-06,
+          "upper_quantile": 0.1
+        },
+        {
+          "bad_fraction": 0.1258,
+          "bin": 1,
+          "count": 50000,
+          "lower_quantile": 0.1,
+          "max_uncertainty": 7.03719342709519e-05,
+          "mean_error": 0.6981904340648379,
+          "mean_uncertainty": 5.918596722563962e-05,
+          "min_uncertainty": 4.8066183808259666e-05,
+          "upper_quantile": 0.2
+        },
+        {
+          "bad_fraction": 0.12452,
+          "bin": 2,
+          "count": 50000,
+          "lower_quantile": 0.2,
+          "max_uncertainty": 9.502335888100788e-05,
+          "mean_error": 0.702529228489974,
+          "mean_uncertainty": 8.217308883351506e-05,
+          "min_uncertainty": 7.037201430648565e-05,
+          "upper_quantile": 0.3
+        },
+        {
+          "bad_fraction": 0.13186,
+          "bin": 3,
+          "count": 50000,
+          "lower_quantile": 0.3,
+          "max_uncertainty": 0.0001312112872255966,
+          "mean_error": 0.7157945671056892,
+          "mean_uncertainty": 0.00011167603858586517,
+          "min_uncertainty": 9.502342436462641e-05,
+          "upper_quantile": 0.4
+        },
+        {
+          "bad_fraction": 0.15366,
+          "bin": 4,
+          "count": 50000,
+          "lower_quantile": 0.4,
+          "max_uncertainty": 0.00019627266738098115,
+          "mean_error": 0.7931082629473257,
+          "mean_uncertainty": 0.00016010923552297755,
+          "min_uncertainty": 0.0001312113890890032,
+          "upper_quantile": 0.5
+        },
+        {
+          "bad_fraction": 0.18864,
+          "bin": 5,
+          "count": 50000,
+          "lower_quantile": 0.5,
+          "max_uncertainty": 0.0003288135922048241,
+          "mean_error": 0.8781313654676685,
+          "mean_uncertainty": 0.0002544492541931686,
+          "min_uncertainty": 0.0001962732058018446,
+          "upper_quantile": 0.6
+        },
+        {
+          "bad_fraction": 0.23596,
+          "bin": 6,
+          "count": 50000,
+          "lower_quantile": 0.6,
+          "max_uncertainty": 0.0006124150822870433,
+          "mean_error": 1.1183044470147425,
+          "mean_uncertainty": 0.00045168761092121714,
+          "min_uncertainty": 0.00032881880179047585,
+          "upper_quantile": 0.7
+        },
+        {
+          "bad_fraction": 0.27698,
+          "bin": 7,
+          "count": 50000,
+          "lower_quantile": 0.7,
+          "max_uncertainty": 0.001317380229011178,
+          "mean_error": 1.2905554255918852,
+          "mean_uncertainty": 0.0009079468661802821,
+          "min_uncertainty": 0.0006124207866378129,
+          "upper_quantile": 0.8
+        },
+        {
+          "bad_fraction": 0.32452,
+          "bin": 8,
+          "count": 50000,
+          "lower_quantile": 0.8,
+          "max_uncertainty": 0.003793991170823574,
+          "mean_error": 1.3863424080452114,
+          "mean_uncertainty": 0.002243006891575642,
+          "min_uncertainty": 0.0013173866318538785,
+          "upper_quantile": 0.9
+        },
+        {
+          "bad_fraction": 0.32732,
+          "bin": 9,
+          "count": 50000,
+          "lower_quantile": 0.9,
+          "max_uncertainty": 0.22658877074718475,
+          "mean_error": 1.265502274728443,
+          "mean_uncertainty": 0.019836314127091317,
+          "min_uncertainty": 0.0037940971087664366,
+          "upper_quantile": 1.0
+        }
+      ]
+    },
+    "transmittance": {
+      "auprc": 0.28721715419550015,
+      "auroc": 0.631172381647917,
+      "bad_fraction": 0.200002,
+      "bad_threshold": 0.9280394315719604,
+      "count": 500000,
+      "mean_error": 0.9529666387987784,
+      "risk_coverage_auc": 0.7752507691736276,
+      "sparsification": {
+        "ause": 0.4786128288474845
+      },
+      "spearman": 0.08433532890182625,
+      "uncertainty_bins": [
+        {
+          "bad_fraction": 0.13088,
+          "bin": 0,
+          "count": 50000,
+          "lower_quantile": 0.0,
+          "max_uncertainty": 0.00010389089584350586,
+          "mean_error": 0.7237390297032869,
+          "mean_uncertainty": 0.00010172757148742676,
+          "min_uncertainty": 0.00010001659393310547,
+          "upper_quantile": 0.1
+        },
+        {
+          "bad_fraction": 0.13532,
+          "bin": 1,
+          "count": 50000,
+          "lower_quantile": 0.1,
+          "max_uncertainty": 0.00011032819747924805,
+          "mean_error": 0.7323163543393314,
+          "mean_uncertainty": 0.00010688832521438599,
+          "min_uncertainty": 0.00010389089584350586,
+          "upper_quantile": 0.2
+        },
+        {
+          "bad_fraction": 0.13788,
+          "bin": 2,
+          "count": 50000,
+          "lower_quantile": 0.2,
+          "max_uncertainty": 0.00011992454528808594,
+          "mean_error": 0.7421978669304752,
+          "mean_uncertainty": 0.00011478663802146912,
+          "min_uncertainty": 0.00011032819747924805,
+          "upper_quantile": 0.3
+        },
+        {
+          "bad_fraction": 0.14242,
+          "bin": 3,
+          "count": 50000,
+          "lower_quantile": 0.3,
+          "max_uncertainty": 0.00013446807861328125,
+          "mean_error": 0.7443566351445622,
+          "mean_uncertainty": 0.00012664116382598878,
+          "min_uncertainty": 0.00011992454528808594,
+          "upper_quantile": 0.4
+        },
+        {
+          "bad_fraction": 0.15002,
+          "bin": 4,
+          "count": 50000,
+          "lower_quantile": 0.4,
+          "max_uncertainty": 0.00015783309936523438,
+          "mean_error": 0.7732548594103154,
+          "mean_uncertainty": 0.0001451799142360687,
+          "min_uncertainty": 0.00013446807861328125,
+          "upper_quantile": 0.5
+        },
+        {
+          "bad_fraction": 0.16488,
+          "bin": 5,
+          "count": 50000,
+          "lower_quantile": 0.5,
+          "max_uncertainty": 0.00020176172256469727,
+          "mean_error": 0.8281836917149149,
+          "mean_uncertainty": 0.00017710318207740783,
+          "min_uncertainty": 0.00015783309936523438,
+          "upper_quantile": 0.6
+        },
+        {
+          "bad_fraction": 0.19402,
+          "bin": 6,
+          "count": 50000,
+          "lower_quantile": 0.6,
+          "max_uncertainty": 0.00030994415283203125,
+          "mean_error": 0.9190598431365788,
+          "mean_uncertainty": 0.0002464175271987915,
+          "min_uncertainty": 0.00020176172256469727,
+          "upper_quantile": 0.7
+        },
+        {
+          "bad_fraction": 0.251,
+          "bin": 7,
+          "count": 50000,
+          "lower_quantile": 0.7,
+          "max_uncertainty": 0.0006876587867736816,
+          "mean_error": 1.122058041604758,
+          "mean_uncertainty": 0.0004562561190128326,
+          "min_uncertainty": 0.00030994415283203125,
+          "upper_quantile": 0.8
+        },
+        {
+          "bad_fraction": 0.33762,
+          "bin": 8,
+          "count": 50000,
+          "lower_quantile": 0.8,
+          "max_uncertainty": 0.0027132630348205566,
+          "mean_error": 1.5298109990776232,
+          "mean_uncertainty": 0.0013838004982471466,
+          "min_uncertainty": 0.000687718391418457,
+          "upper_quantile": 0.9
+        },
+        {
+          "bad_fraction": 0.35598,
+          "bin": 9,
+          "count": 50000,
+          "lower_quantile": 0.9,
+          "max_uncertainty": 0.7491921782493591,
+          "mean_error": 1.4146890669259322,
+          "mean_uncertainty": 0.0400542579138279,
+          "min_uncertainty": 0.002713501453399658,
+          "upper_quantile": 1.0
+        }
+      ]
+    }
+  },
+  "source": {
+    "bytes": 8609694,
+    "filename": "icl_lr_kt3_s43_uncertainty_v2_budget_025_depth-aligned-abs-rel.json",
+    "omitted_fields": [
+      "frames",
+      "signals.*.sparsification.curve"
+    ],
+    "sha256": "a17adae01db14c4514f2bc7b3e66692c68742b570ebd6a8614c1cea0dfdefc79"
+  },
+  "status": "compact_summary"
+}

@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "uncertainty-3dgs-neural-mapping"
 version = "0.1.0"
-description = "Evaluation tools for calibrated uncertainty in 3D Gaussian neural maps."
+description = "Controlled acquisition and geometry evaluation for sparse-view Gaussian neural maps."
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = []

@@ -3,9 +3,14 @@
 This directory is the workshop-paper source of record. Quantitative prose and tables must be generated from the audited JSON experiment record; do not hand-copy numbers from terminal output.
 
 ```bash
+make verify-research
 cd paper
 latexmk -pdf main.tex
 ```
+
+CI repeats the record/table audit and compiles `main.tex` in a pinned TeX Live
+action. A paper build is not accepted if generated evidence drifts from the
+committed record.
 
 Before a release, verify that:
 

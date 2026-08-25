@@ -9,7 +9,8 @@ each holdout where the sequence boundary permits.  Training, validation, and
 test filenames are disjoint.
 
 \paragraph{Training.}
-All models use Nerfstudio Splatfacto for 7,000 iterations on NVIDIA L4 GPUs.
+All models use Nerfstudio Splatfacto~\cite{tancik2023nerfstudio} for 7,000
+iterations on NVIDIA L4 GPUs.
 Camera optimization is disabled.  We disable orientation, centering, and pose
 auto-scaling so rendered depth and fused surfaces remain in the published
 metric frame.  Primary active--random comparisons use optimization seeds 42
@@ -29,4 +30,18 @@ The co-primary outcomes are PSNR and \SI{5}{cm} surface F-score.  We report all
 eight active--random paired effects, means within trajectory, the grand mean,
 sign counts, and a trajectory-cluster bootstrap interval.  The four seed-42
 control sets are reported separately.  Decision rules and missing-run behavior
-were committed before confirmatory outcome inspection.
+were committed before confirmatory outcome inspection.  The primary gate
+requires positive grand-mean effects on both co-primary outcomes.  Replication
+requires favorable effects on at least six of eight pairs and three of four
+trajectory means for both outcomes.  The diagnostic gate requires positive
+mean Spearman correlation and AUROC above 0.5 in at least six of eight seed
+models.  We enumerate all $4^4=256$ trajectory-cluster resamples; with four
+trajectory clusters, the resulting intervals are descriptive rather than
+asymptotic inference.
+
+All candidate scores are computed without candidate RGB or reference depth.
+Reference depth is introduced only after the selection is frozen, to measure
+diagnostic error ranking and final reconstruction quality.  Split manifests
+are audited for exact 25/50-frame budgets, 10 validation and 20 test frames,
+partition disjointness, retained seed membership, and identical holdouts across
+methods.
