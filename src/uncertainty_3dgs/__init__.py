@@ -14,6 +14,7 @@ from .metrics import (
 from .splits import (
     SplitPlan,
     active_pose_novelty_order,
+    active_trajectory_novelty_order,
     generate_split_plan,
     load_frame_ids,
     load_frame_positions,
@@ -23,6 +24,7 @@ from .splits import (
 __all__ = [
     "SplitPlan",
     "active_pose_novelty_order",
+    "active_trajectory_novelty_order",
     "average_precision_score",
     "evaluate_uncertainty",
     "gaussian_nll",

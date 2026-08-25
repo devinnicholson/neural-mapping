@@ -15,6 +15,7 @@ if str(SRC) not in sys.path:
 from uncertainty_3dgs.splits import (
     active_pose_novelty_order,
     active_score_pose_hybrid_order,
+    active_trajectory_novelty_order,
     generate_split_plan,
     load_frame_ids,
     load_frame_positions,
@@ -239,6 +240,19 @@ class SplitGenerationTests(unittest.TestCase):
         )
 
         self.assertEqual(order[:2], ["frame_005.png", "frame_003.png"])
+
+    def test_active_trajectory_novelty_expands_fixed_seed_by_time_coverage(self) -> None:
+        frames = [f"frame_{index}.png" for index in range(9)]
+        original_order = {frame: index for index, frame in enumerate(frames)}
+
+        order = active_trajectory_novelty_order(
+            [frames[index] for index in (1, 2, 3, 5, 6, 7)],
+            [frames[0], frames[4], frames[8]],
+            original_order,
+        )
+
+        self.assertEqual(set(order), {frames[index] for index in (1, 2, 3, 5, 6, 7)})
+        self.assertEqual(order[:2], [frames[2], frames[6]])
 
     def test_active_score_pose_hybrid_balances_score_and_pose(self) -> None:
         frames = [f"frame_{index:03d}.png" for index in range(5)]

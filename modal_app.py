@@ -5,6 +5,7 @@ Run examples:
     modal run modal_app.py --action env
     modal run modal_app.py --action prepare
     modal run modal_app.py --action prepare-tum --data-scene-name tum_fr1_desk_v1
+    modal run modal_app.py --action prepare-icl --icl-trajectory lr_kt0 --data-scene-name icl_lr_kt0_clean_v1
     modal run modal_app.py --action smoke --budget 25 --iterations 3000
     modal run modal_app.py --action eval --scene-name poster_modal_smoke --budget 25
     modal run modal_app.py --action depth-eval --data-scene-name tum_fr1_desk_v1 --scene-name tum_fr1_desk_v1_b25_7k --budget 25
@@ -60,7 +61,7 @@ image = (
         "torchaudio==2.11.0+cu128 --index-url https://download.pytorch.org/whl/cu128"
     )
     .run_commands(
-        "python -m pip install nerfstudio==1.1.5 gsplat==1.4.0 "
+        "python -m pip install nerfstudio==1.1.5 gsplat==1.4.0 scipy==1.15.3 "
         "'huggingface_hub[hf_xet]' 'numpy<2.0.0,>=1.26.0' 'setuptools<82'"
     )
     .run_commands(
@@ -461,6 +462,117 @@ def prepare_tum_rgbd_sequence(
         "status": "ok",
         "dataset": "tum_rgbd",
         "sequence_name": sequence_name,
+        "scene_name": scene_name,
+        "selection_method": selection_method,
+        "holdout_method": holdout_method,
+        "holdout_gap": holdout_gap,
+        "max_frames": max_frames,
+        "frame_stride": frame_stride,
+        "source_dir": str(source_dir),
+        "split_json": str(split_json),
+        "materialized_root": str(materialized_root),
+        "association_summary": _read_json(source_dir / "association_summary.json"),
+        "summary": _read_json(materialized_root / "materialization_summary.json"),
+    }
+
+
+@app.function(image=image, volumes=volumes, timeout=7200)
+def prepare_icl_nuim_sequence(
+    trajectory: str = "lr_kt0",
+    variant: str = "clean",
+    scene_name: str = "icl_lr_kt0_clean_v1",
+    budgets: list[int] | None = None,
+    val_count: int = 10,
+    test_count: int = 20,
+    seed: int = 20260825,
+    selection_method: str = "random",
+    holdout_method: str = "temporal-block",
+    holdout_gap: int = 5,
+    max_frames: int = 240,
+    frame_stride: int = 1,
+) -> dict[str, Any]:
+    """Download, convert, split, and materialize an ICL-NUIM trajectory."""
+
+    budgets = budgets or [25, 50]
+    raw_root = DATA_ROOT / "icl_nuim" / f"{trajectory}_{variant}"
+    source_dir = DATA_ROOT / "nerfstudio" / scene_name
+    split_json = DATA_ROOT / "splits" / f"{scene_name}.json"
+    materialized_root = DATA_ROOT / "nerfstudio_splits" / scene_name
+
+    for directory in (
+        DATA_ROOT / "icl_nuim",
+        DATA_ROOT / "nerfstudio",
+        DATA_ROOT / "splits",
+        DATA_ROOT / "nerfstudio_splits",
+    ):
+        directory.mkdir(parents=True, exist_ok=True)
+
+    _run(
+        [
+            "python",
+            "scripts/prepare_icl_nuim.py",
+            "--trajectory",
+            trajectory,
+            "--variant",
+            variant,
+            "--raw-root",
+            str(raw_root),
+            "--output-dir",
+            str(source_dir),
+            "--scene-name",
+            scene_name,
+            "--max-frames",
+            str(max_frames),
+            "--frame-stride",
+            str(frame_stride),
+        ]
+    )
+    _run(
+        [
+            "python",
+            "scripts/generate_splits.py",
+            "--frames",
+            str(source_dir / "transforms.json"),
+            "--budgets",
+            *[str(budget) for budget in budgets],
+            "--val-count",
+            str(val_count),
+            "--test-count",
+            str(test_count),
+            "--scene",
+            scene_name,
+            "--seed",
+            str(seed),
+            "--selection-method",
+            selection_method,
+            "--holdout-method",
+            holdout_method,
+            "--holdout-gap",
+            str(holdout_gap),
+            "--output",
+            str(split_json),
+        ]
+    )
+    _run(
+        [
+            "python",
+            "scripts/materialize_nerfstudio_split.py",
+            "--source-dir",
+            str(source_dir),
+            "--split-json",
+            str(split_json),
+            "--output-root",
+            str(materialized_root),
+            "--budgets",
+            *[str(budget) for budget in budgets],
+        ]
+    )
+    data_volume.commit()
+    return {
+        "status": "ok",
+        "dataset": "icl_nuim",
+        "trajectory": trajectory,
+        "variant": variant,
         "scene_name": scene_name,
         "selection_method": selection_method,
         "holdout_method": holdout_method,
@@ -1034,6 +1146,78 @@ def depth_eval_latest_run(
     }
 
 
+@app.function(image=image, gpu=DEFAULT_GPU, volumes=volumes, timeout=EVAL_TIMEOUT_SECONDS)
+def geometry_eval_latest_run(
+    scene_name: str,
+    data_scene_name: str,
+    budget: int,
+    config_path: str | None = None,
+    target_source: str = "auto",
+    cache_images: str = "cpu",
+    min_depth: float = 0.05,
+    max_depth: float = 10.0,
+    min_accumulation: float = 0.0,
+    max_pixels_per_frame: int = 20000,
+    max_points: int = 500000,
+    voxel_size: float = 0.02,
+    thresholds: list[float] | None = None,
+    max_frames: int | None = None,
+) -> dict[str, Any]:
+    """Evaluate fused held-out world-space surface geometry."""
+
+    run_root = OUTPUT_ROOT / "runs" / scene_name / "splatfacto" / _budget_dir_name(budget)
+    data_dir = DATA_ROOT / "nerfstudio_splits" / data_scene_name / _budget_dir_name(budget)
+    (run_root / "metrics").mkdir(parents=True, exist_ok=True)
+    if not data_dir.exists():
+        raise FileNotFoundError(f"Missing materialized dataset: {data_dir}")
+    if config_path is None:
+        configs = sorted((run_root / "train").glob("**/config.yml"))
+        if not configs:
+            raise FileNotFoundError(f"No config.yml found under {run_root / 'train'}")
+        config_path = str(configs[-1])
+
+    output_path = run_root / "metrics" / "geometry_eval.json"
+    command = [
+        "python",
+        "scripts/evaluate_geometry_metrics.py",
+        "--load-config",
+        config_path,
+        "--data",
+        str(data_dir),
+        "--output",
+        str(output_path),
+        "--target-source",
+        target_source,
+        "--cache-images",
+        cache_images,
+        "--min-depth",
+        str(min_depth),
+        "--max-depth",
+        str(max_depth),
+        "--min-accumulation",
+        str(min_accumulation),
+        "--max-pixels-per-frame",
+        str(max_pixels_per_frame),
+        "--max-points",
+        str(max_points),
+        "--voxel-size",
+        str(voxel_size),
+        "--thresholds",
+        *[str(value) for value in (thresholds or [0.05, 0.10])],
+    ]
+    if max_frames is not None:
+        command.extend(["--max-frames", str(max_frames)])
+    _run(command, env={"TORCH_FORCE_NO_WEIGHTS_ONLY_LOAD": "1"})
+    outputs_volume.commit()
+    report = _read_json(output_path)
+    return {
+        "status": "ok",
+        "metrics_path": str(output_path),
+        "summary": report.get("summary"),
+        "metadata": report.get("metadata"),
+    }
+
+
 @app.function(image=image, volumes=volumes, timeout=300)
 def summarize_report(report_path: str) -> dict[str, Any]:
     """Read a report JSON from the Modal output volume and compact key metrics."""
@@ -1152,6 +1336,8 @@ def main(
     data_scene_name: str = "poster_available",
     capture_name: str = "poster",
     tum_sequence: str = "freiburg1_desk",
+    icl_trajectory: str = "lr_kt0",
+    dataset_variant: str = "clean",
     source_data_scene_name: str = "poster_available",
     base_split_scene_name: str = "poster_available",
     selection_method: str = "random",
@@ -1179,6 +1365,9 @@ def main(
     max_depth: float = 10.0,
     min_accumulation: float = 0.0,
     depth_max_frames: int = 0,
+    geometry_max_points: int = 500000,
+    geometry_voxel_size: float = 0.02,
+    geometry_thresholds: str = "0.05 0.10",
     render_map_signals: str = "transmittance",
     patch_size: int = 15,
     ensemble_scene_names: str = "",
@@ -1203,6 +1392,23 @@ def main(
         print(
             prepare_tum_rgbd_sequence.remote(
                 sequence_name=tum_sequence,
+                scene_name=data_scene_name,
+                budgets=_parse_int_fields(budgets) or None,
+                val_count=val_count,
+                test_count=test_count,
+                seed=split_seed,
+                selection_method=selection_method,
+                holdout_method=holdout_method,
+                holdout_gap=holdout_gap,
+                max_frames=max_frames,
+                frame_stride=frame_stride,
+            )
+        )
+    elif action == "prepare-icl":
+        print(
+            prepare_icl_nuim_sequence.remote(
+                trajectory=icl_trajectory,
+                variant=dataset_variant,
                 scene_name=data_scene_name,
                 budgets=_parse_int_fields(budgets) or None,
                 val_count=val_count,
@@ -1312,6 +1518,27 @@ def main(
                 indent=2,
             )
         )
+    elif action == "geometry-eval":
+        print(
+            json.dumps(
+                geometry_eval_latest_run.remote(
+                    scene_name=scene_name,
+                    data_scene_name=data_scene_name,
+                    budget=budget,
+                    target_source=depth_target_source,
+                    cache_images=depth_cache_images,
+                    min_depth=min_depth,
+                    max_depth=max_depth,
+                    min_accumulation=min_accumulation,
+                    max_pixels_per_frame=max_pixels_per_frame,
+                    max_points=geometry_max_points,
+                    voxel_size=geometry_voxel_size,
+                    thresholds=[float(value) for value in _split_fields(geometry_thresholds)],
+                    max_frames=depth_max_frames or None,
+                ),
+                indent=2,
+            )
+        )
     elif action == "metrics":
         for row in collect_metric_rows.remote():
             print(json.dumps(row, indent=2))
@@ -1351,8 +1578,8 @@ def main(
     else:
         raise ValueError(
             f"Unknown action {action!r}. "
-            "Use env, prepare, prepare-tum, score-candidates, frame-uncertainty, "
+            "Use env, prepare, prepare-tum, prepare-icl, score-candidates, frame-uncertainty, "
             "render-uncertainty-maps, ensemble-uncertainty-maps, "
-            "prepare-active, train, eval, depth-eval, metrics, split-summary, "
+            "prepare-active, train, eval, depth-eval, geometry-eval, metrics, split-summary, "
             "report-summary, or smoke."
         )

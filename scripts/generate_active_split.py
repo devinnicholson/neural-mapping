@@ -17,6 +17,7 @@ if str(SRC_ROOT) not in sys.path:
 from uncertainty_3dgs.splits import (
     SplitPlan,
     active_pose_novelty_order,
+    active_trajectory_novelty_order,
     active_score_pose_hybrid_order,
     load_frame_ids,
     load_frame_positions,
@@ -38,11 +39,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--scene", default=None, help="Optional scene name.")
     parser.add_argument(
         "--strategy",
-        choices=("pose-novelty", "score-desc", "score-pose-hybrid"),
+        choices=("pose-novelty", "trajectory-novelty", "score-desc", "score-pose-hybrid"),
         default="pose-novelty",
         help=(
             "How to select extra frames. pose-novelty expands from the seed set by "
-            "camera-center novelty. score-desc selects highest scored candidates. "
+            "camera-center novelty. trajectory-novelty expands by acquisition-time coverage. "
+            "score-desc selects highest scored candidates. "
             "score-pose-hybrid mixes candidate score with camera-center novelty."
         ),
     )
@@ -106,6 +108,8 @@ def main() -> int:
         if not positions:
             raise SystemExit("--strategy pose-novelty requires transform_matrix camera poses.")
         extra_order = active_pose_novelty_order(candidates, seed_train, positions, original_order)
+    elif args.strategy == "trajectory-novelty":
+        extra_order = active_trajectory_novelty_order(candidates, seed_train, original_order)
     elif args.strategy == "score-desc":
         if args.scores is None:
             raise SystemExit("--strategy score-desc requires --scores.")

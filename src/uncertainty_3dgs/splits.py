@@ -338,6 +338,37 @@ def active_pose_novelty_order(
     return ordered
 
 
+def active_trajectory_novelty_order(
+    candidates: Sequence[str],
+    seed_frames: Sequence[str],
+    original_order: Mapping[str, int],
+) -> list[str]:
+    """Order candidates farthest-first in acquisition time from a fixed seed set."""
+
+    ordered_candidates = _order_like_input(candidates, original_order)
+    if not seed_frames:
+        raise ValueError("active trajectory novelty selection requires at least one seed frame.")
+    missing = [frame for frame in [*seed_frames, *ordered_candidates] if frame not in original_order]
+    if missing:
+        raise ValueError(f"Missing original-order entries for frames: {missing[:5]}")
+
+    selected_indices = [original_order[frame] for frame in seed_frames]
+    remaining = set(ordered_candidates)
+    ordered: list[str] = []
+    while remaining:
+        next_frame = max(
+            remaining,
+            key=lambda frame: (
+                min(abs(original_order[frame] - index) for index in selected_indices),
+                -original_order[frame],
+            ),
+        )
+        ordered.append(next_frame)
+        selected_indices.append(original_order[next_frame])
+        remaining.remove(next_frame)
+    return ordered
+
+
 def active_score_pose_hybrid_order(
     candidates: Sequence[str],
     seed_frames: Sequence[str],
