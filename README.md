@@ -1,129 +1,167 @@
 # Uncertainty-Aware 3D Gaussian Neural Mapping
 
-Research project roadmap for calibrated uncertainty in 3D Gaussian scene maps.
+Research code for uncertainty-guided frame selection in sparse-view 3D Gaussian
+scene reconstruction.
 
-Core question:
+> **Status:** active research prototype. The repository contains a working
+> lightweight evaluation harness and repeated pilot results. The central policy
+> and final benchmark are not yet frozen, so the reported evidence should not be
+> interpreted as a submission-ready result.
 
-> Can uncertainty maps from a 3D Gaussian scene representation predict where novel-view RGB, depth, or geometry will fail under partial indoor observations?
+## Research Question
 
-Primary roadmap: [ROADMAP.md](ROADMAP.md)
+Given an initial set of posed RGB or RGB-D observations and a pool of candidate
+camera views, can model-derived uncertainty identify which additional frames
+will most improve a 3D Gaussian scene representation?
 
-## Current Status
+The current hypothesis is deliberately narrower:
 
-The current strongest result is an offline active-view selection signal for
-Nerfstudio/Splatfacto scenes:
+> At compact frame budgets, upper-tail model uncertainty is a useful acquisition
+> signal when it is constrained by camera-pose diversity. Uncertainty-only
+> selection is less robust because it can concentrate on redundant or
+> systematically difficult views.
 
-- Train budget-25 seed models.
-- Score candidate views with ensemble RGB disagreement.
-- Aggregate each frame by top-decile uncertainty.
-- Expand to budget 50 with a `score-pose-hybrid` selector that mixes
-  uncertainty tail risk and camera-pose diversity.
+This repository studies **offline, pool-based frame selection**. It does not
+claim to implement online SLAM, autonomous exploration, real-time next-best-view
+planning, or a universally calibrated probabilistic model.
 
-As of 2026-06-09 UTC, this rule improved held-out budget-50 quality over
-same-seed random selection on repeated `dozer`, `redwoods2`, `library`, and
-`bww_entrance` Nerfstudio-style splits. The strongest fresh replication is
-`bww_entrance` v1-v4, averaging about +2.016 PSNR, +0.031 SSIM, and -0.021
-LPIPS. Across `dozer`, `redwoods2`, and `bww_entrance`, the same rule averages
-about +1.165 PSNR, +0.026 SSIM, and -0.017 LPIPS across twelve ensemble-tail
-seeds. On `library` v1-v3 it averaged about +0.496 PSNR, +0.015 SSIM, and an
-LPIPS change of -0.003. On the harder `kitchen` scene, the same rule averaged
-about +0.687 PSNR, +0.002 SSIM, and -0.028 LPIPS across v1-v4, but one seed
-regressed sharply, so this remains a mixed hard-scene result rather than a
-clean replication. See [docs/results.md](docs/results.md) for the full tables,
-Modal run IDs, and caveats.
+## Method Overview
 
-As of 2026-06-11 UTC, the first depth-bearing active loop also runs on
-TUM RGB-D `freiburg1_desk`. Across three locked RGB-D split seeds, random
-budget-50 training improves over budget 25 on both RGB and held-out depth, and
-transmittance-tail active expansion improves over the same-seed random
-budget-50 baseline. On v3, the random baseline moved from 15.432 PSNR /
-0.576 SSIM / 0.420 LPIPS at budget 25 to 17.676 PSNR / 0.664 SSIM /
-0.343 LPIPS at budget 50; transmittance-tail active selection then improved the
-budget-50 result to 18.362 PSNR / 0.684 SSIM / 0.319 LPIPS. The same v3 active
-run reduced raw depth AbsRel from 0.358 to 0.347 and median-aligned AbsRel
-from 0.351 to 0.315 versus random budget 50. This is now a three-seed RGB-D
-pilot on `freiburg1_desk`.
+The current acquisition loop is:
 
-The same depth-bearing loop now has a second-sequence check on TUM RGB-D
-`freiburg1_room`. On room v1, transmittance-tail active expansion improved
-random budget 50 from 17.343 PSNR / 0.635 SSIM / 0.344 LPIPS to 17.844 PSNR /
-0.643 SSIM / 0.345 LPIPS and reduced raw depth RMSE from 0.957m to 0.919m. On
-room v2, local-mean-transmittance active selection traded RGB quality for depth:
-PSNR moved from 16.886 to 16.621, but raw AbsRel improved from 0.507 to 0.490
-and raw RMSE improved from 1.046m to 1.003m versus random budget 50. On room
-v3, accumulation-gradient active selection was a small all-around win over
-random budget 50: 17.571 to 17.590 PSNR, 0.647 to 0.650 SSIM, raw AbsRel 0.461
-to 0.458, and median-aligned AbsRel 0.410 to 0.390. Across three room seeds,
-adaptive active selection improves depth consistently, while RGB is positive on
-two of three seeds and mixed on average. A fixed transmittance-only room control
-was less robust: it improved room v2 depth versus random budget 50, but
-regressed room v3 RGB and depth. A fixed accumulation-gradient room control was
-also mixed: it was strong on room v1 and modestly useful on room v3, but
-regressed room v2. A room v2/v3 rank ensemble of transmittance and
-local-mean-transmittance was also only diagnostic: v2 improved depth versus
-random budget 50 but still regressed RGB, while v3 regressed both RGB and depth
-versus random. `freiburg1_room` currently needs signal-specific selection
-rather than a one-size-fits-all RGB-D rule.
+1. Construct a deterministic seed split with fixed validation and test frames.
+2. Train one or more Splatfacto seed models on the initial frame budget.
+3. Render the remaining candidate poses and compute per-pixel uncertainty.
+4. Aggregate each candidate by upper-tail risk, currently the mean uncertainty
+   in its highest-uncertainty pixel decile.
+5. Greedily select additional frames using uncertainty and pose novelty.
+6. Retrain under the same optimization budget and evaluate on the untouched
+   test set.
 
-As of 2026-06-25 UTC, a third TUM RGB-D sequence, `freiburg1_xyz`, now has six
-locked split seeds. Across xyz v1-v6, depth-gradient active expansion is the
-strongest fixed-policy average, improving random budget 50 by about +0.264 PSNR,
-+0.007 SSIM, -0.003 LPIPS, -0.005 median-aligned AbsRel, and +0.008 aligned
-delta1. Transmittance-tail selection remains RGB-positive on average, but v5
-and v6 both regressed on aligned depth, which weakens it as a universal geometry
-policy. The practical takeaway is that seed-report signal selection matters:
-transmittance is often strong for photometric quality, while depth-gradient has
-been the safer fixed xyz signal. A stronger transmittance weight
-(`score_weight=0.65`) also regressed xyz v3, so `score_weight=0.35` remains the
-better default for the score/pose mix.
+For candidate view $v$, selected frame set $S$, normalized tail-risk score
+$\widetilde{U}(v)$, and normalized distance to the nearest selected camera
+$\widetilde{D}(v,S)$, the hybrid acquisition score is
 
-As of 2026-06-26 UTC, a longer `freiburg1_xyz` v9 budget sweep tested one
-locked split from budget 25 through the maximum feasible budget 150. The
-depth-gradient hybrid selector with `score_weight=0.65` improved RGB quality at
-budgets 50, 75, 100, and 125. The cleanest RGB/depth win was budget 100:
-active selection improved PSNR from 19.220 to 19.347 and median-aligned AbsRel
-from 0.171 to 0.163 versus random. At budget 150, where all non-val/test frames
-are consumed, random won strongly; this makes the sweep useful as a saturation
-check and suggests the active policy is best treated as compact subset
-selection, not as a full trajectory ordering rule.
+$$
+A(v \mid S) = \lambda\widetilde{U}(v) + (1-\lambda)\widetilde{D}(v,S).
+$$
 
-The current static dashboard is available at [docs/dashboard.html](docs/dashboard.html).
-The reproducibility handoff is in [docs/run-manifest.md](docs/run-manifest.md),
-the compact blog packet is in
-[docs/blog-assets/active-view-selection-packet.md](docs/blog-assets/active-view-selection-packet.md),
-and the next RGB-D validation runbook is in
-[docs/next-rgbd-validation.md](docs/next-rgbd-validation.md).
+The experiments compare this rule with random selection, trajectory coverage,
+pose coverage, uncertainty-only selection, and renderer-derived uncertainty
+signals. Final claims will use one policy frozen on development scenes and
+evaluated unchanged on held-out scenes.
 
-## Current Build Target
+## Current Evidence
 
-This repository is being built as a lightweight research harness around a heavier Nerfstudio/Splatfacto workflow.
+The results below are pilot evidence. They establish that the pipeline works and
+motivate the frozen benchmark; they do not yet establish a general acquisition
+policy.
 
-Initial local tooling focuses on:
+| Study | Current result | Interpretation |
+|---|---|---|
+| Nerfstudio sample scenes | Across twelve `dozer`, `redwoods2`, and `bww_entrance` ensemble-tail seeds, the hybrid selector improved the same-seed random budget-50 baseline by approximately **+1.165 PSNR**, **+0.026 SSIM**, and **-0.017 LPIPS** on average. | Strongest repeated RGB pilot. |
+| `library` and `kitchen` | `library` improved on average; `kitchen` contained a substantial regression on one seed despite positive average PSNR and LPIPS. | Evidence of transfer, but not uniform robustness. |
+| TUM RGB-D `freiburg1_xyz` v1-v6 | Depth-gradient selection improved the random budget-50 baseline by approximately **+0.264 PSNR**, **+0.007 SSIM**, **-0.003 LPIPS**, and **-0.005 median-aligned AbsRel** on average. | Best current fixed-policy RGB-D result. |
+| TUM RGB-D budget sweep | The hybrid policy helped at intermediate budgets on `freiburg1_xyz` v9, with the cleanest RGB/depth result at budget 100, but regressed at the saturated budget of 150. | Supports compact subset selection rather than full-trajectory ordering. |
+| RGB-D transfer checks | `freiburg1_desk` v4 transferred positively at budgets 50 and 100; `freiburg1_room` v4 was mixed at budget 50 and negative at budget 100. | The current policy does not transfer reliably to every scene regime. |
 
-- dataset split manifests for Replica, ScanNet++, ScanNet, and TUM-style frame pools
-- uncertainty/error metric computation
-- experiment configuration templates
-- reproducible protocol documentation
+Full per-scene tables, negative results, run identifiers, and interpretation are
+maintained in [docs/results.md](docs/results.md). The corresponding run commands
+and artifact locations are recorded in
+[docs/run-manifest.md](docs/run-manifest.md). A compact visual summary is
+available in [docs/dashboard.html](docs/dashboard.html).
 
-Heavy training dependencies such as Nerfstudio, PyTorch, CUDA, and gsplat should stay outside the lightweight utilities until the baseline pipeline is ready.
+## Claim Boundary
 
-## Repository Layout
+The evidence currently supports the following statement:
 
-- `configs/`: machine-readable experiment templates.
-- `docs/`: implementation plan, experiment protocol, and literature map.
-- `scripts/`: lightweight command-line utilities.
-- `src/uncertainty_3dgs/`: dependency-light split and metric helpers.
-- `tests/`: standard-library unit tests.
-- `data/`: local datasets, processed manifests, and split files.
-- `outputs/`: generated metrics, reports, and run artifacts.
+> Ensemble disagreement and renderer-derived signals can identify useful
+> candidate views, and a tail-risk/pose-diversity hybrid can improve reconstruction
+> at compact frame budgets on repeated scene splits.
 
-## Lightweight Commands
+It does **not** yet support these stronger statements:
 
-Run tests:
+- one fixed selector generalizes across synthetic and real RGB-D datasets;
+- the uncertainty estimates are probabilistically calibrated;
+- the method improves complete-scene geometry or tracking;
+- the improvement remains after matching ensemble and baseline compute;
+- the method is state of the art against established active-view systems.
+
+These boundaries are part of the evaluation protocol rather than post-hoc
+disclaimers. Failed signals, regressions, and saturation effects remain in the
+reported results.
+
+## Evaluation Protocol
+
+The benchmark separates model development from final evaluation:
+
+- Validation data may tune normalization, thresholds, calibration, and the
+  acquisition weight.
+- Test frames are reserved before model or policy inspection and are used only
+  for final reporting.
+- Development scenes determine the final signal and selector.
+- Final scenes evaluate that frozen policy without scene-specific adaptation.
+- All comparisons use the same train/test split, optimization schedule, image
+  resolution, and evaluation implementation.
+
+Primary outcome families are:
+
+- **Rendering:** PSNR, SSIM, and LPIPS.
+- **Depth:** RMSE, AbsRel, and valid-pixel threshold accuracy.
+- **Geometry:** accuracy, completeness, Chamfer distance, and F-score when a
+  reference surface is available.
+- **Failure prediction:** Spearman correlation, AUROC, AUPRC, risk-coverage,
+  sparsification, AUSE, and reliability analysis.
+- **Efficiency:** selected-frame budget, GPU-hours, wall time, peak memory, and
+  scoring overhead.
+
+The complete protocol is in
+[docs/experiment-protocol.md](docs/experiment-protocol.md).
+
+## Roadmap to a Submission-Grade Result
+
+| Phase | Deliverable | Exit criterion |
+|---|---|---|
+| 1. Protocol lock | Fixed development/test scene partition, information boundary, primary metrics, selector, and hyperparameters. | No final-test observation can change the acquisition rule. |
+| 2. Artifact provenance | Committed split manifests and machine-readable run records containing code, data, environment, seed, hardware, and artifact identifiers. | Every reported number traces to a reproducible run record. |
+| 3. Controlled benchmark | Multi-scene Replica evaluation followed by a frozen real RGB-D transfer study. | At least 6 controlled scenes, 3 real scenes, and repeated seeds for the primary comparison. |
+| 4. Statistical and compute audit | Paired confidence intervals, scene-level effects, ablations, and compute-matched baselines. | The main conclusion survives uncertainty estimates and fair resource accounting. |
+| 5. Research release | Generated figures and tables, paper, limitations, public artifacts, and clean-environment reproduction. | An independent user can reproduce at least one principal result from documented inputs. |
+
+The detailed implementation sequence remains in
+[ROADMAP.md](ROADMAP.md) and [docs/implementation-plan.md](docs/implementation-plan.md).
+
+## Repository Structure
+
+```text
+configs/                  experiment, dataset, uncertainty, and stress-test definitions
+data/                     local raw/processed data and split manifests
+docs/                     protocol, results, runbooks, literature, and project decisions
+examples/                 small dependency-light inputs for smoke tests
+outputs/                  generated reports and run artifacts
+scripts/                  command-line experiment and evaluation utilities
+src/uncertainty_3dgs/     reusable split and uncertainty-metric implementations
+tests/                    dependency-light unit and command-line tests
+modal_app.py              GPU workflow for Nerfstudio/Splatfacto experiments
+```
+
+Heavy training dependencies remain isolated from the lightweight utilities so
+split generation, metric validation, and result summarization can run without a
+CUDA environment.
+
+## Quick Start
+
+The lightweight package requires Python 3.10 or newer.
 
 ```bash
+python -m pip install -e ".[dev,numeric]"
 make test
+make smoke
 ```
+
+`make test` runs the dependency-light test suite. `make smoke` generates a small
+deterministic split and computes uncertainty/error alignment metrics from the
+checked-in examples.
 
 Generate a deterministic split manifest:
 
@@ -139,75 +177,7 @@ python scripts/generate_splits.py \
   --output data/splits/example_split.json
 ```
 
-Use `--selection-method farthest-index` for a lightweight trajectory coverage
-baseline that keeps the same validation/test holdouts and selects training
-frames with farthest-first coverage over input-frame order.
-Use `--selection-method farthest-pose` with a Nerfstudio `transforms.json` to
-select training frames by farthest-first coverage over camera-center positions.
-
-Generate an active-expansion split from a locked seed split:
-
-```bash
-python scripts/generate_active_split.py \
-  --frames data/nerfstudio/poster_available/transforms.json \
-  --base-split data/splits/poster_available.json \
-  --base-budget 25 \
-  --target-budget 50 \
-  --scene poster_available_active_pose \
-  --strategy pose-novelty \
-  --output data/splits/poster_available_active_pose.json
-```
-
-`--strategy pose-novelty` keeps the seed train/val/test split fixed and adds
-frames that are farthest from the current seed set in camera-center space.
-`--strategy score-desc --scores scores.json` can be used later for real
-model-error or uncertainty scores. For render-uncertainty reports, `--score-key`
-also accepts comma-separated nested fields; each field is rank-normalized over
-the candidate pool and averaged into a composite score before selection.
-
-Prepare a candidate-eval dataset for model-error scoring:
-
-```bash
-python scripts/materialize_candidate_eval.py \
-  --source-dir data/nerfstudio/poster_available \
-  --base-split data/splits/poster_available.json \
-  --base-budget 25 \
-  --output-dir data/candidate_eval/poster_available_active_error
-```
-
-Score those candidates with a trained Nerfstudio checkpoint:
-
-```bash
-python scripts/score_candidate_frames.py \
-  --load-config outputs/runs/poster_modal_b25_10k/splatfacto/budget_025/train/unnamed/splatfacto/.../config.yml \
-  --candidate-data data/candidate_eval/poster_available_active_error \
-  --score-metric lpips \
-  --output data/scores/poster_available_active_error.json
-```
-
-Evaluate whether simple frame-level uncertainty baselines predict those
-candidate errors:
-
-```bash
-python scripts/evaluate_frame_uncertainty.py \
-  --frames data/nerfstudio/poster_available/transforms.json \
-  --split-json data/splits/poster_available.json \
-  --budget 25 \
-  --scores data/scores/poster_available_active_error.json \
-  --error-metric lpips \
-  --score-signal-fields mean_transmittance low_accumulation_fraction \
-  --bad-quantile 0.8 \
-  --output outputs/reports/poster_available_frame_uncertainty.json
-```
-
-This compares nearest-training-camera distance, temporal distance, and a
-uniform control against held-out frame errors using the same
-uncertainty-alignment metrics as pixel-level maps. When the score file was
-generated by `score_candidate_frames.py`, renderer-derived fields such as
-`mean_transmittance` and `low_accumulation_fraction` can be evaluated as
-additional frame-level uncertainty proxies.
-
-Compute uncertainty/error alignment metrics:
+Compute uncertainty/error metrics:
 
 ```bash
 python scripts/compute_uncertainty_metrics.py \
@@ -217,11 +187,7 @@ python scripts/compute_uncertainty_metrics.py \
   --output outputs/reports/example_metrics.json
 ```
 
-The summary includes equal-count `uncertainty_bins` for reliability-style plots:
-each bin is sorted by increasing uncertainty and reports observed mean error,
-plus bad-sample fraction when `--bad-threshold` is set.
-
-Summarize active-vs-random metric deltas from saved Modal metric rows:
+Summarize active-versus-random results from saved metric rows:
 
 ```bash
 python scripts/summarize_active_metrics.py \
@@ -230,74 +196,47 @@ python scripts/summarize_active_metrics.py \
   --format markdown
 ```
 
-The input may be a JSON array of metric rows or the noisy output from
-`modal run modal_app.py --action metrics`. The checked-in pair manifest covers
-the current dozer, redwoods2, library, kitchen, and bww_entrance
-active-selection comparisons.
+## GPU Workflows
 
-On a Nerfstudio/Splatfacto runtime, evaluate per-pixel renderer confidence maps
-directly against RGB error maps:
+Training and rendering use Nerfstudio Splatfacto with gsplat on Linux and NVIDIA
+CUDA. They are intentionally kept outside the base package.
 
-```bash
-python scripts/evaluate_render_uncertainty_maps.py \
-  --load-config outputs/runs/poster_modal_b25_10k/splatfacto/budget_025/train/unnamed/splatfacto/.../config.yml \
-  --candidate-data data/candidate_eval/poster_available_active_error \
-  --error-metric rgb-l1 \
-  --signals transmittance local-mean-transmittance local-std-transmittance accumulation-gradient depth-gradient \
-  --patch-size 15 \
-  --bad-error-quantile 0.8 \
-  --max-pixels-per-frame 50000 \
-  --output outputs/reports/poster_available_render_uncertainty_maps.json
+- [GPU baseline bring-up](docs/gpu-baseline-bringup.md)
+- [Modal workflow](docs/modal.md)
+- [SLURM workflow](docs/cluster-slurm.md)
+- [RGB-D validation runbook](docs/next-rgbd-validation.md)
+
+The full workflow is:
+
+```text
+acquire data -> validate frames and poses -> freeze split -> materialize dataset
+-> train seed model(s) -> render candidate uncertainty -> select frames
+-> retrain matched baselines -> evaluate untouched test views -> aggregate results
 ```
 
-Evaluate pixel-level ensemble RGB disagreement when multiple independently
-trained seed models are available:
+## Reproducibility Status
 
-```bash
-python scripts/evaluate_ensemble_uncertainty_maps.py \
-  --load-config outputs/runs/seed_a/splatfacto/budget_025/train/unnamed/splatfacto/.../config.yml \
-                outputs/runs/seed_b/splatfacto/budget_025/train/unnamed/splatfacto/.../config.yml \
-  --candidate-data data/candidate_eval/poster_available_active_error \
-  --error-metric rgb-l1 \
-  --bad-error-quantile 0.8 \
-  --max-pixels-per-frame 50000 \
-  --output outputs/reports/poster_available_ensemble_uncertainty_maps.json
-```
+The repository currently provides deterministic split generation, lightweight
+metric implementations, unit tests, configuration templates, runbooks, and a
+manifest linking headline claims to stored GPU runs.
 
-Run both example commands:
+The following items remain required for a complete external reproduction:
 
-```bash
-make smoke
-```
+- a frozen dependency lock and GPU image digest;
+- committed split manifests for every headline experiment;
+- public machine-readable metric rows and resolved run configurations;
+- checksummed model, render, and evaluation artifacts;
+- one command that regenerates every reported table and figure;
+- a clean-machine reproduction report.
 
-Prepare a filtered Nerfstudio dataset view when `transforms.json` references missing image files:
+Until those artifacts are released, the checked-in results should be treated as
+documented internal experiments rather than independently reproduced findings.
 
-```bash
-python scripts/filter_nerfstudio_transforms.py \
-  --input-dir data/nerfstudio/poster \
-  --output-dir data/nerfstudio/poster_available
-```
+## Documentation
 
-Materialize budgeted Nerfstudio dataset directories from a split manifest:
-
-```bash
-python scripts/materialize_nerfstudio_split.py \
-  --source-dir data/nerfstudio/poster_available \
-  --split-json data/splits/poster_available.json \
-  --output-root data/nerfstudio_splits/poster_available \
-  --budgets 25 50
-```
-
-This writes explicit `train_filenames`, `val_filenames`, and `test_filenames`
-fields so Nerfstudio uses the intended split instead of falling back to its
-dataparser fraction split.
-
-## Heavy Stack Boundary
-
-The first heavy integration should be a separate Nerfstudio/Splatfacto environment on Linux with NVIDIA CUDA. This repo should initially consume exported frame manifests, rendered outputs, depth maps, error maps, and uncertainty maps rather than requiring Nerfstudio at import time.
-
-Heavy-stack runbook: [docs/gpu-baseline-bringup.md](docs/gpu-baseline-bringup.md)
-
-SLURM cluster runbook: [docs/cluster-slurm.md](docs/cluster-slurm.md)
-
-Modal workflow: [docs/modal.md](docs/modal.md)
+- [Literature map](docs/literature-map.md)
+- [Experiment protocol](docs/experiment-protocol.md)
+- [Results and negative findings](docs/results.md)
+- [Run manifest](docs/run-manifest.md)
+- [Implementation plan](docs/implementation-plan.md)
+- [Project roadmap](ROADMAP.md)
