@@ -5,7 +5,7 @@ Checkpoints, renders, and full Modal output volumes are intentionally not tracke
 
 ## Current Evidence Snapshot
 
-Date: 2026-07-05 UTC
+Date: 2026-08-25 UTC
 
 Best-supported acquisition rule so far:
 
@@ -47,6 +47,7 @@ rule.
 | TUM FR1 xyz v3 weight ablation | 1 | Depth-error transmittance tail risk | `score-pose-hybrid`, `score_weight=0.65` | Negative control: regressed below `score_weight=0.35` and random b50 on aligned depth |
 | TUM FR1 xyz v9 budget sweep | 1 | Depth-error depth-gradient tail risk | `score-pose-hybrid`, `score_weight=0.65` | Active helps RGB from b50-b125 and gives the cleanest RGB/depth win at b100; at saturated b150, random wins strongly |
 | TUM FR1 desk v4 compact validation | 1 | Depth-error depth-gradient tail risk | `score-pose-hybrid`, `score_weight=0.65` | Transfer-positive second RGB-D scene: b50 improves by +0.994 PSNR and -0.033 aligned AbsRel; b100 improves by +0.708 PSNR and -0.024 aligned AbsRel |
+| TUM FR2 desk frozen-policy transfer pilot | 1 | Depth-error depth-gradient tail risk fixed before the run | `score-pose-hybrid`, `score_weight=0.35` | Mixed-positive single seed: +0.087 PSNR, +0.0166 SSIM, -0.0132 LPIPS, and -0.0308 raw AbsRel; aligned AbsRel regresses by +0.103 |
 
 Across the twelve dozer, redwoods2, and BWW entrance ensemble-tail seeds, the
 active selector averages about +1.165 PSNR, +0.026 SSIM, and -0.017 LPIPS
@@ -120,6 +121,71 @@ Current interpretation:
   median-aligned depth, but SSIM/LPIPS and raw depth regressed. At b100, active
   selection lost to random on primary RGB metrics and aligned depth. Treat this
   as a hard-scene failure case for the current fixed compact selector.
+- The first `freiburg2_desk` transfer pilot freezes the `depth-gradient`,
+  `score-pose-hybrid`, `score_weight=0.35` policy before observing the new
+  scene. At budget 50 it improves every RGB metric and raw depth AbsRel over
+  the same-seed random control, but median-aligned AbsRel worsens because a few
+  late-trajectory views have extreme scale failures. This is a promising
+  transfer observation, not a robust result: it has one split/training seed
+  and an interleaved trajectory holdout.
+
+## TUM FR2 Desk Frozen-Policy Transfer Pilot
+
+Date: 2026-08-25 UTC
+
+Question: does the previously selected depth-gradient hybrid policy transfer
+without scene-specific tuning to a new camera family and sequence?
+
+Protocol:
+
+- Source: TUM RGB-D `freiburg2_desk`, 180 associated RGB-D frames sampled with
+  `frame_stride=3`.
+- Locked split seed: `20260824`; 10 validation and 20 held-out test frames.
+- Policy fixed before results: budget 25 to 50, `score-pose-hybrid`,
+  `score_weight=0.35`, score key
+  `top_decile_mean_uncertainty.depth-gradient`.
+- Training: Nerfstudio `splatfacto`, seed 42, 7,000 iterations, full input
+  resolution, Modal L4.
+- Evaluation: the same 20 test frames for all three models; 200,000 sampled
+  depth pixels per frame where available.
+
+RGB metrics:
+
+| Budget | Selection | PSNR | SSIM | LPIPS |
+|---:|---|---:|---:|---:|
+| 25 | Random seed | 18.012 | 0.595 | 0.353 |
+| 50 | Random control | 19.805 | 0.668 | 0.315 |
+| 50 | Active depth-gradient hybrid | 19.892 | 0.684 | 0.302 |
+| 50 | Active minus random | **+0.087** | **+0.0166** | **-0.0132** |
+
+Depth metrics:
+
+| Budget | Selection | Raw AbsRel | Raw delta1 | Aligned AbsRel | Aligned delta1 |
+|---:|---|---:|---:|---:|---:|
+| 25 | Random seed | 0.432 | 0.136 | 0.418 | 0.501 |
+| 50 | Random control | 0.417 | 0.105 | 0.517 | 0.594 |
+| 50 | Active depth-gradient hybrid | 0.386 | 0.159 | 0.621 | 0.621 |
+| 50 | Active minus random | **-0.0308** | **+0.0544** | +0.103 | **+0.0265** |
+
+Uncertainty diagnostic:
+
+- Depth-gradient Spearman correlation with aligned pixel error: 0.247.
+- Bad-pixel AUROC/AUPRC: 0.557/0.286 at the 80th-percentile error threshold.
+- Mean aligned error is 0.422 overall and 0.800 in the highest uncertainty
+  decile. The signal is useful but weak, and should not be described as a
+  calibrated predictor from this run alone.
+
+Read:
+
+- The active policy clears the RGB and raw-depth gate on this split.
+- Median-aligned AbsRel fails the gate. Frames 13-15 dominate the instability;
+  active aligned AbsRel reaches 6.08 on frame 13. Reporting only the aggregate
+  RGB win or only raw depth would conceal a material failure mode.
+- This is a single-seed transfer pilot with a random interleaved holdout. The
+  next claim-bearing run must use multiple seeds and a trajectory-block or
+  pose-distance holdout.
+- The complete machine-readable protocol, metrics, run IDs, and caveats are in
+  `experiments/records/tum_fr2_desk_frozen_v1.json`.
 
 ## TUM FR1 Desk v4 Compact Validation
 

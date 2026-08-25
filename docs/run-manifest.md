@@ -1,6 +1,6 @@
 # Run Manifest
 
-Date: 2026-07-05
+Date: 2026-08-25
 
 This manifest ties the current headline claims to the commands and artifacts
 needed to audit or reproduce them. Large artifacts remain in Modal volumes or
@@ -38,6 +38,102 @@ make test
 | TUM RGB-D `freiburg1_xyz` v9 budget sweep supports compact subset selection, with b100 as the cleanest active result and b150 as a saturation negative control. | `docs/results.md`, `docs/dashboard.html`, `docs/blog-assets/tum-fr1-xyz-v9-budget-sweep.csv` | b100: +0.127 PSNR, +0.008 SSIM, -0.004 LPIPS, -0.008 aligned AbsRel, +0.031 aligned delta1. b150: -0.779 PSNR, -0.019 SSIM, +0.028 LPIPS, +0.065 aligned AbsRel, -0.057 aligned delta1. | Modal metrics listed below. Blog plot: `docs/blog-assets/tum-fr1-xyz-v9-budget-sweep.svg`. |
 | TUM RGB-D `freiburg1_desk` v4 compact validation transfers the xyz depth-gradient policy to a second scene. | `docs/results.md`, `docs/dashboard.html`, `docs/blog-assets/tum-fr1-desk-v4-compact-validation.csv` | b50: +0.994 PSNR, +0.047 SSIM, -0.041 LPIPS, -0.033 aligned AbsRel. b100: +0.708 PSNR, +0.025 SSIM, -0.024 LPIPS, -0.024 aligned AbsRel. | Modal metrics listed below. Blog plot: `docs/blog-assets/tum-fr1-desk-v4-compact-validation.svg`. |
 | TUM RGB-D `freiburg1_room` v4 compact stress test is mixed and does not transfer cleanly. | `docs/results.md`, `docs/dashboard.html`, `docs/blog-assets/tum-fr1-room-v4-compact-stress.csv` | b50: +0.035 PSNR, -0.010 SSIM, +0.003 LPIPS, -0.032 aligned AbsRel. b100: -0.400 PSNR, -0.017 SSIM, +0.019 LPIPS, +0.031 aligned AbsRel. | Modal metrics listed below. Blog plot: `docs/blog-assets/tum-fr1-room-v4-compact-stress.svg`. |
+| TUM RGB-D `freiburg2_desk` frozen-policy pilot is RGB/raw-depth positive but alignment-mixed. | `docs/results.md`, `experiments/records/tum_fr2_desk_frozen_v1.json` | +0.087 PSNR, +0.0166 SSIM, -0.0132 LPIPS, -0.0308 raw AbsRel, but +0.103 aligned AbsRel versus same-seed random b50. | Machine-readable record and Modal artifact paths listed below. Single-seed pilot; not a robust transfer claim. |
+
+## TUM FR2 Desk Frozen-Policy Reproduction
+
+Protocol:
+
+- Source sequence: TUM RGB-D `freiburg2_desk`.
+- Prepared scene: `tum_fr2_desk_frozen_v1`.
+- Source frames: 180 RGB-D frames sampled with `frame_stride=3`.
+- Split seed: `20260824`; 10 validation and 20 test frames.
+- Random budgets: 25 and 50.
+- Active policy: expand the random b25 seed to b50 with
+  `score-pose-hybrid`, `score_weight=0.35`, and
+  `top_decile_mean_uncertainty.depth-gradient`.
+- Training: Nerfstudio `splatfacto`, seed 42, 7,000 iterations, downscale
+  factor 1, NVIDIA L4.
+- Code under test: `aeafa844315f250326b3f550d4d352f8eae2bd58`.
+
+Run the frozen pilot:
+
+```bash
+modal run modal_app.py \
+  --action prepare-tum \
+  --tum-sequence freiburg2_desk \
+  --data-scene-name tum_fr2_desk_frozen_v1 \
+  --budgets "25 50" \
+  --split-seed 20260824 \
+  --val-count 10 \
+  --test-count 20 \
+  --max-frames 180 \
+  --frame-stride 3
+
+modal run modal_app.py \
+  --action train \
+  --data-scene-name tum_fr2_desk_frozen_v1 \
+  --scene-name tum_fr2_desk_frozen_v1_random_b25_7k \
+  --budget 25 \
+  --iterations 7000 \
+  --downscale-factor 1
+
+modal run modal_app.py \
+  --action train \
+  --data-scene-name tum_fr2_desk_frozen_v1 \
+  --scene-name tum_fr2_desk_frozen_v1_random_b50_7k \
+  --budget 50 \
+  --iterations 7000 \
+  --downscale-factor 1
+
+modal run modal_app.py \
+  --action render-uncertainty-maps \
+  --source-data-scene-name tum_fr2_desk_frozen_v1 \
+  --base-split-scene-name tum_fr2_desk_frozen_v1 \
+  --data-scene-name tum_fr2_desk_frozen_v1_depth_error_maps \
+  --scene-name tum_fr2_desk_frozen_v1_random_b25_7k \
+  --budget 25 \
+  --score-metric depth-aligned-abs-rel \
+  --bad-quantile 0.8 \
+  --max-pixels-per-frame 50000 \
+  --render-map-signals transmittance,local-mean-transmittance,local-std-transmittance,accumulation-gradient,depth-gradient \
+  --patch-size 15
+
+modal run modal_app.py \
+  --action prepare-active \
+  --source-data-scene-name tum_fr2_desk_frozen_v1 \
+  --base-split-scene-name tum_fr2_desk_frozen_v1 \
+  --data-scene-name tum_fr2_desk_frozen_v1_active_depthgrad_w035_b50 \
+  --base-budget 25 \
+  --target-budget 50 \
+  --active-strategy score-pose-hybrid \
+  --score-path /workspace/neural-mapping/outputs/reports/render_uncertainty_maps/tum_fr2_desk_frozen_v1_depth_error_maps_budget_025_depth-aligned-abs-rel.json \
+  --score-key top_decile_mean_uncertainty.depth-gradient \
+  --score-weight 0.35
+
+modal run modal_app.py \
+  --action train \
+  --data-scene-name tum_fr2_desk_frozen_v1_active_depthgrad_w035_b50 \
+  --scene-name tum_fr2_desk_frozen_v1_active_depthgrad_w035_b50_7k \
+  --budget 50 \
+  --iterations 7000 \
+  --downscale-factor 1
+```
+
+Run `eval` and `depth-eval` for each scene/budget pair above. The compact record
+at `experiments/records/tum_fr2_desk_frozen_v1.json` stores the exact output
+values and Modal application IDs.
+
+Artifact index:
+
+| Stage | Artifact or run |
+|---|---|
+| Dataset preparation | Modal `ap-60QQoYZ9fxXFLUirwuwFX9`; `/workspace/neural-mapping/data/splits/tum_fr2_desk_frozen_v1.json` |
+| Random b25 training/evaluation | `ap-xGSCuJRFEH219JK5trZhmS`, `ap-thunXveuXm8zsBXjJGMVbd`, `ap-0XIFgAF3KMaI7IPy5glbHx` |
+| Random b50 training/evaluation | `ap-1w15vog8y0Kob9qFAYLxkA`, `ap-7Pgt0eGYoR0BrcHQqqSA0L`, `ap-qUR8zHZ17gMgaeEfaMCo0a` |
+| Uncertainty report | Modal `ap-4GsSdaiorCLz7ARgPHrNIj`; `/workspace/neural-mapping/outputs/reports/render_uncertainty_maps/tum_fr2_desk_frozen_v1_depth_error_maps_budget_025_depth-aligned-abs-rel.json` |
+| Active split | Modal `ap-cUWQLNamTKTL0O8pgZ5Dtc`; `/workspace/neural-mapping/data/splits/tum_fr2_desk_frozen_v1_active_depthgrad_w035_b50.json` |
+| Active b50 training/evaluation | `ap-C63cc0pQ0VEs9ONMoSRGkZ`, `ap-pkDtS4fdKczhmeGdN2YGfF`, `ap-FDXWLA7BQZ7O9qvzQI2EO9` |
 
 ## TUM FR1 Desk v4 Compact Reproduction
 

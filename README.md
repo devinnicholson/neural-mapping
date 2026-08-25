@@ -64,12 +64,14 @@ policy.
 | TUM RGB-D `freiburg1_xyz` v1-v6 | Depth-gradient selection improved the random budget-50 baseline by approximately **+0.264 PSNR**, **+0.007 SSIM**, **-0.003 LPIPS**, and **-0.005 median-aligned AbsRel** on average. | Best current fixed-policy RGB-D result. |
 | TUM RGB-D budget sweep | The hybrid policy helped at intermediate budgets on `freiburg1_xyz` v9, with the cleanest RGB/depth result at budget 100, but regressed at the saturated budget of 150. | Supports compact subset selection rather than full-trajectory ordering. |
 | RGB-D transfer checks | `freiburg1_desk` v4 transferred positively at budgets 50 and 100; `freiburg1_room` v4 was mixed at budget 50 and negative at budget 100. | The current policy does not transfer reliably to every scene regime. |
+| TUM RGB-D `freiburg2_desk` frozen-policy pilot | On one locked split, active b50 improves random b50 by **+0.087 PSNR**, **+0.0166 SSIM**, **-0.0132 LPIPS**, and **-0.0308 raw AbsRel**, while median-aligned AbsRel regresses by **+0.103**. | Promising RGB/raw-depth transfer with an explicit alignment failure; requires multi-seed and blocked-holdout replication. |
 
 Full per-scene tables, negative results, run identifiers, and interpretation are
 maintained in [docs/results.md](docs/results.md). The corresponding run commands
 and artifact locations are recorded in
 [docs/run-manifest.md](docs/run-manifest.md). A compact visual summary is
-available in [docs/dashboard.html](docs/dashboard.html).
+available in [docs/dashboard.html](docs/dashboard.html). New experiments also
+store compact machine-readable records under [experiments/records](experiments/records).
 
 ## Claim Boundary
 
