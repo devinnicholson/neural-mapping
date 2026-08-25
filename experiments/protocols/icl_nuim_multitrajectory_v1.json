@@ -1,8 +1,23 @@
 {
   "schema_version": 1,
-  "status": "preregistered_before_confirmatory_training",
+  "status": "preregistered_and_amended_before_confirmatory_training",
   "preregistered_at_utc": "2026-08-25",
   "implementation_commit": "1b8e364ea341c9a1c0356d939977a48614bb04df",
+  "effective_execution_commit": "d701ff87af08186aca3db8fb1bb2a5c1c36170ea",
+  "amendments": [
+    {
+      "date_utc": "2026-08-25",
+      "reason": "The first configuration logs revealed that Nerfstudio defaults would auto-center and auto-scale poses, contradicting the preregistered raw-metric geometry outcome. The same logs revealed that the materializer included validation images in train_filenames, inflating nominal 25/50 budgets to 35/60 images.",
+      "changes": [
+        "Set orientation_method=none, center_method=none, and auto_scale_poses=false for every confirmatory training run.",
+        "Keep validation frames present in transforms.json but disjoint from train_filenames; nominal budgets are now exact.",
+        "Rematerialize every random, pose-coverage, and trajectory-coverage dataset before training.",
+        "Use fresh v2 run names so canceled artifacts cannot be mistaken for confirmatory runs."
+      ],
+      "outcome_blinding": "No model outcome or checkpoint metric was inspected. Modal batch ap-7D8UqePBwDMlLSxcIbkonA was terminated during configuration/image-cache initialization immediately after the issue was visible.",
+      "code_commit": "d701ff87af08186aca3db8fb1bb2a5c1c36170ea"
+    }
+  ],
   "research_question": "Does the frozen depth-gradient and pose-diversity acquisition policy improve sparse-view Gaussian neural mapping across independent camera trajectories, and does it outperform matched non-learned coverage controls when evaluated on leakage-resistant RGB, metric depth, and fused surface geometry outcomes?",
   "hypotheses": {
     "h1_primary": "At a 50-frame budget, the frozen active policy improves mean held-out PSNR and mean 5 cm surface F-score relative to matched random acquisition across trajectory and training-seed pairs.",
@@ -30,7 +45,7 @@
       "test_count": 20,
       "holdout_method": "temporal-block",
       "holdout_gap_sampled_frames": 5,
-      "excluded_guard_frames_expected": 20
+      "excluded_guard_frames": "Up to 20; clipped at sequence boundaries. The frozen lr_kt1 split has 15 and the other three have 20."
     },
     "intrinsics": {"width": 640, "height": 480, "fx": 481.2, "fy": 480.0, "cx": 319.5, "cy": 239.5},
     "depth_unit_scale_factor": 0.0002
@@ -66,7 +81,14 @@
       "gsplat": "1.4.0",
       "scipy": "1.15.3"
     },
-    "pairing": "Within each trajectory and training seed, random and active runs share the split, held-out frames, seed, iteration count, and hardware class. Coverage controls use seed 42."
+    "pairing": "Within each trajectory and training seed, random and active runs share the split, held-out frames, seed, iteration count, and hardware class. Coverage controls use seed 42.",
+    "pose_normalization": {
+      "orientation_method": "none",
+      "center_method": "none",
+      "auto_scale_poses": false,
+      "rationale": "Preserve the published metric coordinate system for raw depth and surface evaluation."
+    },
+    "validation_usage": "Ten validation frames are disjoint from training and test frames and do not count toward the 25/50 training-image budgets."
   },
   "outcomes": {
     "co_primary": [
