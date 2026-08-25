@@ -1372,6 +1372,10 @@ def main(
     patch_size: int = 15,
     ensemble_scene_names: str = "",
     report_path: str = "",
+    matrix_data_scene_names: str = "",
+    matrix_scene_names: str = "",
+    matrix_budgets: str = "",
+    matrix_training_seeds: str = "",
     render_outputs: bool = True,
 ) -> None:
     """Run Modal workflow stages from the local CLI."""
@@ -1498,6 +1502,64 @@ def main(
                 training_seed=training_seed,
             )
         )
+    elif action == "train-matrix":
+        data_scenes = _split_fields(matrix_data_scene_names)
+        scenes = _split_fields(matrix_scene_names)
+        run_budgets = _parse_int_fields(matrix_budgets)
+        run_seeds = _parse_int_fields(matrix_training_seeds)
+        lengths = {len(data_scenes), len(scenes), len(run_budgets), len(run_seeds)}
+        if len(lengths) != 1 or not data_scenes:
+            raise ValueError(
+                "Matrix fields must contain the same non-zero number of whitespace-separated entries."
+            )
+        calls = []
+        for data_scene, run_scene, run_budget, run_seed in zip(
+            data_scenes,
+            scenes,
+            run_budgets,
+            run_seeds,
+            strict=True,
+        ):
+            ns_data_dir = str(
+                DATA_ROOT / "nerfstudio_splits" / data_scene / _budget_dir_name(run_budget)
+            )
+            call = train_splatfacto.spawn(
+                ns_data_dir=ns_data_dir,
+                scene_name=run_scene,
+                budget=run_budget,
+                max_num_iterations=iterations,
+                downscale_factor=downscale_factor,
+                training_seed=run_seed,
+            )
+            calls.append((data_scene, run_scene, run_budget, run_seed, call))
+            print(
+                json.dumps(
+                    {
+                        "status": "spawned",
+                        "data_scene_name": data_scene,
+                        "scene_name": run_scene,
+                        "budget": run_budget,
+                        "training_seed": run_seed,
+                        "function_call_id": call.object_id,
+                    }
+                ),
+                flush=True,
+            )
+        for data_scene, run_scene, run_budget, run_seed, call in calls:
+            result = call.get()
+            print(
+                json.dumps(
+                    {
+                        "status": "completed",
+                        "data_scene_name": data_scene,
+                        "scene_name": run_scene,
+                        "budget": run_budget,
+                        "training_seed": run_seed,
+                        "result": result,
+                    }
+                ),
+                flush=True,
+            )
     elif action == "eval":
         print(eval_latest_run.remote(scene_name=scene_name, budget=budget, render_outputs=render_outputs))
     elif action == "depth-eval":
@@ -1580,6 +1642,6 @@ def main(
             f"Unknown action {action!r}. "
             "Use env, prepare, prepare-tum, prepare-icl, score-candidates, frame-uncertainty, "
             "render-uncertainty-maps, ensemble-uncertainty-maps, "
-            "prepare-active, train, eval, depth-eval, geometry-eval, metrics, split-summary, "
+            "prepare-active, train, train-matrix, eval, depth-eval, geometry-eval, metrics, split-summary, "
             "report-summary, or smoke."
         )
