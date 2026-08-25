@@ -60,6 +60,17 @@ For each scene:
 4. Reserve validation/calibration frames from non-test frames.
 5. Select training budgets from the remaining candidate pool.
 
+Holdout regimes:
+
+- Development and repeated-seed diagnostics may use seeded frame-level random
+  holdouts, but must be labeled `random` or `random_interleaved`.
+- Claim-bearing trajectory evaluation must also use `temporal-block`: contiguous
+  validation and test blocks in trajectory order, with an explicit exclusion
+  gap on both sides. Gap frames are unavailable to both random training and
+  active acquisition.
+- Report blocked and interleaved results separately. Do not pool them into one
+  mean because they estimate different generalization regimes.
+
 Training budgets:
 
 - 25 frames.
@@ -74,6 +85,7 @@ Required split metadata:
 - Frame ids for train, validation, and test.
 - Random seed.
 - Selection method.
+- Holdout method, exclusion-gap size, and excluded frame ids.
 - Resolution and crop policy.
 - Whether depth and mesh targets are available.
 

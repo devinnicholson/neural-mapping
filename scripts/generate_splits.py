@@ -62,6 +62,18 @@ def parse_args() -> argparse.Namespace:
         default="random",
         help="Training frame selection policy after validation/test holdouts are fixed.",
     )
+    parser.add_argument(
+        "--holdout-method",
+        choices=("random", "temporal-block"),
+        default="random",
+        help="Frame-level random holdouts or contiguous trajectory blocks.",
+    )
+    parser.add_argument(
+        "--holdout-gap",
+        type=int,
+        default=0,
+        help="Neighboring input frames excluded from training around temporal blocks.",
+    )
     return parser.parse_args()
 
 
@@ -89,6 +101,8 @@ def main() -> int:
         shuffle=not args.no_shuffle,
         selection_method=args.selection_method,
         frame_positions=frame_positions,
+        holdout_method=args.holdout_method,
+        holdout_gap=args.holdout_gap,
     )
     write_split_plan(plan, args.output)
     print(
@@ -96,7 +110,9 @@ def main() -> int:
         f"{args.output} with {plan.total_frames} frames, "
         f"budgets={list(plan.train_counts)}, "
         f"val={plan.val_count}, test={plan.test_count}, "
-        f"selection={plan.selection_method}"
+        f"selection={plan.selection_method}, "
+        f"holdout={plan.holdout_method}, gap={plan.holdout_gap}, "
+        f"excluded={len(plan.excluded_frames)}"
     )
     return 0
 

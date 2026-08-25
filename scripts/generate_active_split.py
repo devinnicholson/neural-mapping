@@ -86,13 +86,14 @@ def main() -> int:
     seed_train = _split_frames(base_entry, "train")
     val = _split_frames(base_entry, "val")
     test = _split_frames(base_entry, "test")
+    excluded = _optional_string_list(base_payload.get("excluded_frames"))
     if target_budget <= len(seed_train):
         raise SystemExit(
             f"--target-budget must exceed base train count {len(seed_train)}; "
             f"got {target_budget}."
         )
 
-    known = set(seed_train) | set(val) | set(test)
+    known = set(seed_train) | set(val) | set(test) | set(excluded)
     candidates = [frame for frame in frames if frame not in known]
     add_count = target_budget - len(seed_train)
     if add_count > len(candidates):
@@ -164,6 +165,9 @@ def main() -> int:
                 "test": _order_like_input(test, original_order),
             },
         },
+        holdout_method=str(base_payload.get("holdout_method", "random")),
+        holdout_gap=int(base_payload.get("holdout_gap", 0)),
+        excluded_frames=tuple(excluded),
     )
     write_split_plan(plan, args.output)
     print(
@@ -187,6 +191,14 @@ def _split_frames(split_entry: dict[str, object], key: str) -> list[str]:
     if not isinstance(values, list):
         raise SystemExit(f"Split entry must contain list-valued '{key}'.")
     return [str(value) for value in values]
+
+
+def _optional_string_list(value: object) -> list[str]:
+    if value is None:
+        return []
+    if not isinstance(value, list):
+        raise SystemExit("Base split JSON 'excluded_frames' must contain a list.")
+    return [str(item) for item in value]
 
 
 def _order_like_input(frames: list[str], original_order: dict[str, int]) -> list[str]:

@@ -65,11 +65,12 @@ def main() -> int:
     train_paths = _split_paths(split_entry, "train")
     val_paths = _split_paths(split_entry, "val")
     test_paths = _split_paths(split_entry, "test")
+    gap_excluded_paths = _optional_split_paths(split, "excluded_frames")
     included_train = list(train_paths)
     if args.include_val_in_train:
         included_train.extend(path for path in val_paths if path not in included_train)
 
-    excluded = set(train_paths) | set(val_paths) | set(test_paths)
+    excluded = set(train_paths) | set(val_paths) | set(test_paths) | set(gap_excluded_paths)
     candidates = [path for path in frame_paths if path not in excluded]
     if not candidates:
         raise SystemExit("No candidate frames remain after excluding train/val/test frames.")
@@ -92,6 +93,7 @@ def main() -> int:
             "train_count": len(train_paths),
             "val_count": len(val_paths),
             "test_count": len(test_paths),
+            "gap_excluded_count": len(gap_excluded_paths),
             "frames_in_transforms": len(transform_frames),
             "include_val_in_train": args.include_val_in_train,
         }
@@ -113,6 +115,7 @@ def main() -> int:
             "train": train_paths,
             "val": val_paths,
             "test": test_paths,
+            "gap_excluded": gap_excluded_paths,
             "transforms_frames": [frame["file_path"] for frame in transform_frames],
             "candidates": candidates,
         },
@@ -141,6 +144,15 @@ def _split_paths(split_entry: dict[str, object], key: str) -> list[str]:
     values = split_entry.get(key)
     if not isinstance(values, list):
         raise SystemExit(f"Split entry must contain list-valued '{key}'.")
+    return [str(value) for value in values]
+
+
+def _optional_split_paths(payload: dict[str, object], key: str) -> list[str]:
+    values = payload.get(key)
+    if values is None:
+        return []
+    if not isinstance(values, list):
+        raise SystemExit(f"Split payload must contain list-valued '{key}'.")
     return [str(value) for value in values]
 
 

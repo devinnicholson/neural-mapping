@@ -52,6 +52,83 @@ class SplitGenerationTests(unittest.TestCase):
 
         self.assertEqual(first.to_dict(), second.to_dict())
 
+    def test_temporal_block_holdouts_are_contiguous_buffered_and_reproducible(self) -> None:
+        frames = [f"frame_{index:03d}.png" for index in range(60)]
+
+        first = generate_split_plan(
+            frames,
+            [10],
+            seed=17,
+            val_count=5,
+            test_count=8,
+            holdout_method="temporal-block",
+            holdout_gap=3,
+        )
+        second = generate_split_plan(
+            frames,
+            [10],
+            seed=17,
+            val_count=5,
+            test_count=8,
+            holdout_method="temporal-block",
+            holdout_gap=3,
+        )
+
+        self.assertEqual(first.to_dict(), second.to_dict())
+        self.assertEqual(first.holdout_method, "temporal-block")
+        self.assertEqual(first.holdout_gap, 3)
+        split = first.splits["10"]
+        val_indices = [frames.index(frame) for frame in split["val"]]
+        test_indices = [frames.index(frame) for frame in split["test"]]
+        self.assertEqual(val_indices, list(range(val_indices[0], val_indices[0] + 5)))
+        self.assertEqual(test_indices, list(range(test_indices[0], test_indices[0] + 8)))
+
+        holdout_indices = set(val_indices) | set(test_indices)
+        expected_excluded = {
+            index
+            for heldout in holdout_indices
+            for index in range(max(0, heldout - 3), min(len(frames), heldout + 4))
+            if index not in holdout_indices
+        }
+        excluded_indices = {frames.index(frame) for frame in first.excluded_frames}
+        self.assertEqual(excluded_indices, expected_excluded)
+        train_indices = {frames.index(frame) for frame in split["train"]}
+        self.assertFalse(train_indices & holdout_indices)
+        self.assertFalse(train_indices & excluded_indices)
+
+    def test_temporal_block_seed_changes_holdout_location(self) -> None:
+        frames = [f"frame_{index:03d}.png" for index in range(80)]
+        first = generate_split_plan(
+            frames,
+            [10],
+            seed=11,
+            val_count=5,
+            test_count=10,
+            holdout_method="temporal-block",
+            holdout_gap=4,
+        )
+        second = generate_split_plan(
+            frames,
+            [10],
+            seed=12,
+            val_count=5,
+            test_count=10,
+            holdout_method="temporal-block",
+            holdout_gap=4,
+        )
+        self.assertNotEqual(first.splits["10"]["test"], second.splits["10"]["test"])
+
+    def test_temporal_block_rejects_negative_gap(self) -> None:
+        with self.assertRaisesRegex(ValueError, "holdout_gap"):
+            generate_split_plan(
+                [str(index) for index in range(20)],
+                [5],
+                val_count=2,
+                test_count=3,
+                holdout_method="temporal-block",
+                holdout_gap=-1,
+            )
+
     def test_farthest_index_selection_is_nested_and_uses_trajectory_coverage(self) -> None:
         frames = [f"frame_{index:03d}.png" for index in range(10)]
 
@@ -289,6 +366,9 @@ class SplitGenerationTests(unittest.TestCase):
                     {
                         "scene": "example",
                         "seed": 3,
+                        "holdout_method": "temporal-block",
+                        "holdout_gap": 1,
+                        "excluded_frames": ["./images/frame_004.png"],
                         "splits": {
                             "2": {
                                 "train": [
@@ -334,6 +414,10 @@ class SplitGenerationTests(unittest.TestCase):
             self.assertEqual(split_2["test"], split_4["test"])
             self.assertTrue(set(split_2["train"]).issubset(split_4["train"]))
             self.assertEqual(len(split_4["train"]), 4)
+            self.assertNotIn("./images/frame_004.png", split_4["train"])
+            self.assertEqual(payload["holdout_method"], "temporal-block")
+            self.assertEqual(payload["holdout_gap"], 1)
+            self.assertEqual(payload["excluded_frames"], ["./images/frame_004.png"])
 
     def test_generate_active_split_cli_accepts_score_files(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -832,6 +916,7 @@ class SplitGenerationTests(unittest.TestCase):
             base_split.write_text(
                 json.dumps(
                     {
+                        "excluded_frames": ["./images/frame_004.png"],
                         "splits": {
                             "2": {
                                 "train": [
@@ -872,13 +957,12 @@ class SplitGenerationTests(unittest.TestCase):
                     "./images/frame_000.png",
                     "./images/frame_001.png",
                     "./images/frame_002.png",
-                    "./images/frame_004.png",
                     "./images/frame_005.png",
                 ],
             )
             self.assertEqual(
                 transforms["test_filenames"],
-                ["./images/frame_004.png", "./images/frame_005.png"],
+                ["./images/frame_005.png"],
             )
             self.assertEqual(
                 transforms["train_filenames"],
@@ -890,6 +974,7 @@ class SplitGenerationTests(unittest.TestCase):
             )
             self.assertEqual(transforms["val_filenames"], ["./images/frame_002.png"])
             self.assertEqual(manifest["candidates"], transforms["test_filenames"])
+            self.assertEqual(manifest["gap_excluded"], ["./images/frame_004.png"])
 
 
 if __name__ == "__main__":

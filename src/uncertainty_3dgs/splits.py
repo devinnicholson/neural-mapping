@@ -49,6 +49,9 @@ class SplitPlan:
     test_count: int
     train_counts: tuple[int, ...]
     splits: Mapping[str, Mapping[str, list[str]]]
+    holdout_method: str = "random"
+    holdout_gap: int = 0
+    excluded_frames: tuple[str, ...] = ()
 
     def to_dict(self) -> dict[str, object]:
         return {
@@ -59,6 +62,10 @@ class SplitPlan:
             "val_count": self.val_count,
             "test_count": self.test_count,
             "train_counts": list(self.train_counts),
+            "holdout_method": self.holdout_method,
+            "holdout_gap": self.holdout_gap,
+            "excluded_count": len(self.excluded_frames),
+            "excluded_frames": list(self.excluded_frames),
             "splits": dict(self.splits),
         }
 
@@ -154,6 +161,8 @@ def generate_split_plan(
     shuffle: bool = True,
     selection_method: str = "random",
     frame_positions: Mapping[str, Sequence[float]] | None = None,
+    holdout_method: str = "random",
+    holdout_gap: int = 0,
 ) -> SplitPlan:
     """Generate deterministic train/validation/test splits for train budgets.
 
@@ -168,6 +177,12 @@ def generate_split_plan(
       trajectory coverage baseline for ordered frame manifests.
     - ``farthest-pose`` keeps the same holdouts but orders training candidates
       by farthest-first coverage over camera-center positions.
+
+    Holdout methods:
+    - ``random`` preserves the seeded, frame-level holdout behavior.
+    - ``temporal-block`` selects contiguous validation and test blocks in input
+      order, then excludes ``holdout_gap`` neighboring frames on both sides of
+      each block from the training and active-selection pools.
     """
 
     frames = [str(frame) for frame in frame_ids]
@@ -186,6 +201,14 @@ def generate_split_plan(
             "selection_method must be one of: random, farthest-index, farthest-pose. "
             f"Got {selection_method!r}."
         )
+    if holdout_method not in {"random", "temporal-block"}:
+        raise ValueError(
+            "holdout_method must be one of: random, temporal-block. "
+            f"Got {holdout_method!r}."
+        )
+    if int(holdout_gap) < 0:
+        raise ValueError("holdout_gap must be non-negative.")
+    resolved_holdout_gap = int(holdout_gap)
 
     total = len(frames)
     resolved_val_count = _resolve_holdout_count(
@@ -207,14 +230,26 @@ def generate_split_plan(
             f"val={resolved_val_count}, test={resolved_test_count}, total={total}"
         )
 
-    shuffled = list(frames)
-    if shuffle:
-        rng = random.Random(seed)
-        rng.shuffle(shuffled)
-
-    test = shuffled[:resolved_test_count]
-    val = shuffled[resolved_test_count : resolved_test_count + resolved_val_count]
-    train_pool = shuffled[resolved_test_count + resolved_val_count :]
+    excluded: list[str] = []
+    if holdout_method == "temporal-block":
+        val, test, excluded = _temporal_block_holdouts(
+            frames,
+            val_count=resolved_val_count,
+            test_count=resolved_test_count,
+            gap=resolved_holdout_gap,
+            seed=seed,
+        )
+        unavailable = set(val) | set(test) | set(excluded)
+        train_pool = [frame for frame in frames if frame not in unavailable]
+        if shuffle:
+            random.Random(seed).shuffle(train_pool)
+    else:
+        shuffled = list(frames)
+        if shuffle:
+            random.Random(seed).shuffle(shuffled)
+        test = shuffled[:resolved_test_count]
+        val = shuffled[resolved_test_count : resolved_test_count + resolved_val_count]
+        train_pool = shuffled[resolved_test_count + resolved_val_count :]
 
     max_count = counts[-1]
     if max_count > len(train_pool):
@@ -255,6 +290,9 @@ def generate_split_plan(
         test_count=resolved_test_count,
         train_counts=counts,
         splits=splits,
+        holdout_method=holdout_method,
+        holdout_gap=resolved_holdout_gap,
+        excluded_frames=tuple(_order_like_input(excluded, original_order)),
     )
 
 
@@ -436,6 +474,86 @@ def _frame_ids_from_text(path: Path) -> list[str]:
                 continue
             frames.append(stripped)
     return frames
+
+
+def _temporal_block_holdouts(
+    frames: Sequence[str],
+    *,
+    val_count: int,
+    test_count: int,
+    gap: int,
+    seed: int,
+) -> tuple[list[str], list[str], list[str]]:
+    """Choose separated contiguous holdouts and their train-exclusion buffers."""
+
+    total = len(frames)
+    if val_count == 0 and test_count == 0:
+        return [], [], []
+
+    rng = random.Random(seed)
+    test_starts = list(range(total - test_count + 1)) if test_count else [None]
+    rng.shuffle(test_starts)
+
+    selected: tuple[int | None, int | None] | None = None
+    for test_start in test_starts:
+        test_interval = _protected_interval(test_start, test_count, gap, total)
+        val_starts = list(range(total - val_count + 1)) if val_count else [None]
+        rng.shuffle(val_starts)
+        feasible_val_starts = [
+            val_start
+            for val_start in val_starts
+            if _intervals_disjoint(
+                test_interval,
+                _protected_interval(val_start, val_count, gap, total),
+            )
+        ]
+        if feasible_val_starts:
+            selected = (test_start, feasible_val_starts[0])
+            break
+
+    if selected is None:
+        raise ValueError(
+            "Temporal-block holdouts do not fit with the requested exclusion gap: "
+            f"val={val_count}, test={test_count}, gap={gap}, total={total}."
+        )
+
+    test_start, val_start = selected
+    test_indices = _block_indices(test_start, test_count)
+    val_indices = _block_indices(val_start, val_count)
+    holdout_indices = test_indices | val_indices
+    protected_indices: set[int] = set()
+    for start, count in ((test_start, test_count), (val_start, val_count)):
+        protected_start, protected_end = _protected_interval(start, count, gap, total)
+        protected_indices.update(range(protected_start, protected_end))
+
+    excluded_indices = protected_indices - holdout_indices
+    val = [frames[index] for index in sorted(val_indices)]
+    test = [frames[index] for index in sorted(test_indices)]
+    excluded = [frames[index] for index in sorted(excluded_indices)]
+    return val, test, excluded
+
+
+def _block_indices(start: int | None, count: int) -> set[int]:
+    if start is None or count == 0:
+        return set()
+    return set(range(start, start + count))
+
+
+def _protected_interval(
+    start: int | None,
+    count: int,
+    gap: int,
+    total: int,
+) -> tuple[int, int]:
+    if start is None or count == 0:
+        return (0, 0)
+    return (max(0, start - gap), min(total, start + count + gap))
+
+
+def _intervals_disjoint(left: tuple[int, int], right: tuple[int, int]) -> bool:
+    if left == (0, 0) or right == (0, 0):
+        return True
+    return left[1] <= right[0] or right[1] <= left[0]
 
 
 def _resolve_holdout_count(

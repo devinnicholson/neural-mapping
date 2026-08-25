@@ -1,0 +1,100 @@
+{
+  "schema_version": 1,
+  "status": "preregistered_before_confirmatory_runs",
+  "preregistered_at_utc": "2026-08-25",
+  "implementation_commit": "SET_BY_FOLLOWUP_COMMIT_BEFORE_RUNS",
+  "research_question": "Does a fixed depth-gradient and pose-diversity hybrid acquisition policy improve reconstruction at a 50-frame budget across independent splits, and does any benefit survive a leakage-resistant trajectory-block holdout?",
+  "frozen_policy": {
+    "base_budget": 25,
+    "target_budget": 50,
+    "strategy": "score-pose-hybrid",
+    "score_key": "top_decile_mean_uncertainty.depth-gradient",
+    "score_weight": 0.35,
+    "uncertainty_error_metric": "depth-aligned-abs-rel",
+    "bad_error_quantile": 0.8,
+    "max_pixels_per_candidate_frame": 50000,
+    "uncertainty_signals_for_diagnostics": [
+      "transmittance",
+      "local-mean-transmittance",
+      "local-std-transmittance",
+      "accumulation-gradient",
+      "depth-gradient"
+    ]
+  },
+  "dataset": {
+    "name": "TUM RGB-D",
+    "sequence": "freiburg2_desk",
+    "source_url": "https://cvg.cit.tum.de/rgbd/dataset/freiburg2/rgbd_dataset_freiburg2_desk.tgz",
+    "max_frames": 180,
+    "frame_stride": 3,
+    "validation_count": 10,
+    "test_count": 20
+  },
+  "training": {
+    "method": "nerfstudio/splatfacto",
+    "iterations": 7000,
+    "downscale_factor": 1,
+    "gpu": "NVIDIA L4",
+    "matched_seed_within_each_active_random_pair": true
+  },
+  "confirmatory_interleaved_runs": [
+    {
+      "scene": "tum_fr2_desk_frozen_v1",
+      "split_seed": 20260824,
+      "training_seed": 42,
+      "status": "completed_before_preregistration_and_included_as_replication_1"
+    },
+    {
+      "scene": "tum_fr2_desk_frozen_v2",
+      "split_seed": 20260825,
+      "training_seed": 43,
+      "status": "pending"
+    },
+    {
+      "scene": "tum_fr2_desk_frozen_v3",
+      "split_seed": 20260826,
+      "training_seed": 44,
+      "status": "pending"
+    }
+  ],
+  "blocked_holdout_run": {
+    "scene": "tum_fr2_desk_blocked_v1",
+    "split_seed": 20260827,
+    "training_seed": 45,
+    "holdout_method": "temporal-block",
+    "holdout_gap": 5,
+    "status": "pending"
+  },
+  "outcomes": {
+    "primary_rgb": "held-out PSNR",
+    "primary_geometry": "raw depth AbsRel",
+    "secondary": [
+      "SSIM",
+      "LPIPS",
+      "raw depth delta1",
+      "median-aligned depth AbsRel",
+      "median-aligned depth delta1"
+    ],
+    "uncertainty_diagnostics": [
+      "Spearman correlation",
+      "AUROC",
+      "AUPRC",
+      "risk-coverage AUC",
+      "AUSE",
+      "highest-decile mean error"
+    ]
+  },
+  "decision_rules": {
+    "interleaved_support": "Active minus random has positive mean PSNR and negative mean raw AbsRel across the three locked splits, with both directions reproduced on at least two of three splits.",
+    "blocked_support": "On the blocked holdout, active minus random has positive PSNR and negative raw AbsRel. This run is reported separately and is not pooled with interleaved splits.",
+    "robust_support": "Both interleaved_support and blocked_support pass without a material LPIPS regression greater than 0.01.",
+    "failure": "Any failed gate is reported as mixed or negative; no score signal or weight is changed after inspecting results."
+  },
+  "analysis": {
+    "pairing": "All active and random comparisons are within the same split and training seed.",
+    "interleaved_summary": "Report per-seed deltas, arithmetic means, population standard deviations, sign counts, and a descriptive paired bootstrap interval. With n=3, intervals are not treated as definitive inference.",
+    "blocked_summary": "Report the single blocked pair with frame-level dispersion and explicit holdout spans/exclusion frames.",
+    "negative_results": "Report every prespecified metric and all completed runs, including alignment failures and selector regressions."
+  },
+  "stopping_rule": "Stop this experiment family after the two pending interleaved pairs and one blocked pair are evaluated and recorded. Continue to a new dataset only if the robust_support gate passes; otherwise diagnose the failed gate before spending more compute."
+}

@@ -378,6 +378,8 @@ def prepare_tum_rgbd_sequence(
     test_count: int = 20,
     seed: int = 20260610,
     selection_method: str = "random",
+    holdout_method: str = "random",
+    holdout_gap: int = 0,
     max_frames: int = 180,
     frame_stride: int = 3,
 ) -> dict[str, Any]:
@@ -431,6 +433,10 @@ def prepare_tum_rgbd_sequence(
             str(seed),
             "--selection-method",
             selection_method,
+            "--holdout-method",
+            holdout_method,
+            "--holdout-gap",
+            str(holdout_gap),
             "--output",
             str(split_json),
         ]
@@ -457,6 +463,8 @@ def prepare_tum_rgbd_sequence(
         "sequence_name": sequence_name,
         "scene_name": scene_name,
         "selection_method": selection_method,
+        "holdout_method": holdout_method,
+        "holdout_gap": holdout_gap,
         "max_frames": max_frames,
         "frame_stride": frame_stride,
         "source_dir": str(source_dir),
@@ -880,6 +888,7 @@ def train_splatfacto(
     budget: int,
     max_num_iterations: int = 3000,
     downscale_factor: int = 1,
+    training_seed: int = 42,
     vis: str = "tensorboard",
 ) -> dict[str, Any]:
     """Train Splatfacto on a Nerfstudio-compatible dataset directory."""
@@ -895,6 +904,8 @@ def train_splatfacto(
             str(run_root / "train"),
             "--max-num-iterations",
             str(max_num_iterations),
+            "--machine.seed",
+            str(training_seed),
             "--vis",
             vis,
             "--viewer.quit-on-train-completion",
@@ -916,6 +927,7 @@ def train_splatfacto(
         "scene_name": scene_name,
         "budget": budget,
         "iterations": max_num_iterations,
+        "training_seed": training_seed,
         "run_root": str(run_root),
         "latest_config": str(configs[-1]) if configs else None,
     }
@@ -1104,6 +1116,10 @@ def summarize_splits(split_scene_names: list[str], budget: int = 50, base_budget
                 "path": str(path),
                 "budget": budget,
                 "base_budget": base_budget,
+                "holdout_method": payload.get("holdout_method", "random"),
+                "holdout_gap": payload.get("holdout_gap", 0),
+                "excluded_count": payload.get("excluded_count", 0),
+                "excluded_frames": payload.get("excluded_frames", []),
                 "train_count": len(train),
                 "val_count": len(val),
                 "test_count": len(test),
@@ -1139,12 +1155,15 @@ def main(
     source_data_scene_name: str = "poster_available",
     base_split_scene_name: str = "poster_available",
     selection_method: str = "random",
+    holdout_method: str = "random",
+    holdout_gap: int = 0,
     split_seed: int = 20260529,
     val_count: int = 10,
     test_count: int = 20,
     max_frames: int = 180,
     frame_stride: int = 3,
     downscale_factor: int = 1,
+    training_seed: int = 42,
     active_strategy: str = "pose-novelty",
     score_path: str = "",
     score_key: str = "score",
@@ -1190,6 +1209,8 @@ def main(
                 test_count=test_count,
                 seed=split_seed,
                 selection_method=selection_method,
+                holdout_method=holdout_method,
+                holdout_gap=holdout_gap,
                 max_frames=max_frames,
                 frame_stride=frame_stride,
             )
@@ -1268,6 +1289,7 @@ def main(
                 budget=budget,
                 max_num_iterations=iterations,
                 downscale_factor=downscale_factor,
+                training_seed=training_seed,
             )
         )
     elif action == "eval":
@@ -1322,6 +1344,7 @@ def main(
                 budget=budget,
                 max_num_iterations=iterations,
                 downscale_factor=downscale_factor,
+                training_seed=training_seed,
             )
         )
         print(eval_latest_run.remote(scene_name=scene_name, budget=budget, render_outputs=render_outputs))
