@@ -1,0 +1,120 @@
+{
+  "schema_version": 1,
+  "status": "preregistered_before_confirmatory_training",
+  "preregistered_at_utc": "2026-08-25",
+  "implementation_commit": "1b8e364ea341c9a1c0356d939977a48614bb04df",
+  "research_question": "Does the frozen depth-gradient and pose-diversity acquisition policy improve sparse-view Gaussian neural mapping across independent camera trajectories, and does it outperform matched non-learned coverage controls when evaluated on leakage-resistant RGB, metric depth, and fused surface geometry outcomes?",
+  "hypotheses": {
+    "h1_primary": "At a 50-frame budget, the frozen active policy improves mean held-out PSNR and mean 5 cm surface F-score relative to matched random acquisition across trajectory and training-seed pairs.",
+    "h2_replication": "The PSNR and 5 cm F-score effects are favorable on at least six of eight matched active-random pairs and on at least three of four trajectories after averaging the two training seeds within each trajectory.",
+    "h3_control": "The frozen active policy has higher grand-mean PSNR and 5 cm F-score than both acquisition-time coverage and pose-coverage controls; controls are trained with seed 42 and are compared to the seed-42 active runs.",
+    "h4_uncertainty": "The prespecified depth-gradient score has positive mean Spearman correlation with candidate-frame error and AUROC above 0.5 on at least six of eight seed models."
+  },
+  "dataset": {
+    "name": "ICL-NUIM RGB-D benchmark",
+    "scene": "living room",
+    "official_page": "https://www.doc.ic.ac.uk/~ahanda/VaFRIC/iclnuim.html",
+    "license": "CC BY 3.0",
+    "variant": "clean",
+    "trajectories": [
+      {"name": "lr_kt0", "split_seed": 202608250},
+      {"name": "lr_kt1", "split_seed": 202608251},
+      {"name": "lr_kt2", "split_seed": 202608252},
+      {"name": "lr_kt3", "split_seed": 202608253}
+    ],
+    "sampling": {
+      "method": "uniform over the full sequence including both endpoints",
+      "max_frames": 240,
+      "frame_stride_before_uniform_sampling": 1,
+      "validation_count": 10,
+      "test_count": 20,
+      "holdout_method": "temporal-block",
+      "holdout_gap_sampled_frames": 5,
+      "excluded_guard_frames_expected": 20
+    },
+    "intrinsics": {"width": 640, "height": 480, "fx": 481.2, "fy": 480.0, "cx": 319.5, "cy": 239.5},
+    "depth_unit_scale_factor": 0.0002
+  },
+  "acquisition_methods": {
+    "shared_base_budget": 25,
+    "target_budget": 50,
+    "random": "The nested random 50-frame split from the same base split.",
+    "trajectory_coverage": "Greedy farthest-first expansion in acquisition index from the exact 25-frame seed.",
+    "pose_coverage": "Greedy farthest-first expansion in camera-center distance from the exact 25-frame seed.",
+    "frozen_active": {
+      "strategy": "score-pose-hybrid",
+      "score_key": "top_decile_mean_uncertainty.depth-gradient",
+      "score_weight": 0.35,
+      "pose_weight": 0.65,
+      "candidate_error_metric_for_diagnostics_only": "depth-aligned-abs-rel",
+      "bad_error_quantile": 0.8,
+      "max_pixels_per_candidate_frame": 50000,
+      "selection_scores_are_generated_independently_for_each_training_seed": true
+    }
+  },
+  "training": {
+    "method": "nerfstudio/splatfacto",
+    "iterations": 7000,
+    "downscale_factor": 1,
+    "training_seeds": [42, 43],
+    "gpu": "NVIDIA L4",
+    "software": {
+      "python": "3.12",
+      "torch": "2.11.0+cu128",
+      "cuda": "12.8.1",
+      "nerfstudio": "1.1.5",
+      "gsplat": "1.4.0",
+      "scipy": "1.15.3"
+    },
+    "pairing": "Within each trajectory and training seed, random and active runs share the split, held-out frames, seed, iteration count, and hardware class. Coverage controls use seed 42."
+  },
+  "outcomes": {
+    "co_primary": [
+      "held-out PSNR in dB",
+      "held-out fused-surface F-score at 0.05 m"
+    ],
+    "secondary_rgb": ["SSIM", "LPIPS"],
+    "secondary_depth": ["raw AbsRel", "raw delta1", "median-aligned AbsRel", "median-aligned delta1"],
+    "secondary_geometry": [
+      "surface accuracy mean in m",
+      "surface completeness mean in m",
+      "symmetric Chamfer-L1 mean in m",
+      "precision, recall, and F-score at 0.10 m"
+    ],
+    "geometry_evaluation": {
+      "held_out_frames": 20,
+      "min_depth_m": 0.05,
+      "max_depth_m": 10.0,
+      "min_accumulation": 0.0,
+      "max_pixels_per_frame_per_cloud": 20000,
+      "max_points_before_voxelization": 500000,
+      "voxel_size_m": 0.02,
+      "thresholds_m": [0.05, 0.1],
+      "alignment": "No post-hoc scale or rigid alignment; raw metric depth is fused with published camera poses."
+    },
+    "uncertainty_diagnostics": ["Spearman correlation", "AUROC", "AUPRC", "risk-coverage AUC", "AUSE"]
+  },
+  "analysis": {
+    "unit_of_replication": "trajectory-by-training-seed matched pair; pixels and frames are not treated as independent experimental replicates",
+    "active_random_summary": "Report all eight paired deltas, trajectory means, grand mean, population standard deviation, sign counts, and a trajectory-cluster bootstrap interval. With four trajectories, intervals are descriptive rather than definitive inference.",
+    "control_summary": "Compare seed-42 active, random, trajectory-coverage, and pose-coverage on all four trajectories. Report ranks and per-trajectory deltas, not only the best method.",
+    "negative_results": "Report every prespecified outcome for every completed run, including metric disagreement, failed geometry, score diagnostics, and selector regressions.",
+    "missing_run_policy": "Retry infrastructure failures without changing configuration. A training failure after two clean retries is recorded as missing with its logs; no replacement seed is introduced."
+  },
+  "decision_rules": {
+    "h1_primary_pass": "Both grand-mean active-minus-random PSNR and grand-mean active-minus-random 5 cm F-score are greater than zero.",
+    "h2_replication_pass": "Both co-primary outcomes are favorable in at least six of eight pairs and in at least three of four trajectory-level means.",
+    "h3_control_pass": "Seed-42 active has higher grand-mean PSNR and 5 cm F-score than each of random, trajectory-coverage, and pose-coverage.",
+    "h4_uncertainty_pass": "Mean depth-gradient Spearman is positive and depth-gradient AUROC exceeds 0.5 in at least six of eight seed models.",
+    "perceptual_safety_gate": "Grand-mean active-minus-random LPIPS is no greater than 0.01 and no trajectory-mean LPIPS regression exceeds 0.02.",
+    "overall_support": "H1, H2, H4, and the perceptual safety gate pass. H3 is a separate stronger selector-superiority claim and is reported whether it passes or fails.",
+    "failure": "Any failed rule is reported as mixed or negative; no trajectory, seed, score, weight, threshold, or metric is changed after result inspection."
+  },
+  "preparation_smoke": {
+    "trajectory": "lr_kt2",
+    "modal_run": "ap-Tcsu1GsSOm40zAC5xprVFL",
+    "result_inspection": "Data association and split counts only; no model was trained and no confirmatory outcome was observed.",
+    "observed_counts": {"rgbd_pairs": 881, "poses": 880, "sampled_frames": 240, "first_frame_index": 1, "last_frame_index": 880}
+  },
+  "stopping_rule": "Complete the eight active-random matched pairs and four seed-42 coverage-control sets, evaluate all frozen outcomes, and write the complete record. Do not tune this experiment family after results. Further experiments require a new protocol and are labeled exploratory or confirmatory before execution."
+}
