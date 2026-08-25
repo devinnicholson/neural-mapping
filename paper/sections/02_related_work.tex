@@ -1,0 +1,32 @@
+\section{Related Work}
+
+\paragraph{Neural rendering and Gaussian scene representations.}
+Neural radiance fields synthesize novel views by optimizing a continuous
+radiance field from posed images~\cite{mildenhall2020nerf}.  3D Gaussian
+Splatting replaces repeated volumetric sampling with an explicit set of
+anisotropic Gaussians and a differentiable rasterizer, enabling high-quality
+real-time rendering~\cite{kerbl20233dgs}.  Our work does not modify the 3DGS
+representation; it studies which observations should be acquired under a fixed
+training budget.
+
+\paragraph{Active view selection.}
+Next-best-view and active reconstruction methods balance information gain,
+coverage, visibility, and motion cost.  Learned systems may predict rendering
+error or geometric uncertainty, while classical controls favor unexplored
+space.  We isolate the marginal value of model-derived uncertainty by matching
+all policies to the same seed, holdout, and target budget and by including both
+acquisition-time and camera-pose coverage controls.
+
+\paragraph{Uncertainty and selective prediction.}
+Uncertainty is useful only insofar as it predicts error or improves a downstream
+decision.  We therefore report rank correlation, failure-detection AUROC and
+AUPRC, risk--coverage behavior, and sparsification error in addition to the
+acquisition result.  We do not interpret the renderer signals as calibrated
+probabilities.
+
+\paragraph{RGB-D reconstruction benchmarks.}
+ICL-NUIM provides synthetic RGB-D sequences with published camera trajectories
+and surface ground truth for controlled reconstruction evaluation
+~\cite{handa2014benchmark}.  We use its four living-room trajectories as
+independent acquisition environments and preserve their metric coordinate
+system during training and evaluation.

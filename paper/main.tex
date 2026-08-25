@@ -1,0 +1,50 @@
+\documentclass[10pt,twocolumn]{article}
+
+\usepackage[margin=0.72in]{geometry}
+\usepackage{booktabs}
+\usepackage{graphicx}
+\usepackage{microtype}
+\usepackage{amsmath,amssymb}
+\usepackage{siunitx}
+\usepackage{xcolor}
+\usepackage[hidelinks]{hyperref}
+\usepackage[nameinlink,capitalize]{cleveref}
+
+\newcommand{\method}{U3DGS}
+\newcommand{\todo}[1]{\textcolor{red}{[TODO: #1]}}
+
+\title{Uncertainty-Aware Acquisition for Sparse-View Gaussian Neural Mapping}
+\author{Devin Nicholson}
+\date{}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+We study offline frame acquisition for sparse-view 3D Gaussian neural maps.
+Starting from a fixed set of posed observations, the method scores candidate
+views with renderer-derived uncertainty and expands the map using a greedy
+mixture of upper-tail uncertainty and camera-pose novelty.  We evaluate one
+policy frozen before confirmatory training against matched random,
+acquisition-time coverage, and pose-coverage controls on four independent
+RGB-D trajectories.  The protocol uses disjoint temporal-block holdouts,
+two optimization seeds for the primary comparison, and evaluates held-out RGB,
+metric depth, and fused world-space surface geometry.  \todo{Replace this final
+sentence with the audited gate outcome after the benchmark record is complete.}
+\end{abstract}
+
+\input{sections/01_introduction}
+\input{sections/02_related_work}
+\input{sections/03_method}
+\input{sections/04_experiments}
+\input{sections/05_results}
+\input{sections/06_limitations}
+\input{sections/07_conclusion}
+
+\bibliographystyle{plain}
+\bibliography{references}
+
+\appendix
+\input{sections/appendix}
+
+\end{document}

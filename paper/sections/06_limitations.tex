@@ -1,0 +1,12 @@
+\section{Limitations and Threats to Validity}
+
+The benchmark uses four synthetic trajectories through one scene model, not
+four independent physical environments.  Two optimizer seeds characterize only
+a narrow component of training variance.  Candidate poses are known in advance,
+so the experiment does not measure tracking failure, motion cost, or online
+planning latency.  The uncertainty signal is a renderer-derived heuristic, not
+a calibrated posterior.  Surface metrics are reconstructed from held-out depth
+views rather than evaluated against the complete official mesh, so unobserved
+regions remain outside the metric.  Finally, the selector inherits the
+representation and inductive biases of Splatfacto; conclusions need not transfer
+to implicit radiance fields, point-based maps, or depth-supervised mapping.

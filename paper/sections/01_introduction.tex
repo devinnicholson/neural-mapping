@@ -1,0 +1,38 @@
+\section{Introduction}
+
+Neural scene representations are commonly trained from whatever views happen
+to be available.  In mapping, the acquisition budget is itself a decision:
+which additional observation should be incorporated when rendering quality,
+geometry, latency, and redundancy all matter?  This question is distinct from
+building a better renderer.  A useful acquisition rule must transfer across
+camera trajectories, outperform inexpensive coverage heuristics, and improve
+map geometry rather than only image-space appearance.
+
+We investigate an offline, pool-based version of this problem for 3D Gaussian
+Splatting (3DGS).  A seed map renders every eligible candidate pose.  We
+aggregate a prescribed renderer-derived signal over the highest-uncertainty
+pixel decile and combine that score with distance from already selected camera
+centers.  The resulting policy is simple enough to audit and exposes a direct
+question: does model state contain acquisition information beyond trajectory or
+pose coverage?
+
+Our study is organized around falsifiable comparisons.  The policy and weight
+are fixed using earlier development sequences.  Confirmatory evaluation uses
+four independent trajectories, two training seeds, disjoint temporal-block
+holdouts with guard bands, and matched 25-to-50-frame expansions.  We measure
+PSNR, SSIM, LPIPS, metric depth, and surface accuracy, completeness, Chamfer-L1,
+and F-score.  Pixel samples are used to estimate per-frame metrics, but the
+experimental unit is the trajectory-by-seed pair.
+
+The intended contributions are:
+\begin{itemize}
+  \item a reproducible acquisition protocol with fixed information boundaries
+        and matched random, temporal-coverage, and pose-coverage controls;
+  \item a renderer-derived tail-risk and pose-diversity selector evaluated
+        unchanged across independent RGB-D trajectories;
+  \item a metric surface evaluator that fuses held-out predicted and reference
+        depth in the published coordinate system; and
+  \item a complete record of supportive, mixed, and negative outcomes, including
+        uncertainty diagnostics and protocol corrections made before outcome
+        inspection.
+\end{itemize}

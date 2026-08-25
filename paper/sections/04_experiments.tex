@@ -1,0 +1,32 @@
+\section{Experiments}
+
+\paragraph{Data and splits.}
+We uniformly sample 240 observations, including both endpoints, from each of
+the four clean ICL-NUIM living-room trajectories.  Each trajectory has 25 seed
+training frames, 10 validation frames, and a contiguous 20-frame test block.
+A five-sampled-frame guard band excludes nearby candidates on either side of
+each holdout where the sequence boundary permits.  Training, validation, and
+test filenames are disjoint.
+
+\paragraph{Training.}
+All models use Nerfstudio Splatfacto for 7,000 iterations on NVIDIA L4 GPUs.
+Camera optimization is disabled.  We disable orientation, centering, and pose
+auto-scaling so rendered depth and fused surfaces remain in the published
+metric frame.  Primary active--random comparisons use optimization seeds 42
+and 43 on every trajectory; coverage controls use seed 42.
+
+\paragraph{Metrics.}
+RGB metrics are PSNR, SSIM, and LPIPS.  Depth metrics include raw and per-frame
+median-aligned AbsRel and threshold accuracy.  For surface evaluation, predicted
+and reference depth from all held-out frames are backprojected through the
+published intrinsics and poses, capped deterministically, and voxelized at
+\SI{2}{cm}.  We report bidirectional nearest-neighbor accuracy and completeness,
+their symmetric mean (Chamfer-L1), and precision, recall, and F-score at
+\SI{5}{cm} and \SI{10}{cm}.
+
+\paragraph{Analysis.}
+The co-primary outcomes are PSNR and \SI{5}{cm} surface F-score.  We report all
+eight active--random paired effects, means within trajectory, the grand mean,
+sign counts, and a trajectory-cluster bootstrap interval.  The four seed-42
+control sets are reported separately.  Decision rules and missing-run behavior
+were committed before confirmatory outcome inspection.

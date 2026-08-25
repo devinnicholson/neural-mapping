@@ -1278,6 +1278,23 @@ def collect_metric_rows() -> list[dict[str, Any]]:
                     "depth_aligned_delta1": aligned.get("delta1"),
                 }
             )
+        geometry_path = path.with_name("geometry_eval.json")
+        if geometry_path.exists():
+            geometry = _read_json(geometry_path).get("summary", {})
+            row.update(
+                {
+                    "geometry_metrics_path": str(geometry_path),
+                    "geometry_accuracy_mean_m": geometry.get("accuracy_mean_m"),
+                    "geometry_completeness_mean_m": geometry.get("completeness_mean_m"),
+                    "geometry_chamfer_l1_mean_m": geometry.get("chamfer_l1_mean_m"),
+                    "geometry_precision_05cm": geometry.get("precision_05cm"),
+                    "geometry_recall_05cm": geometry.get("recall_05cm"),
+                    "geometry_fscore_05cm": geometry.get("fscore_05cm"),
+                    "geometry_precision_10cm": geometry.get("precision_10cm"),
+                    "geometry_recall_10cm": geometry.get("recall_10cm"),
+                    "geometry_fscore_10cm": geometry.get("fscore_10cm"),
+                }
+            )
         rows.append(row)
     return rows
 
@@ -1386,6 +1403,8 @@ def main(
     report_path: str = "",
     matrix_data_scene_names: str = "",
     matrix_scene_names: str = "",
+    matrix_report_scene_names: str = "",
+    matrix_active_scene_names: str = "",
     matrix_budgets: str = "",
     matrix_training_seeds: str = "",
     render_outputs: bool = True,
@@ -1489,6 +1508,58 @@ def main(
                 patch_size=patch_size,
             )
         )
+    elif action == "render-uncertainty-matrix":
+        source_scenes = _split_fields(matrix_data_scene_names)
+        seed_scenes = _split_fields(matrix_scene_names)
+        report_scenes = _split_fields(matrix_report_scene_names)
+        lengths = {len(source_scenes), len(seed_scenes), len(report_scenes)}
+        if len(lengths) != 1 or not source_scenes:
+            raise ValueError(
+                "Matrix source, seed, and report scene fields must contain the same "
+                "non-zero number of whitespace-separated entries."
+            )
+        calls = []
+        for source_scene, seed_scene, report_scene in zip(
+            source_scenes, seed_scenes, report_scenes, strict=True
+        ):
+            call = evaluate_render_uncertainty_maps.spawn(
+                source_scene_name=source_scene,
+                base_split_scene_name=source_scene,
+                report_scene_name=report_scene,
+                seed_scene_name=seed_scene,
+                base_budget=budget,
+                error_metric=score_metric,
+                bad_error_quantile=bad_quantile,
+                max_pixels_per_frame=max_pixels_per_frame,
+                render_map_signals=_split_fields(render_map_signals),
+                patch_size=patch_size,
+            )
+            calls.append((source_scene, seed_scene, report_scene, call))
+            print(
+                json.dumps(
+                    {
+                        "status": "spawned",
+                        "source_scene_name": source_scene,
+                        "seed_scene_name": seed_scene,
+                        "report_scene_name": report_scene,
+                        "function_call_id": call.object_id,
+                    }
+                ),
+                flush=True,
+            )
+        for source_scene, seed_scene, report_scene, call in calls:
+            print(
+                json.dumps(
+                    {
+                        "status": "completed",
+                        "source_scene_name": source_scene,
+                        "seed_scene_name": seed_scene,
+                        "report_scene_name": report_scene,
+                        "result": call.get(),
+                    }
+                ),
+                flush=True,
+            )
     elif action == "ensemble-uncertainty-maps":
         print(
             evaluate_ensemble_uncertainty_maps.remote(
@@ -1578,6 +1649,63 @@ def main(
                 ),
                 flush=True,
             )
+    elif action == "prepare-active-matrix":
+        source_scenes = _split_fields(matrix_data_scene_names)
+        report_scenes = _split_fields(matrix_report_scene_names)
+        active_scenes = _split_fields(matrix_active_scene_names)
+        lengths = {len(source_scenes), len(report_scenes), len(active_scenes)}
+        if len(lengths) != 1 or not source_scenes:
+            raise ValueError(
+                "Matrix source, report, and active scene fields must contain the same "
+                "non-zero number of whitespace-separated entries."
+            )
+        calls = []
+        for source_scene, report_scene, active_scene in zip(
+            source_scenes, report_scenes, active_scenes, strict=True
+        ):
+            report_file = (
+                OUTPUT_ROOT
+                / "reports"
+                / "render_uncertainty_maps"
+                / f"{report_scene}_budget_{base_budget:03d}_{score_metric}.json"
+            )
+            call = prepare_active_split.spawn(
+                source_scene_name=source_scene,
+                base_split_scene_name=source_scene,
+                active_scene_name=active_scene,
+                base_budget=base_budget,
+                target_budget=target_budget,
+                strategy=active_strategy,
+                scores_path=str(report_file),
+                score_key=score_key,
+                score_weight=score_weight,
+            )
+            calls.append((source_scene, report_scene, active_scene, call))
+            print(
+                json.dumps(
+                    {
+                        "status": "spawned",
+                        "source_scene_name": source_scene,
+                        "report_scene_name": report_scene,
+                        "active_scene_name": active_scene,
+                        "function_call_id": call.object_id,
+                    }
+                ),
+                flush=True,
+            )
+        for source_scene, report_scene, active_scene, call in calls:
+            print(
+                json.dumps(
+                    {
+                        "status": "completed",
+                        "source_scene_name": source_scene,
+                        "report_scene_name": report_scene,
+                        "active_scene_name": active_scene,
+                        "result": call.get(),
+                    }
+                ),
+                flush=True,
+            )
     elif action == "eval":
         print(eval_latest_run.remote(scene_name=scene_name, budget=budget, render_outputs=render_outputs))
     elif action == "depth-eval":
@@ -1619,6 +1747,84 @@ def main(
                 indent=2,
             )
         )
+    elif action == "eval-matrix":
+        data_scenes = _split_fields(matrix_data_scene_names)
+        scenes = _split_fields(matrix_scene_names)
+        run_budgets = _parse_int_fields(matrix_budgets)
+        lengths = {len(data_scenes), len(scenes), len(run_budgets)}
+        if len(lengths) != 1 or not data_scenes:
+            raise ValueError(
+                "Matrix data scene, run scene, and budget fields must contain the same "
+                "non-zero number of whitespace-separated entries."
+            )
+        calls = []
+        for data_scene, run_scene, run_budget in zip(
+            data_scenes, scenes, run_budgets, strict=True
+        ):
+            evaluations = {
+                "rgb": eval_latest_run.spawn(
+                    scene_name=run_scene,
+                    budget=run_budget,
+                    render_outputs=render_outputs,
+                ),
+                "depth": depth_eval_latest_run.spawn(
+                    scene_name=run_scene,
+                    data_scene_name=data_scene,
+                    budget=run_budget,
+                    target_source=depth_target_source,
+                    cache_images=depth_cache_images,
+                    min_depth=min_depth,
+                    max_depth=max_depth,
+                    min_accumulation=min_accumulation,
+                    max_pixels_per_frame=depth_max_pixels_per_frame,
+                    max_frames=depth_max_frames or None,
+                ),
+                "geometry": geometry_eval_latest_run.spawn(
+                    scene_name=run_scene,
+                    data_scene_name=data_scene,
+                    budget=run_budget,
+                    target_source=depth_target_source,
+                    cache_images=depth_cache_images,
+                    min_depth=min_depth,
+                    max_depth=max_depth,
+                    min_accumulation=min_accumulation,
+                    max_pixels_per_frame=max_pixels_per_frame,
+                    max_points=geometry_max_points,
+                    voxel_size=geometry_voxel_size,
+                    thresholds=[float(value) for value in _split_fields(geometry_thresholds)],
+                    max_frames=depth_max_frames or None,
+                ),
+            }
+            calls.append((data_scene, run_scene, run_budget, evaluations))
+            print(
+                json.dumps(
+                    {
+                        "status": "spawned",
+                        "data_scene_name": data_scene,
+                        "scene_name": run_scene,
+                        "budget": run_budget,
+                        "function_call_ids": {
+                            name: call.object_id for name, call in evaluations.items()
+                        },
+                    }
+                ),
+                flush=True,
+            )
+        for data_scene, run_scene, run_budget, evaluations in calls:
+            print(
+                json.dumps(
+                    {
+                        "status": "completed",
+                        "data_scene_name": data_scene,
+                        "scene_name": run_scene,
+                        "budget": run_budget,
+                        "results": {
+                            name: call.get() for name, call in evaluations.items()
+                        },
+                    }
+                ),
+                flush=True,
+            )
     elif action == "metrics":
         for row in collect_metric_rows.remote():
             print(json.dumps(row, indent=2))
@@ -1662,7 +1868,8 @@ def main(
         raise ValueError(
             f"Unknown action {action!r}. "
             "Use env, prepare, prepare-tum, prepare-icl, score-candidates, frame-uncertainty, "
-            "render-uncertainty-maps, ensemble-uncertainty-maps, "
-            "prepare-active, train, train-matrix, eval, depth-eval, geometry-eval, metrics, split-summary, "
+            "render-uncertainty-maps, render-uncertainty-matrix, ensemble-uncertainty-maps, "
+            "prepare-active, prepare-active-matrix, train, train-matrix, eval, eval-matrix, "
+            "depth-eval, geometry-eval, metrics, split-summary, "
             "report-summary, or smoke."
         )

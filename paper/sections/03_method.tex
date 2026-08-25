@@ -1,0 +1,28 @@
+\section{Method}
+
+Let $S_0$ contain the initial posed frames, $C$ the eligible candidate pool, and
+$B$ the target training budget.  A seed 3DGS model $f_{S_0}$ is trained from
+$S_0$.  For candidate view $v$, the renderer produces a depth-gradient signal
+$u_v(p)$ for pixel $p$.  We define upper-tail risk as
+\begin{equation}
+U(v)=\frac{1}{|Q_v|}\sum_{p\in Q_v}u_v(p),
+\end{equation}
+where $Q_v$ is the highest-scoring pixel decile.  This prevents a large
+well-explained background from overwhelming a spatially concentrated failure.
+
+At each greedy step, let $D(v,S)$ be the Euclidean distance between the
+candidate camera center and its nearest selected center.  Rank-normalized
+scores $\widetilde U$ and min--max normalized distances $\widetilde D$ are
+combined as
+\begin{equation}
+A(v\mid S)=\lambda\widetilde U(v)+(1-\lambda)\widetilde D(v,S),
+\end{equation}
+with frozen $\lambda=0.35$.  We add the maximizing candidate to $S$ until
+$|S|=B$.  The selected 50-frame set is retrained from scratch with the same
+optimizer seed and iteration count as its random comparator.
+
+The controls expand the exact same seed set.  Random uses the nested frozen
+split, trajectory coverage applies farthest-first selection in acquisition
+index, and pose coverage applies farthest-first selection in camera-center
+distance.  These controls distinguish a useful model signal from the benefits
+of simple de-duplication and geometric coverage.

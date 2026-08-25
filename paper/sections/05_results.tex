@@ -1,0 +1,18 @@
+\section{Results}
+
+\todo{Generate the main active--random table from the audited benchmark record.}
+
+\todo{Report the seed-42 random, trajectory-coverage, pose-coverage, and active
+control table without suppressing losing trajectories.}
+
+\todo{Report uncertainty diagnostics, geometry/RGB disagreements, confidence
+intervals, and the exact prespecified gate outcomes.}
+
+\paragraph{Protocol correction.}
+Before any confirmatory model completed or outcome was inspected, initial
+configuration logs exposed two incompatible defaults: pose auto-normalization
+would invalidate metric surface evaluation, and validation frames were included
+in nominal training budgets.  The batch was terminated during initialization,
+the materializer and training configuration were corrected, every dataset was
+rematerialized, and the preregistration was amended with the canceled run and
+replacement commit before training restarted.

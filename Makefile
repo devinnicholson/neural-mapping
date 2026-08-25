@@ -1,7 +1,7 @@
-.PHONY: test smoke results-summary tree
+.PHONY: test smoke results-summary paper tree
 
 test:
-	python -m unittest discover -s tests
+	python -m pytest -q
 
 smoke:
 	python scripts/generate_splits.py --frames examples/frames.txt --budgets 4 6 --val-count 2 --test-count 2 --scene example --seed 7 --output data/splits/example_split.json
@@ -9,6 +9,9 @@ smoke:
 
 results-summary:
 	python scripts/summarize_active_metrics.py --input outputs/modal_metrics_latest.log --pairs-file configs/active_metric_pairs.json --format markdown
+
+paper:
+	cd paper && latexmk -pdf main.tex
 
 tree:
 	find . -maxdepth 3 -type f | sort
