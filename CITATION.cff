@@ -1,0 +1,18 @@
+cff-version: 1.2.0
+message: "If you use this software or its experimental records, please cite this repository and the dataset/method papers listed in the protocol."
+title: "Uncertainty-Aware 3D Gaussian Neural Mapping"
+type: software
+authors:
+  - family-names: Nicholson
+    given-names: Devin
+repository-code: "https://github.com/devinnicholson/neural-mapping"
+url: "https://github.com/devinnicholson/neural-mapping"
+version: 0.1.0
+date-released: 2026-08-25
+license: MIT
+keywords:
+  - neural mapping
+  - 3D Gaussian splatting
+  - active view selection
+  - uncertainty calibration
+  - RGB-D reconstruction
